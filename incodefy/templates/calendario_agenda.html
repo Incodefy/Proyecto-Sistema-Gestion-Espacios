@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Agenda Médica</title>
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'css/sidebar.css' %}?v={% now 'U' %}">
+        <link rel="stylesheet" href="{% static 'css/calendario.css' %}?v={% now 'U' %}">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+    </head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="mobile-header">
+                <button class="toggle-sidebar" onclick="toggleSidebar()">☰ Menú</button>
+            </div>
+            <div class="col-2 d-none d-md-block" id="sidebar-container">
+                {% include 'sidebar.html' %}    
+            </div>
+            
+            <div class="main col-lg-10 col-sm-12 col-12" id="main-content">
+                {% csrf_token %}
+
+                <div class="top-header">
+                    <div class="header-row">
+                        <strong id="label">{{ tipo|upper }}</strong>
+
+                        <div class="select-group">
+                            {% if tipo == "box" %}
+                                <select id="selectPasillo" onchange="filtrarBoxes()">
+                                    <option value="">-- Selecciona un pasillo --</option>
+                                    {% for pasillo in pasillos %}
+                                        <option value="{{ pasillo.idpasillo }}">{{ pasillo.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <select id="selectBox" onchange="cambiarEntidad()">
+                                    <option value="">-- Selecciona un box --</option>
+                                    {% for box in boxes %}
+                                        <option value="{{ box.idbox }}" data-pasillo="{{ box.idpasillo_id }}">Box {{ box.idbox }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% elif tipo == "medico" %}
+                                <select id="selectEspecialidad" onchange="filtrarMedicos()">
+                                    <option value="">-- Selecciona especialidad --</option>
+                                    {% for esp in especialidades %}
+                                        <option value="{{ esp.idespecialidad }}">{{ esp.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <select id="selectMedico" onchange="cambiarEntidad()">
+                                    <option value="">-- Selecciona un médico --</option>
+                                    {% for medico in medicos %}
+                                        <option value="{{ medico.idmedico }}" data-especialidad="{{ medico.idespecialidad_id }}">{{ medico.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+
+                        <div id="reloj" class="reloj"></div>
+                    </div>
+
+                    <div class="fecha-range-row">
+                        <button onclick="cambiarSemana(-1)"><</button>
+                        <span id="rangoFechas"></span>
+                        <button onclick="cambiarSemana(1)">></button>
+                    </div>
+                </div>
+        
+                <div class="content-wrapper row justify-content-center">
+                    <div class="top-section">
+                        <div class="agenda-wrapper">
+                            <div class="agenda">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Hora</th>
+                                            <th>Lunes</th>
+                                            <th>Martes</th>
+                                            <th>Miércoles</th>
+                                            <th>Jueves</th>
+                                            <th>Viernes</th>
+                                            <th>Sábado</th>
+                                            <th>Domingo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for hora in horas %}
+                                        <tr>
+                                            <td class="hora-col">{{ hora }}</td>
+                                            {% for dia in dias %}
+                                            <td class="dropzone" data-dia-index="{{ forloop.counter0 }}"></td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+        const tipo = "{{ tipo }}";
+        
+        function ajustarAInicioDeSemana(fechaInput) {
+            let f;
+        
+            if (typeof fechaInput === "string") {
+                const partes = fechaInput.split("-");
+                const anio = parseInt(partes[0], 10);
+                const mes = parseInt(partes[1], 10) - 1;
+                const dia = parseInt(partes[2], 10);
+                f = new Date(anio, mes, dia);
+            } else if (fechaInput instanceof Date) {
+                f = new Date(fechaInput.getFullYear(), fechaInput.getMonth(), fechaInput.getDate());
+            } else {
+                throw new Error("Formato de fecha no válido");
+            }
+        
+            f.setHours(0, 0, 0, 0);
+        
+            const diaSemana = f.getDay();
+        
+            if (diaSemana === 1) return f;
+        
+            const diff = diaSemana === 0 ? -6 : 1 - diaSemana;
+            f.setDate(f.getDate() + diff);
+        
+            return f;
+        }
+        
+        let fechaInicioActual = ajustarAInicioDeSemana(new Date());
+
+        function actualizarURL() {
+            const url = new URL(window.location);
+            const startActual = fechaInicioActual.toISOString().split("T")[0];
+
+            url.searchParams.set("start", startActual);
+
+            if (tipo === "box") {
+                url.searchParams.set("box", document.getElementById("selectBox").value);
+                url.searchParams.delete("medico");
+            } else {
+                url.searchParams.set("medico", document.getElementById("selectMedico").value);
+                url.searchParams.delete("box");
+            }
+
+            window.history.pushState({}, "", url);
+        }
+        
+        function cambiarSemana(direccion) {
+            fechaInicioActual.setDate(fechaInicioActual.getDate() + direccion * 7);
+            actualizarRangoFechas();
+            actualizarURL();
+            cargarAgendamientos();
+        }
+
+        function actualizarRangoFechas() {
+            const inicio = new Date(fechaInicioActual);
+            const fin = new Date(inicio);
+            fin.setDate(fin.getDate() + 6);
+        
+            const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+            const inicioStr = inicio.toLocaleDateString('es-CL', opciones);
+            const finStr = fin.toLocaleDateString('es-CL', opciones);
+        
+            document.getElementById("rangoFechas").innerText = `${inicioStr} - ${finStr}`;
+        }
+        
+        function toggleFiltros() {
+            const contenedor = document.getElementById('contenedorFiltros');
+            contenedor.classList.toggle('oculto');
+        }
+        
+        function obtenerIndiceDiaSemana(fechaStr) {
+            console.log("Fecha recibida:", fechaStr);
+            const fecha = new Date(fechaStr);
+            const day = fecha.getDay();
+            console.log("Fecha convertida:", fecha);
+            console.log("Día de la semana:", day);
+            return day;
+        }
+
+        function normalizarHora(str) {
+            return str.replace(/\s/g, '').toLowerCase();
+        }
+
+        function limpiarCalendario() {
+            document.querySelectorAll("tbody td").forEach(td => {
+                if (!td.classList.contains("hora-col")) {
+                    td.innerHTML = "";
+                }
+            });
+        }
+
+        function cambiarEntidad() {
+            const label = document.getElementById("label");
+            let id = "";
+
+            if (tipo === "box") {
+                id = document.getElementById("selectBox").value;
+                label.innerText = id ? `BOX ${id}` : "BOX";
+            } else {
+                id = document.getElementById("selectMedico").value;
+                label.innerText = id ? `MÉDICO ${id}` : "MÉDICO";
+            }
+
+            const url = new URL(window.location);
+            url.searchParams.set(tipo, id);
+            window.history.pushState({}, "", url);
+
+            cargarAgendamientos();
+        }
+        
+        function cargarAgendamientos() {
+            const id = tipo === "box"
+                ? document.getElementById("selectBox").value
+                : document.getElementById("selectMedico").value;
+
+            const fechaInicio = fechaInicioActual.toISOString().split("T")[0];
+
+            const url = tipo === "box"
+                ? `/obtener-agendamientos/?tipo=box&box_id=${id}&fecha_inicio=${fechaInicio}`
+                : `/obtener-agendamientos/?tipo=medico&medico_id=${id}&fecha_inicio=${fechaInicio}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Error al obtener los agendamientos");
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) return console.error(data.error);
+                    limpiarCalendario();
+                    data.agendas.forEach(agenda => {
+                        const diaIndex = obtenerIndiceDiaSemana(agenda.fecha);
+                        const horaCompleta = `${agenda.hora_inicio} - ${agenda.hora_fin}`;
+
+                        document.querySelectorAll("tbody tr").forEach(fila => {
+                            const horaTexto = fila.querySelector("td.hora-col").innerText.trim();
+                            if (normalizarHora(horaTexto) === normalizarHora(horaCompleta)) {
+                                const columnas = fila.querySelectorAll("td");
+                                const celda = columnas[diaIndex + 1];
+                                if (celda) {
+                                    const reservaDiv = document.createElement("div");
+                                    reservaDiv.classList.add("reserva");
+                                    reservaDiv.innerText = tipo === "box" ? agenda.medico : agenda.box_nombre;
+                                    celda.innerHTML = "";
+                                    celda.appendChild(reservaDiv);
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(error => console.error("Error al cargar agendamientos:", error));
+        }       
+
+        function filtrarBoxes() {
+            const pasilloId = document.getElementById("selectPasillo").value;
+            const selectBox = document.getElementById("selectBox");
+        
+            Array.from(selectBox.options).forEach(option => {
+                if (option.value === "") {
+                    option.style.display = "block";
+                } else {
+                    const pasilloBox = option.getAttribute("data-pasillo");
+                    option.style.display = (pasilloBox === pasilloId) ? "block" : "none";
+                }
+            });
+        
+            selectBox.value = "";
+        }
+
+        function filtrarMedicos() {
+            const especialidadId = document.getElementById("selectEspecialidad").value;
+            const selectMedico = document.getElementById("selectMedico");
+
+            Array.from(selectMedico.options).forEach(option => {
+                if (option.value === "") {
+                    option.style.display = "block";
+                } else {
+                    const medEsp = option.getAttribute("data-especialidad");
+                    option.style.display = (medEsp === especialidadId) ? "block" : "none";
+                }
+            });
+
+            selectMedico.value = "";
+        }        
+
+        document.addEventListener("DOMContentLoaded", () => {
+
+            document.querySelectorAll("tbody tr").forEach(fila => {
+                const celdas = fila.querySelectorAll("td.dropzone");
+                celdas.forEach((celda, index) => {
+                    celda.setAttribute("data-dia-index", index);
+                });
+            });
+        
+            const urlParams = new URLSearchParams(window.location.search);
+            const fechaStart = urlParams.get("start");
+
+            const entidadId = tipo === "box"
+                ? urlParams.get("box")
+                : urlParams.get("medico");
+
+            if (fechaStart) {
+                const fechaAjustada = ajustarAInicioDeSemana(fechaStart);
+                fechaInicioActual = fechaAjustada;
+        
+                const startAjustado = fechaAjustada.toISOString().split("T")[0];
+                if (startAjustado !== fechaStart) {
+                    const url = new URL(window.location);
+                    url.searchParams.set("start", startAjustado);
+                    window.history.pushState({}, "", url);
+                }
+            } else {
+                fechaInicioActual = ajustarAInicioDeSemana(new Date());
+                actualizarURL();
+            }
+        
+            if (entidadId) {
+                if (tipo === "box") {
+                    document.getElementById("selectBox").value = entidadId;
+                    document.getElementById("label").innerText = `BOX ${entidadId}`;
+                } else {
+                    document.getElementById("selectMedico").value = entidadId;
+                    document.getElementById("label").innerText = `MÉDICO ${entidadId}`;
+                }
+            }
+        
+            actualizarRangoFechas();
+        
+            cargarAgendamientos();
+        });
+        
+
+        function actualizarReloj() {
+            const reloj = document.getElementById("reloj");
+            const ahora = new Date();
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            const segundos = String(ahora.getSeconds()).padStart(2, '0');
+        
+            reloj.innerText = `${horas}:${minutos}:${segundos}`;
+        }
+        
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById("sidebar");
+            const container = document.getElementById("sidebar-container");
+
+            sidebar.classList.toggle("show");
+
+            if (sidebar.classList.contains("show")) {
+                container.style.display = "block";
+            } else {
+                container.style.display = "none";
+            }
+        }
+        
+        
+    </script>
+        
+</body>
+</html>

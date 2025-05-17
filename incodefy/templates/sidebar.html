@@ -1,0 +1,37 @@
+<div class="sidebar" id="sidebar">
+    {% load static %}
+    <h2>AGENDA MÉDICA</h2>
+
+    <div class="menu-item">
+        <img src="{% static 'icons/dashboard.webp' %}" alt="Dashboard" />
+        <span>Dashboard</span>
+    </div>
+
+    <a href="{% url 'agenda' %}" class="menu-item {% if '/agenda/' in request.path %}active{% endif %}">
+        <img src="{% static 'icons/calendario.webp' %}" alt="Agenda" />
+        <span>Agenda</span>
+    </a>
+
+    <a href="{% url 'box' %}" class="menu-item {% if request.resolver_match.url_name in 'box box_detail' %}active{% endif %}">
+        <img src="{% static 'icons/box.webp' %}" alt="Box" />
+        <span>Box</span>
+    </a>
+
+    <div class="menu-item">
+        <img src="{% static 'icons/doctor.png' %}" alt="Médicos" />
+        <span>Médicos</span>
+    </div>
+
+    <div class="menu-item">
+        <img src="{% static 'icons/configuracion.webp' %}" alt="Configuración" />
+        <span>Configuración</span>
+    </div>
+
+    <div class="menu-item">
+        <img src="{% static 'icons/perfil.webp' %}" alt="Perfil" />
+        <span>Perfil</span>
+    </div>
+</div>
+
+<script>
+</script>
