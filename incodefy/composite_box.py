@@ -33,14 +33,14 @@ def generar_pasillos_con_boxes(pasillos, boxes, agendas, filtro_pasillo, filtro_
     resultado = OrderedDict()
 
     for pasillo in pasillos:
-        if filtro_pasillo and str(pasillo.idpasillo) != filtro_pasillo:
+        if filtro_pasillo and pasillo.idpasillo not in filtro_pasillo:
             continue
 
         pasillo_compuesto = PasilloComposite(pasillo.idpasillo, pasillo.nombre)
         boxes_filtrados = boxes.filter(idpasillo=pasillo).order_by("idbox")
 
         for box in boxes_filtrados:
-            if filtro_box and str(box.idbox) != filtro_box:
+            if filtro_box and box.idbox not in filtro_box:
                 continue
 
             estado = 'Inhabilitado' if box.estado == 0 else 'Libre'
