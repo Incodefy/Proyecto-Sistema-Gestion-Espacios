@@ -106,15 +106,40 @@
             });
         }
 
+        function parseRangos(texto) {
+            const valores = new Set();
+
+            texto.split(',').forEach(fragmento => {
+                const partes = fragmento.trim().split('-');
+
+                if (partes.length === 1) {
+                    const num = parseInt(partes[0]);
+                    if (!isNaN(num)) valores.add(num);
+                } else if (partes.length === 2) {
+                    const inicio = parseInt(partes[0]);
+                    const fin = parseInt(partes[1]);
+
+                    if (!isNaN(inicio) && !isNaN(fin)) {
+                        for (let i = inicio; i <= fin; i++) {
+                            valores.add(i);
+                        }
+                    }
+                }
+            });
+
+            return Array.from(valores);
+        }
+
         function aplicarFiltros() {
-            const pasillo = document.getElementById("filtroPasillo").value.trim();
-            const box = document.getElementById("filtroBox").value.trim();
+            const pasilloRaw = document.getElementById("filtroPasillo").value.trim();
+            const boxRaw = document.getElementById("filtroBox").value.trim();
             const estado = document.getElementById("filtroEstado").value.trim();
 
             const params = new URLSearchParams();
-            if (pasillo) params.append("pasillo", pasillo);
-            if (box) params.append("box", box);
-            if (estado) params.append("estado", estado);
+
+            if (pasilloRaw) params.set("pasillo", pasilloRaw);
+            if (boxRaw) params.set("box", boxRaw);
+            if (estado) params.set("estado", estado);
 
             window.location.href = `/box/?${params.toString()}`;
         }
@@ -133,9 +158,7 @@
             document.getElementById("filtroEstado").value = params.get("estado") || '';
         });
 
-        actualizarBoxes();
-
-        
+        actualizarBoxes();        
 
         const socket = new WebSocket('ws://' + window.location.host + '/ws/estado-box/');
 
@@ -163,7 +186,6 @@
         socket.onclose = function(e) {
             console.warn("WebSocket cerrado. Código:", e.code, "Razón:", e.reason);
         };
-
 
         function toggleSidebar() {
             const sidebar = document.getElementById("sidebar");
