@@ -172,11 +172,6 @@
             document.getElementById("rangoFechas").innerText = `${inicioStr} - ${finStr}`;
         }
         
-        function toggleFiltros() {
-            const contenedor = document.getElementById('contenedorFiltros');
-            contenedor.classList.toggle('oculto');
-        }
-        
         function obtenerIndiceDiaSemana(fechaStr) {
             console.log("Fecha recibida:", fechaStr);
             const fecha = new Date(fechaStr);
