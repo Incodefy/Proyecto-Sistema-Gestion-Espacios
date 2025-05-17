@@ -50,10 +50,30 @@ def obtener_agendamientos(request):
 
     return estrategia.obtener_agendamientos(request)
 
+# Filtro
+def expandir_rangos(texto):
+    if not texto:
+        return None
+    resultado = set()
+    for parte in texto.split(','):
+        if '-' in parte:
+            inicio, fin = parte.split('-')
+            try:
+                for i in range(int(inicio), int(fin) + 1):
+                    resultado.add(i)
+            except ValueError:
+                continue
+        else:
+            try:
+                resultado.add(int(parte))
+            except ValueError:
+                continue
+    return sorted(resultado)
+
 # Interfaz de disponibilidad de boxes
 def box(request):
-    filtro_pasillo = request.GET.get("pasillo")
-    filtro_box = request.GET.get("box")
+    filtro_pasillo = expandir_rangos(request.GET.get("pasillo"))
+    filtro_box = expandir_rangos(request.GET.get("box"))
     filtro_estado = request.GET.get("estado")
 
     hoy = date.today()
