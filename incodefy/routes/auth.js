@@ -1,4 +1,4 @@
-// routes/auth.js - ACTUALIZADO PARA USAR COLAS
+// routes/auth.js
 const express = require("express");
 const router = express.Router();
 const {
@@ -13,7 +13,7 @@ const cognitoClient = new CognitoIdentityProviderClient({
 });
 
 // URLs configurables
-const API_BASE_URL = process.env.API_BASE_URL || 'https://ux70372886.execute-api.us-east-1.amazonaws.com';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://0llhfn3ycj.execute-api.us-east-1.amazonaws.com';
 const PERMISSIONS_ENDPOINT = process.env.PERMISSIONS_ENDPOINT || '/my-permissions';
 const PERSONALIZATION_ENDPOINT = process.env.PERSONALIZATION_ENDPOINT || '/personalization';
 
@@ -50,45 +50,7 @@ const refreshUserPersonalization = async (req) => {
   }
 };
 
-// Función para sondear el estado de un evento de personalización
-const pollPersonalizationStatus = async (eventId, token, maxAttempts = 10, delayMs = 1000) => {
-  console.log(`🔍 Iniciando polling para evento ${eventId}`);
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`🔍 Intento ${attempt}/${maxAttempts} - Verificando estado del evento`);
-      
-      // Obtener personalización actual
-      const response = await fetch(PERSONALIZATION_URL, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Verificar si algún parámetro tiene el event_id que estamos buscando
-        // Esto requeriría que el GET personalización incluya metadata del último evento
-        console.log(`✅ Intento ${attempt} exitoso - personalización obtenida`);
-        return { success: true, data: data.final_parameters };
-      }
-      
-      if (attempt < maxAttempts) {
-        console.log(`⏳ Esperando ${delayMs}ms antes del siguiente intento...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        delayMs = Math.min(delayMs * 1.5, 5000); // Backoff exponencial
-      }
-    } catch (error) {
-      console.log(`❌ Error en intento ${attempt}:`, error.message);
-      if (attempt === maxAttempts) {
-        return { success: false, error: error.message };
-      }
-    }
-  }
-  
-  return { success: false, error: 'Timeout - no se pudo confirmar el procesamiento' };
-};
-
-// Página login (sin cambios)
+// Página login
 router.get("/login", (req, res) => {
   if (req.session.user && req.session.user.idToken) {
     return res.redirect("/dashboard");
@@ -101,7 +63,7 @@ router.get("/login", (req, res) => {
   });
 });
 
-// Procesar login con Cognito (sin cambios)
+// Procesar login con Cognito
 router.post("/login", async (req, res) => {
   try {
     const { correo, password } = req.body;
@@ -175,19 +137,29 @@ router.post("/login", async (req, res) => {
     // Obtener permisos y personalización inicial
     try {
       console.log("📡 Obteniendo permisos desde:", PERMISSIONS_URL);
+      
       const permissionsResponse = await fetch(PERMISSIONS_URL, {
-        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
+        headers: { 
+          'Authorization': `Bearer ${tokens.IdToken}`,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json();
         req.session.user.permissions = permissionsData.permissions || [];
         req.session.user.ui_config = permissionsData.ui_config || {};
-        console.log("✅ Permisos obtenidos correctamente");
+        console.log("✅ Permisos obtenidos:", req.session.user.permissions);
       } else {
-        console.log("⚠️ No se pudieron obtener permisos:", permissionsResponse.status);
+        console.log("⚠️ Error obteniendo permisos:", permissionsResponse.status);
       }
+    } catch (err) {
+      console.error("❌ Error obteniendo permisos:", err);
+      req.session.user.permissions = [];
+      req.session.user.ui_config = {};
+    }
 
+    try {
       console.log("📡 Obteniendo personalización desde:", PERSONALIZATION_URL);
       const personalizationResponse = await fetch(PERSONALIZATION_URL, {
         headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
@@ -203,9 +175,7 @@ router.post("/login", async (req, res) => {
       }
       
     } catch (err) {
-      console.log("❌ Error obteniendo datos del usuario:", err.message);
-      req.session.user.permissions = [];
-      req.session.user.ui_config = {};
+      console.log("❌ Error obteniendo personalización:", err.message);
       req.session.user.personalization = {};
     }
 
@@ -275,7 +245,6 @@ router.get("/profile", (req, res) => {
   });
 });
 
-// Exportar el router y las funciones auxiliares
+// Exportar el router y la función de refresh
 module.exports = router;
 module.exports.refreshUserPersonalization = refreshUserPersonalization;
-module.exports.pollPersonalizationStatus = pollPersonalizationStatus;

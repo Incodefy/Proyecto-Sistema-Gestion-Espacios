@@ -162,21 +162,13 @@
     // Personalización actual
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
     
-    // Configuración
-    const API_BASE = 'https://ux70372886.execute-api.us-east-1.amazonaws.com';
-    const USER_TOKEN = '<%- idToken %>';
-    
     // Función para aplicar cambios de personalización inmediatamente
     function applyPersonalizationChanges(parameters) {
       console.log('🎨 Aplicando personalización:', parameters);
       
-      // Encontrar y reemplazar el style tag del EJS
       replacePersonalizationStyles(parameters);
-      
-      // También actualizar variables CSS del root como fallback
       updateRootVariables(parameters);
       
-      // Actualizar el objeto global
       window.userPersonalization = { ...window.userPersonalization, ...parameters };
       console.log('✅ Personalización aplicada');
       
@@ -188,11 +180,9 @@
 
     // Función para reemplazar completamente los estilos de personalización
     function replacePersonalizationStyles(parameters) {
-      // Encontrar el style existente o crear uno nuevo
       let personalizationStyle = document.getElementById('personalization-styles');
       
       if (!personalizationStyle) {
-        // Buscar el style original en el head
         const existingStyles = Array.from(document.head.querySelectorAll('style'));
         personalizationStyle = existingStyles.find(style => 
           style.textContent.includes('--personalization-loaded')
@@ -201,17 +191,14 @@
         if (personalizationStyle) {
           personalizationStyle.id = 'personalization-styles';
         } else {
-          // Crear nuevo si no existe
           personalizationStyle = document.createElement('style');
           personalizationStyle.id = 'personalization-styles';
           document.head.appendChild(personalizationStyle);
         }
       }
       
-      // Combinar parámetros actuales con los nuevos
       const finalParams = { ...window.userPersonalization, ...parameters };
       
-      // Generar colores derivados
       const colorVariants = {
         '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
         '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
@@ -224,7 +211,6 @@
       const themeMode = finalParams['theme.mode'] || 'light';
       const variants = colorVariants[primaryColor] || { light: primaryColor + '99', dark: primaryColor + 'dd' };
       
-      // Generar nuevo contenido del style
       let styleContent = `
           :root {
             --personalization-loaded: true;
@@ -233,7 +219,6 @@
             --primary-color-dark: ${variants.dark}!important;
       `;
       
-      // Agregar variables de tema
       if (themeMode === 'dark') {
         styleContent += `
             --background-color: #181818 !important;
@@ -253,7 +238,6 @@
       }
       
       styleContent += `
-            /* Gradientes actualizados */
             --primary-gradient: linear-gradient(135deg, ${primaryColor} 0%, ${variants.dark} 100%) !important;
             --secondary-gradient: linear-gradient(135deg, ${variants.light} 0%, ${variants.dark} 100%) !important;
             --terciary-gradient: linear-gradient(135deg, ${variants.dark} 0%, ${primaryColor} 100%) !important;
@@ -261,13 +245,11 @@
             --mix-gradient: linear-gradient(90deg, ${variants.dark}, ${primaryColor}, ${variants.light}) !important;
           }
           
-          /* Aplicar tema al body */
           body {
             transition: all 0.3s ease;
           }
       `;
       
-      // Agregar reglas específicas para tema oscuro
       if (themeMode === 'dark') {
         styleContent += `
           body[data-theme="dark"] .menu-link img {
@@ -304,9 +286,7 @@
         `;
       }
       
-      // Agregar reglas específicas para elementos con color principal
       styleContent += `
-        /* Elementos que usan el color principal */
         .user-avatar i,
         .user-details h3,
         .form-section h4 {
@@ -360,16 +340,11 @@
         }
       `;
       
-      // Reemplazar contenido del style
       personalizationStyle.textContent = styleContent;
-      
-      // Actualizar atributo data-theme del body
       document.body.setAttribute('data-theme', themeMode);
-      
       console.log('🎨 Estilos de personalización reemplazados');
     }
 
-    // Función fallback para actualizar variables CSS del root
     function updateRootVariables(parameters) {
       const root = document.documentElement;
       
@@ -415,7 +390,6 @@
       });
     }
 
-    // Función para mostrar mensaje
     function showMessage(text, type = 'info', icon = 'fas fa-info-circle') {
       const message = document.getElementById('message');
       message.innerHTML = `<i class="${icon}"></i> ${text}`;
@@ -423,162 +397,36 @@
       message.style.display = 'block';
     }
 
-    // Función para ocultar mensaje
     function hideMessage() {
       const message = document.getElementById('message');
       message.style.display = 'none';
     }
 
-    // Manejar respuesta síncrona (procesamiento completado)
-    function handleSyncResponse(result) {
-      console.log('✅ Procesamiento síncrono completado');
-      
-      if (result.personalization) {
-        window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
-      }
-      
-      showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
-      console.log('✅ Personalización guardada sincronamente');
-      
-      setTimeout(() => hideMessage(), 5000);
-    }
-
-    // Manejar respuesta asíncrona (procesamiento en cola)
-    async function handleAsyncResponse(result, originalParameters) {
-      console.log('⏳ Procesamiento asíncrono iniciado, event_id:', result.event_id);
-      
-      if (result.status === 'queued' || result.async) {
-        // Modo fire-and-forget
-        showMessage(
-          'Cambios enviados a procesamiento. Se aplicarán en breve.',
-          'info',
-          'fas fa-clock'
-        );
-        
-        // Verificar estado después de un tiempo
-        setTimeout(() => checkEventStatus(result.event_id), 5000);
-        
-      } else if (result.status === 'completed' && result.polling_completed) {
-        // Polling exitoso
-        if (result.personalization) {
-          window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
-        }
-        showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
-        
-      } else if (result.status === 'processing') {
-        // Polling falló, pero el evento fue enviado
-        showMessage(
-          result.message || 'Cambios enviados a procesamiento. Los cambios se aplicarán pronto.',
-          'warning',
-          'fas fa-clock'
-        );
-        
-        // Ofrecer botón para verificar manualmente
-        addManualCheckButton(result.event_id);
-        
-        // Verificar automáticamente después de un tiempo
-        setTimeout(() => checkEventStatus(result.event_id), 10000);
-      }
-      
-      setTimeout(() => hideMessage(), 8000);
-    }
-
-    // Verificar estado de un evento específico
-    async function checkEventStatus(eventId) {
-      try {
-        console.log('🔍 Verificando estado del evento:', eventId);
-        
-        const response = await fetch(`/api/personalization-status/${eventId}`);
-        const result = await response.json();
-        
-        if (result.ok && result.status === 'completed') {
-          console.log('✅ Evento completado:', eventId);
-          
-          if (result.personalization) {
-            window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
-            applyPersonalizationChanges(result.personalization);
-          }
-          
-          showMessage('Personalización actualizada correctamente', 'success', 'fas fa-check-circle');
-          
-          // Remover botón de verificación manual si existe
-          removeManualCheckButton();
-          
-        } else {
-          console.log('⏳ Evento aún procesándose:', eventId);
-        }
-      } catch (error) {
-        console.error('❌ Error verificando estado del evento:', error);
-      }
-    }
-
-    // Agregar botón para verificación manual
-    function addManualCheckButton(eventId) {
-      removeManualCheckButton();
-      
-      const message = document.getElementById('message');
-      if (message && message.style.display !== 'none') {
-        const checkButton = document.createElement('button');
-        checkButton.id = 'manual-check-btn';
-        checkButton.className = 'btn btn-sm btn-outline mt-2';
-        checkButton.innerHTML = '<i class="fas fa-sync"></i> Verificar ahora';
-        checkButton.onclick = () => {
-          checkButton.disabled = true;
-          checkButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-          checkEventStatus(eventId).finally(() => {
-            checkButton.disabled = false;
-            checkButton.innerHTML = '<i class="fas fa-sync"></i> Verificar ahora';
-          });
-        };
-        
-        message.appendChild(checkButton);
-      }
-    }
-
-    // Remover botón de verificación manual
-    function removeManualCheckButton() {
-      const existingButton = document.getElementById('manual-check-btn');
-      if (existingButton) {
-        existingButton.remove();
-      }
-    }
-
-    // EVENTO PRINCIPAL - Submit del formulario
+    // Evento principal - Submit del formulario
     document.getElementById('personalizationForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const loader = document.getElementById('loader');
       const saveBtn = document.getElementById('saveBtn');
       
-      // Mostrar loader
       loader.style.display = 'block';
       hideMessage();
       saveBtn.disabled = true;
       
       try {
-        // Recopilar datos del formulario
         const formData = new FormData(this);
         const parameters = {};
-        let asyncMode = false;
         
         for (let [key, value] of formData.entries()) {
-          if (key === 'asyncMode') {
-            asyncMode = true; // Si está presente en FormData, significa que está checked
-          } else {
-            parameters[key] = value;
-          }
+          parameters[key] = value;
         }
         
         console.log('🔄 Guardando parámetros:', parameters);
         
-        // Aplicar cambios inmediatamente (optimistic update)
+        // Aplicar cambios inmediatamente
         applyPersonalizationChanges(parameters);
         
-        // Verificar si hay checkbox de modo asíncrono
-        const url = `/api/personalization${asyncMode ? '?async=true' : ''}`;
-        
-        console.log('📡 Enviando request a:', url);
-        const response = await fetch(url, {
+        const response = await fetch('/api/personalization', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -588,40 +436,29 @@
         
         console.log('📥 Response status:', response.status);
         
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const textResponse = await response.text();
-          console.error('❌ Respuesta no es JSON:', textResponse);
-          throw new Error(`Servidor retornó contenido no válido: ${response.status} ${response.statusText}`);
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+          throw new Error(`Servidor retornó contenido no válido: ${response.status}`);
         }
         
         const result = await response.json();
         console.log('📥 Response data:', result);
         
         if (result.ok) {
-          if (response.status === 200) {
-            // Procesamiento síncrono completado - éxito directo
-            showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
-            
-            // Actualizar sesión del servidor
-            const refreshResponse = await fetch('/api/refresh-personalization', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (refreshResponse.ok) {
-              const refreshResult = await refreshResponse.json();
-              console.log('✅ Sesión actualizada correctamente');
-            } else {
-              console.log('⚠️ No se pudo actualizar la sesión');
-            }
-          } else if (response.status === 202) {
-            // Procesamiento asíncrono (si implementas colas más adelante)
-            await handleAsyncResponse(result, parameters);
+          showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
+          
+          // Actualizar sesión del servidor
+          const refreshResponse = await fetch('/api/refresh-personalization', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (refreshResponse.ok) {
+            console.log('✅ Sesión actualizada correctamente');
+          } else {
+            console.log('⚠️ No se pudo actualizar la sesión');
           }
         } else {
-          const errorMsg = result.error || result.message || `Error ${response.status}: ${response.statusText}`;
-          console.error('❌ Error del servidor:', errorMsg);
+          const errorMsg = result.error || result.message || `Error ${response.status}`;
           throw new Error(errorMsg);
         }
         
@@ -632,10 +469,6 @@
         
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
           errorMessage = 'Error de conexión. Verifica tu conexión a internet.';
-        } else if (error.message.includes('JSON')) {
-          errorMessage = 'Error de formato de respuesta del servidor.';
-        } else if (error.message.includes('Network')) {
-          errorMessage = 'Error de red. Intenta nuevamente.';
         }
         
         showMessage(`Error: ${errorMessage}`, 'error', 'fas fa-exclamation-triangle');
@@ -646,10 +479,12 @@
       } finally {
         loader.style.display = 'none';
         saveBtn.disabled = false;
+        
+        setTimeout(() => hideMessage(), 8000);
       }
     });
     
-    // Vista previa (cambio inmediato sin guardar)
+    // Vista previa
     document.getElementById('previewBtn').addEventListener('click', function() {
       const formData = new FormData(document.getElementById('personalizationForm'));
       const parameters = {};
@@ -658,66 +493,25 @@
         parameters[key] = value;
       }
       
-      // Aplicar cambios temporalmente
       applyPersonalizationChanges(parameters);
-      
-      // Mostrar mensaje de vista previa
       showMessage('Vista previa aplicada. Guarda los cambios para hacerlos permanentes.', 'info', 'fas fa-eye');
       
       setTimeout(() => hideMessage(), 3000);
     });
 
-    // Conectar a Server-Sent Events para notificaciones en tiempo real
-    function connectToPersonalizationEvents() {
-      if (typeof EventSource === 'undefined') {
-        console.log('⚠️ EventSource no soportado');
-        return;
-      }
-      
-      console.log('📡 Conectando a eventos de personalización...');
-      
-      const eventSource = new EventSource('/api/personalization-events');
-      
-      eventSource.onmessage = function(event) {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'personalization.updated' && data.personalization) {
-            console.log('🎨 Personalización actualizada via SSE');
-            window.userPersonalization = { ...window.userPersonalization, ...data.personalization };
-            applyPersonalizationChanges(data.personalization);
-            showMessage('Personalización actualizada automáticamente', 'success', 'fas fa-magic');
-          }
-        } catch (error) {
-          console.error('❌ Error procesando evento SSE:', error);
-        }
-      };
-      
-      eventSource.onerror = function() {
-        eventSource.close();
-        setTimeout(() => connectToPersonalizationEvents(), 10000);
-      };
-      
-      window.addEventListener('beforeunload', () => {
-        eventSource.close();
-      });
-    }
-
-    // Estilos adicionales para mensajes
+    // Estilos adicionales
     const additionalStyles = document.createElement('style');
     additionalStyles.textContent = `
       .message {
         display: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin-top: 10px;
       }
       .message.info {
         background: #d1ecf1;
         color: #0c5460;
         border: 1px solid #bee5eb;
-      }
-      .message.warning {
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeaa7;
       }
       .message.success {
         background: #d4edda;
@@ -730,16 +524,10 @@
         border: 1px solid #f5c6cb;
       }
       
-      /* Tema oscuro */
       body[data-theme="dark"] .message.info {
         background: rgba(13, 202, 240, 0.2);
         color: #9eeaf9;
         border-color: rgba(13, 202, 240, 0.3);
-      }
-      body[data-theme="dark"] .message.warning {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffda6a;
-        border-color: rgba(255, 193, 7, 0.3);
       }
       body[data-theme="dark"] .message.success {
         background: rgba(25, 135, 84, 0.2);
@@ -751,48 +539,10 @@
         color: #ea868f;
         border-color: rgba(220, 53, 69, 0.3);
       }
-      
-      /* Checkbox para modo asíncrono */
-      .async-mode-option {
-        margin-top: 1rem;
-        padding: 0.5rem;
-        background: rgba(0,0,0,0.05);
-        border-radius: 5px;
-      }
-      
-      .async-mode-option label {
-        font-size: 0.85rem;
-        color: var(--secondary-text-color);
-        cursor: pointer;
-      }
     `;
     document.head.appendChild(additionalStyles);
     
-    // Agregar opción de modo asíncrono al formulario
-    document.addEventListener('DOMContentLoaded', function() {
-      const formActions = document.querySelector('.form-actions');
-      if (formActions) {
-        const asyncOption = document.createElement('div');
-        asyncOption.className = 'async-mode-option';
-        asyncOption.innerHTML = `
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="asyncMode" name="asyncMode">
-            <label class="form-check-label" for="asyncMode">
-              Modo asíncrono (procesamiento en segundo plano)
-            </label>
-          </div>
-        `;
-        formActions.insertBefore(asyncOption, formActions.firstChild);
-      }
-      
-      // Conectar a eventos en tiempo real
-      connectToPersonalizationEvents();
-      
-      console.log('🚀 Perfil cargado con comunicación desacoplada habilitada');
-    });
-    
     console.log('🚀 Perfil cargado con personalización:', window.userPersonalization);
-    console.log('🔑 Token disponible:', USER_TOKEN ? 'SI' : 'NO');
   </script>
 </body>
 </html>

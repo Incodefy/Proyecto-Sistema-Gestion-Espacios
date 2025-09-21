@@ -1,4 +1,4 @@
-service: personalization-queue-system
+service: aws-cognito-jwt-login
 frameworkVersion: '3'
 
 provider:
@@ -10,21 +10,15 @@ provider:
   role: arn:aws:iam::851725349092:role/LabRole
   
   environment:
-    # Variables originales
+    # Variables para las funciones
     USER_POOL_ID: { Ref: CognitoUserPool }
     USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
     USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
     PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
     
-    # Variables para SQS
-    PERSONALIZATION_QUEUE_URL: { Ref: PersonalizationQueue }
-    DLQ_URL: { Ref: PersonalizationDLQ }
-    
   logs:
     httpApi: true
-  tracing:
-    lambda: true
     
   httpApi:
     authorizers:
@@ -39,7 +33,7 @@ provider:
           - { Ref: CognitoUserPoolClient }
 
 functions:
-  # === FUNCIONES ORIGINALES ===
+  # === FUNCIONES DE AUTENTICACIÓN ===
   login:
     handler: src/handlers/login.login
     events:
@@ -63,6 +57,7 @@ functions:
           authorizer:
             name: cognitoJwt
 
+  # === FUNCIONES DE PERMISOS ===
   getMyPermissions:
     handler: src/handlers/permissions.getMyPermissions
     events:
@@ -99,9 +94,7 @@ functions:
           authorizer:
             name: cognitoJwt
 
-  # === FUNCIONES DE PERSONALIZACIÓN DESACOPLADAS ===
-  
-  # GET personalización (sin cambios)
+  # === FUNCIONES DE PERSONALIZACIÓN ===
   getPersonalization:
     handler: src/handlers/personalization.getPersonalization
     events:
@@ -111,38 +104,14 @@ functions:
           authorizer:
             name: cognitoJwt
 
-  # SET personalización ahora publica evento en cola
   setPersonalization:
-    handler: src/handlers/personalization.setPersonalizationWithQueue
+    handler: src/handlers/personalization.setPersonalization
     events:
       - httpApi:
           method: POST
           path: /personalization
           authorizer:
             name: cognitoJwt
-
-  # Worker que procesa eventos de personalización
-  personalizationWorker:
-    handler: src/handlers/personalization.processPersonalizationEvent
-    timeout: 30
-    memorySize: 256
-    reservedConcurrency: 5
-    events:
-      - sqs:
-          arn:
-            Fn::GetAtt: [ PersonalizationQueue, Arn ]
-          batchSize: 10
-          maximumBatchingWindow: 30
-
-  # Worker para DLQ (errores)
-  personalizationDLQWorker:
-    handler: src/handlers/personalization.processDLQMessage
-    timeout: 60
-    events:
-      - sqs:
-          arn:
-            Fn::GetAtt: [ PersonalizationDLQ, Arn ]
-          batchSize: 1
 
 plugins:
   - serverless-offline
@@ -156,7 +125,7 @@ package:
 
 resources:
   Resources:
-    # === RECURSOS ORIGINALES ===
+    # === TABLAS DYNAMODB ===
     UserRolesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -197,6 +166,7 @@ resources:
           - AttributeName: parameter_key
             KeyType: RANGE
 
+    # === COGNITO ===
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
       Properties:
@@ -231,35 +201,8 @@ resources:
           IdToken: minutes
           RefreshToken: days
 
-    # === RECURSOS DE COLAS SQS ===
-    
-    # Dead Letter Queue para mensajes fallidos
-    PersonalizationDLQ:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: ${self:service}-${sls:stage}-personalization-dlq
-        VisibilityTimeout: 60
-        MessageRetentionPeriod: 1209600  # 14 días
-
-    # Cola principal de personalización
-    PersonalizationQueue:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: ${self:service}-${sls:stage}-personalization-queue
-        VisibilityTimeout: 180  # 3 minutos (mayor que timeout de Lambda)
-        MessageRetentionPeriod: 1209600  # 14 días
-        ReceiveMessageWaitTime: 20  # Long polling
-        RedrivePolicy:
-          deadLetterTargetArn:
-            Fn::GetAtt: [ PersonalizationDLQ, Arn ]
-          maxReceiveCount: 3  # Después de 3 intentos va a DLQ
-
   Outputs:
     UserPoolId:
       Value: { Ref: CognitoUserPool }
     UserPoolClientId:
       Value: { Ref: CognitoUserPoolClient }
-    PersonalizationQueueUrl:
-      Value: { Ref: PersonalizationQueue }
-    PersonalizationDLQUrl:
-      Value: { Ref: PersonalizationDLQ }

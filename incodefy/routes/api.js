@@ -18,7 +18,7 @@ router.post('/personalization', requireAuthAPI, async (req, res) => {
     console.log("📝 Actualizando personalización:", req.body);
 
     const response = await fetch(
-      'https://ux70372886.execute-api.us-east-1.amazonaws.com/personalization',
+      'https://0llhfn3ycj.execute-api.us-east-1.amazonaws.com/personalization',
       {
         method: 'POST',
         headers: {
@@ -61,7 +61,7 @@ router.post('/personalization', requireAuthAPI, async (req, res) => {
 router.get('/personalization', requireAuthAPI, async (req, res) => {
   try {
     const response = await fetch(
-      'https://ux70372886.execute-api.us-east-1.amazonaws.com/personalization',
+      'https://0llhfn3ycj.execute-api.us-east-1.amazonaws.com/personalization',
       {
         headers: {
           'Authorization': `Bearer ${req.session.user.idToken}`

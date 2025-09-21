@@ -5,7 +5,7 @@ const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/l
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-// Parámetros disponibles para personalización (simplificado)
+// Parámetros disponibles para personalización
 const PERSONALIZATION_PARAMETERS = {
   "theme.mode": { 
     type: "select", 
@@ -36,7 +36,6 @@ const getGlobalParameters = () => ({
 
 // Función para generar colores derivados del color principal
 const generateColorVariants = (primaryColor) => {
-  // Colores derivados para cada color principal
   const colorVariants = {
     "#1a3c7c": {
       light: "#375ca1",
@@ -137,20 +136,40 @@ module.exports.getPersonalization = async (event) => {
  */
 module.exports.setPersonalization = async (event) => {
   try {
+    console.log("📝 Recibiendo petición:", JSON.stringify(event, null, 2));
+    
     const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const { parameters } = JSON.parse(event.body || "{}");
+    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    
+    console.log("👤 Usuario:", { userSub, userEmail });
+    
+    let requestBody;
+    
+    try {
+      requestBody = JSON.parse(event.body || "{}");
+      console.log("📦 Body parseado:", requestBody);
+    } catch (e) {
+      console.error("❌ Error parseando body:", e);
+      return response(400, { ok: false, error: "Body inválido" });
+    }
+
+    const { parameters } = requestBody;
     
     if (!userSub) {
+      console.error("❌ Usuario no autenticado");
       return response(401, { ok: false, error: "Usuario no autenticado" });
     }
 
     if (!parameters || typeof parameters !== 'object') {
-      return response(400, { ok: false, error: "parameters es obligatorio" });
+      console.error("❌ Parámetros inválidos:", parameters);
+      return response(400, { ok: false, error: "parameters es obligatorio y debe ser un objeto" });
     }
 
     // Validar parámetros
     const validParameters = {};
     const errors = [];
+    
+    console.log("🔍 Validando parámetros:", parameters);
     
     Object.entries(parameters).forEach(([key, value]) => {
       if (PERSONALIZATION_PARAMETERS[key]) {
@@ -165,6 +184,7 @@ module.exports.setPersonalization = async (event) => {
     });
 
     if (errors.length > 0) {
+      console.error("❌ Errores de validación:", errors);
       return response(400, { ok: false, errors });
     }
 
@@ -172,29 +192,47 @@ module.exports.setPersonalization = async (event) => {
     const timestamp = new Date().toISOString();
     const savedParameters = [];
 
+    console.log("💾 Guardando parámetros en DynamoDB...");
+    console.log("📊 Tabla:", process.env.PARAMETERS_TABLE);
+
     for (const [key, value] of Object.entries(validParameters)) {
+      console.log(`💾 Guardando ${key}: ${value}`);
+      
       await docClient.send(new PutCommand({
         TableName: process.env.PARAMETERS_TABLE,
         Item: {
           user_sub: userSub,
           parameter_key: key,
           parameter_value: value,
-          updated_at: timestamp
+          updated_at: timestamp,
+          email: userEmail
         }
       }));
       savedParameters.push({ key, value });
     }
 
+    console.log("✅ Parámetros guardados:", savedParameters);
+
+    // Obtener los parámetros actualizados
+    const updatedParameters = await module.exports.getPersonalization(event);
+    const finalParameters = JSON.parse(updatedParameters.body).final_parameters;
+
     return response(200, {
       ok: true,
       message: "Parámetros de personalización actualizados",
       saved_parameters: savedParameters,
-      updated_count: savedParameters.length
+      updated_count: savedParameters.length,
+      final_parameters: finalParameters
     });
 
   } catch (err) {
-    console.error("Error setting personalization:", err);
-    return response(500, { ok: false, error: "Error interno del servidor" });
+    console.error("❌ Error en setPersonalization:", err);
+    console.error("❌ Stack trace:", err.stack);
+    return response(500, { 
+      ok: false, 
+      error: "Error interno del servidor",
+      details: err.message
+    });
   }
 };
 
