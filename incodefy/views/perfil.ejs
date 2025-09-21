@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="<%= personalization['locale.language'] || 'es' %>">
+<head>
+  <meta charset="UTF-8">
+  <title>Mi Perfil - Personalización</title>
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/perfil.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Variables CSS personalizadas -->
+  <style id="personalization-styles">
+    :root {
+      --personalization-loaded: true;
+      
+      <% if (personalization && personalization['theme.primary_color']) { %>
+      --primary-color: <%= personalization['theme.primary_color'] %>!important;
+      <% if (personalization['theme.primary_color_light']) { %>
+      --primary-color-light: <%= personalization['theme.primary_color_light'] %>!important;
+      <% } %>
+      <% if (personalization['theme.primary_color_dark']) { %>
+      --primary-color-dark: <%= personalization['theme.primary_color_dark'] %>!important;
+      <% } %>
+      <% } %>
+      
+      <% if (personalization && personalization['theme.mode'] === 'dark') { %>
+      --background-color: #181818 !important;
+      --text-color: rgba(241, 241, 241, 0.98) !important;
+      --secondary-text-color: #aab1bb !important;
+      --card-background: #222222 !important;
+      --border-color: #2b2b2b !important;
+      <% } %>
+    }
+    <% if (personalization && personalization['theme.mode'] === 'dark') { %>
+    .menu-link img {
+      filter: brightness(0) invert(1)!important;
+    }
+    <% } %>
+  </style>
+</head>
+<body data-theme="<%= personalization['theme.mode'] || 'light' %>">
+  <div class="container-fluid">
+    <div class="row">
+      <%- include('navbar') %>
+
+      <div class="main">
+        <div class="top-header">
+          <h1 class="page-title">Mi Perfil</h1>
+          <p class="page-subtitle">Personaliza la apariencia de tu interfaz</p>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-12 col-md-8 col-lg-6">
+            <div class="profile-card">
+              
+              <!-- Información del usuario -->
+              <div class="user-info">
+                <div class="user-avatar">
+                  <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-details">
+                  <h3><%= user.nombre %></h3>
+                  <p><%= user.email %></p>
+                </div>
+              </div>
+
+              <!-- Formulario de personalización -->
+              <form id="personalizationForm">
+                <div class="form-section">
+                  <h4><i class="fas fa-palette"></i> Tema</h4>
+                  
+                  <!-- Modo de tema -->
+                  <div class="form-group">
+                    <label>Modo:</label>
+                    <div class="radio-group">
+                      <input type="radio" id="light-mode" name="theme.mode" value="light" 
+                             <%= (!personalization['theme.mode'] || personalization['theme.mode'] === 'light') ? 'checked' : '' %>>
+                      <label class="radio-option" for="light-mode">
+                        <i class="fas fa-sun"></i> Claro
+                      </label>
+
+                      <input type="radio" id="dark-mode" name="theme.mode" value="dark"
+                             <%= personalization['theme.mode'] === 'dark' ? 'checked' : '' %>>
+                      <label class="radio-option" for="dark-mode">
+                        <i class="fas fa-moon"></i> Oscuro
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Color principal -->
+                  <div class="form-group">
+                    <label>Color principal:</label>
+                    <div class="color-group">
+                      <% const colors = [
+                        { value: '#1a3c7c', name: 'Azul' },
+                        { value: '#d53232ff', name: 'Rojo' },
+                        { value: '#059669', name: 'Verde' },
+                        { value: '#7c3aed', name: 'Morado' },
+                        { value: '#ea580c', name: 'Naranja' }
+                      ]; %>
+                      <% colors.forEach(color => { %>
+                        <div class="color-option-wrapper">
+                          <input type="radio" 
+                                 id="color-<%= color.value.replace('#', '') %>" 
+                                 name="theme.primary_color" 
+                                 value="<%= color.value %>" 
+                                 <%= (!personalization['theme.primary_color'] && color.value === '#1a3c7c') || 
+                                     personalization['theme.primary_color'] === color.value ? 'checked' : '' %>>
+                          <label for="color-<%= color.value.replace('#', '') %>" class="color-option">
+                            <span class="color-preview" style="background-color: <%= color.value %>"></span>
+                            <span class="color-name"><%= color.name %></span>
+                          </label>
+                        </div>
+                      <% }); %>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h4><i class="fas fa-globe"></i> Idioma</h4>
+                  
+                  <div class="form-group">
+                    <label>Idioma de la interfaz:</label>
+                    <select name="locale.language" class="form-select">
+                      <option value="es" <%= (!personalization['locale.language'] || personalization['locale.language'] === 'es') ? 'selected' : '' %>>
+                        🇪🇸 Español
+                      </option>
+                      <option value="en" <%= personalization['locale.language'] === 'en' ? 'selected' : '' %>>
+                        🇺🇸 English
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="form-actions">
+                  <button type="button" id="previewBtn" class="btn btn-outline">
+                    <i class="fas fa-eye"></i> Vista previa
+                  </button>
+                  <button type="submit" id="saveBtn" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar cambios
+                  </button>
+                </div>
+
+                <!-- Loader y mensajes -->
+                <div id="loader" class="loader" style="display: none;">
+                  <i class="fas fa-spinner fa-spin"></i> Guardando...
+                </div>
+                <div id="message" class="message"></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%- include('footer') %>
+    </div>
+  </div>
+
+<script>
+    // Personalización actual
+    window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+    
+    // Configuración
+    const API_BASE = 'https://ux70372886.execute-api.us-east-1.amazonaws.com';
+    const USER_TOKEN = '<%- idToken %>';
+    
+    // Función para aplicar cambios de personalización inmediatamente
+    function applyPersonalizationChanges(parameters) {
+      console.log('🎨 Aplicando personalización:', parameters);
+      
+      // Encontrar y reemplazar el style tag del EJS
+      replacePersonalizationStyles(parameters);
+      
+      // También actualizar variables CSS del root como fallback
+      updateRootVariables(parameters);
+      
+      // Actualizar el objeto global
+      window.userPersonalization = { ...window.userPersonalization, ...parameters };
+      console.log('✅ Personalización aplicada');
+      
+      // Forzar repaint
+      document.body.style.display = 'none';
+      document.body.offsetHeight; // Trigger reflow
+      document.body.style.display = '';
+    }
+
+    // Función para reemplazar completamente los estilos de personalización
+    function replacePersonalizationStyles(parameters) {
+      // Encontrar el style existente o crear uno nuevo
+      let personalizationStyle = document.getElementById('personalization-styles');
+      
+      if (!personalizationStyle) {
+        // Buscar el style original en el head
+        const existingStyles = Array.from(document.head.querySelectorAll('style'));
+        personalizationStyle = existingStyles.find(style => 
+          style.textContent.includes('--personalization-loaded')
+        );
+        
+        if (personalizationStyle) {
+          personalizationStyle.id = 'personalization-styles';
+        } else {
+          // Crear nuevo si no existe
+          personalizationStyle = document.createElement('style');
+          personalizationStyle.id = 'personalization-styles';
+          document.head.appendChild(personalizationStyle);
+        }
+      }
+      
+      // Combinar parámetros actuales con los nuevos
+      const finalParams = { ...window.userPersonalization, ...parameters };
+      
+      // Generar colores derivados
+      const colorVariants = {
+        '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
+        '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
+        '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
+        '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
+        '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
+      };
+      
+      const primaryColor = finalParams['theme.primary_color'] || '#1a3c7c';
+      const themeMode = finalParams['theme.mode'] || 'light';
+      const variants = colorVariants[primaryColor] || { light: primaryColor + '99', dark: primaryColor + 'dd' };
+      
+      // Generar nuevo contenido del style
+      let styleContent = `
+          :root {
+            --personalization-loaded: true;
+            --primary-color: ${primaryColor}!important;
+            --primary-color-light: ${variants.light}!important;
+            --primary-color-dark: ${variants.dark}!important;
+      `;
+      
+      // Agregar variables de tema
+      if (themeMode === 'dark') {
+        styleContent += `
+            --background-color: #181818 !important;
+            --text-color: rgba(241, 241, 241, 0.98) !important;
+            --secondary-text-color: #aab1bb !important;
+            --card-background: #222222 !important;
+            --border-color: #2b2b2b !important;
+        `;
+      } else {
+        styleContent += `
+            --background-color: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
+            --text-color: #2c2c2c !important;
+            --secondary-text-color: #64748b !important;
+            --card-background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+            --border-color: #ddd !important;
+        `;
+      }
+      
+      styleContent += `
+            /* Gradientes actualizados */
+            --primary-gradient: linear-gradient(135deg, ${primaryColor} 0%, ${variants.dark} 100%) !important;
+            --secondary-gradient: linear-gradient(135deg, ${variants.light} 0%, ${variants.dark} 100%) !important;
+            --terciary-gradient: linear-gradient(135deg, ${variants.dark} 0%, ${primaryColor} 100%) !important;
+            --cuarter-gradient: linear-gradient(135deg, ${primaryColor} 0%, ${variants.light} 100%) !important;
+            --mix-gradient: linear-gradient(90deg, ${variants.dark}, ${primaryColor}, ${variants.light}) !important;
+          }
+          
+          /* Aplicar tema al body */
+          body {
+            transition: all 0.3s ease;
+          }
+      `;
+      
+      // Agregar reglas específicas para tema oscuro
+      if (themeMode === 'dark') {
+        styleContent += `
+          body[data-theme="dark"] .menu-link img {
+            filter: brightness(0) invert(1) !important;
+          }
+          
+          body {
+            background: #181818 !important;
+            color: rgba(241, 241, 241, 0.98) !important;
+          }
+          
+          .radio-option {
+            background: #222222 !important;
+            border-color: #2b2b2b !important;
+            color: rgba(241, 241, 241, 0.98) !important;
+          }
+        `;
+      } else {
+        styleContent += `
+          body {
+            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
+            color: #2c2c2c !important;
+          }
+          
+          .menu-link img {
+            filter: none !important;
+          }
+          
+          .radio-option {
+            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
+            border-color: #ddd !important;
+            color: #2c2c2c !important;
+          }
+        `;
+      }
+      
+      // Agregar reglas específicas para elementos con color principal
+      styleContent += `
+        /* Elementos que usan el color principal */
+        .user-avatar i,
+        .user-details h3,
+        .form-section h4 {
+          color: ${primaryColor} !important;
+        }
+        
+        .btn-primary {
+          background: ${primaryColor} !important;
+          border-color: ${primaryColor} !important;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+          background: ${variants.dark} !important;
+          border-color: ${variants.dark} !important;
+        }
+        
+        .btn-outline {
+          color: ${primaryColor} !important;
+          border-color: ${primaryColor} !important;
+        }
+        
+        .btn-outline:hover:not(:disabled) {
+          background: ${primaryColor} !important;
+        }
+        
+        .loader {
+          color: ${primaryColor} !important;
+        }
+        
+        .radio-option:hover {
+          border-color: ${primaryColor} !important;
+        }
+        
+        .radio-group input[type="radio"]:checked + .radio-option {
+          border-color: ${primaryColor} !important;
+          background: ${primaryColor} !important;
+          color: white !important;
+        }
+        
+        .radio-group input[type="radio"]:checked + .radio-option i {
+          color: white !important;
+        }
+        
+        .form-select:focus {
+          border-color: ${primaryColor} !important;
+        }
+        
+        .color-group input[type="radio"]:checked + .color-option {
+          border-color: ${primaryColor} !important;
+          border-width: 4px !important;
+        }
+      `;
+      
+      // Reemplazar contenido del style
+      personalizationStyle.textContent = styleContent;
+      
+      // Actualizar atributo data-theme del body
+      document.body.setAttribute('data-theme', themeMode);
+      
+      console.log('🎨 Estilos de personalización reemplazados');
+    }
+
+    // Función fallback para actualizar variables CSS del root
+    function updateRootVariables(parameters) {
+      const root = document.documentElement;
+      
+      Object.entries(parameters).forEach(([key, value]) => {
+        switch(key) {
+          case 'theme.primary_color':
+            root.style.setProperty('--primary-color', value, 'important');
+            
+            const colorVariants = {
+              '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
+              '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
+              '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
+              '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
+              '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
+            };
+            
+            if (colorVariants[value]) {
+              root.style.setProperty('--primary-color-light', colorVariants[value].light, 'important');
+              root.style.setProperty('--primary-color-dark', colorVariants[value].dark, 'important');
+            }
+            break;
+            
+          case 'theme.mode':
+            if (value === 'dark') {
+              root.style.setProperty('--background-color', '#181818', 'important');
+              root.style.setProperty('--text-color', 'rgba(241, 241, 241, 0.98)', 'important');
+              root.style.setProperty('--secondary-text-color', '#aab1bb', 'important');
+              root.style.setProperty('--card-background', '#222222', 'important');
+              root.style.setProperty('--border-color', '#2b2b2b', 'important');
+            } else {
+              root.style.setProperty('--background-color', 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)', 'important');
+              root.style.setProperty('--text-color', '#2c2c2c', 'important');
+              root.style.setProperty('--secondary-text-color', '#64748b', 'important');
+              root.style.setProperty('--card-background', 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', 'important');
+              root.style.setProperty('--border-color', '#ddd', 'important');
+            }
+            break;
+            
+          case 'locale.language':
+            document.documentElement.lang = value;
+            break;
+        }
+      });
+    }
+
+    // Función para mostrar mensaje
+    function showMessage(text, type = 'info', icon = 'fas fa-info-circle') {
+      const message = document.getElementById('message');
+      message.innerHTML = `<i class="${icon}"></i> ${text}`;
+      message.className = `message ${type}`;
+      message.style.display = 'block';
+    }
+
+    // Función para ocultar mensaje
+    function hideMessage() {
+      const message = document.getElementById('message');
+      message.style.display = 'none';
+    }
+
+    // Manejar respuesta síncrona (procesamiento completado)
+    function handleSyncResponse(result) {
+      console.log('✅ Procesamiento síncrono completado');
+      
+      if (result.personalization) {
+        window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
+      }
+      
+      showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
+      console.log('✅ Personalización guardada sincronamente');
+      
+      setTimeout(() => hideMessage(), 5000);
+    }
+
+    // Manejar respuesta asíncrona (procesamiento en cola)
+    async function handleAsyncResponse(result, originalParameters) {
+      console.log('⏳ Procesamiento asíncrono iniciado, event_id:', result.event_id);
+      
+      if (result.status === 'queued' || result.async) {
+        // Modo fire-and-forget
+        showMessage(
+          'Cambios enviados a procesamiento. Se aplicarán en breve.',
+          'info',
+          'fas fa-clock'
+        );
+        
+        // Verificar estado después de un tiempo
+        setTimeout(() => checkEventStatus(result.event_id), 5000);
+        
+      } else if (result.status === 'completed' && result.polling_completed) {
+        // Polling exitoso
+        if (result.personalization) {
+          window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
+        }
+        showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
+        
+      } else if (result.status === 'processing') {
+        // Polling falló, pero el evento fue enviado
+        showMessage(
+          result.message || 'Cambios enviados a procesamiento. Los cambios se aplicarán pronto.',
+          'warning',
+          'fas fa-clock'
+        );
+        
+        // Ofrecer botón para verificar manualmente
+        addManualCheckButton(result.event_id);
+        
+        // Verificar automáticamente después de un tiempo
+        setTimeout(() => checkEventStatus(result.event_id), 10000);
+      }
+      
+      setTimeout(() => hideMessage(), 8000);
+    }
+
+    // Verificar estado de un evento específico
+    async function checkEventStatus(eventId) {
+      try {
+        console.log('🔍 Verificando estado del evento:', eventId);
+        
+        const response = await fetch(`/api/personalization-status/${eventId}`);
+        const result = await response.json();
+        
+        if (result.ok && result.status === 'completed') {
+          console.log('✅ Evento completado:', eventId);
+          
+          if (result.personalization) {
+            window.userPersonalization = { ...window.userPersonalization, ...result.personalization };
+            applyPersonalizationChanges(result.personalization);
+          }
+          
+          showMessage('Personalización actualizada correctamente', 'success', 'fas fa-check-circle');
+          
+          // Remover botón de verificación manual si existe
+          removeManualCheckButton();
+          
+        } else {
+          console.log('⏳ Evento aún procesándose:', eventId);
+        }
+      } catch (error) {
+        console.error('❌ Error verificando estado del evento:', error);
+      }
+    }
+
+    // Agregar botón para verificación manual
+    function addManualCheckButton(eventId) {
+      removeManualCheckButton();
+      
+      const message = document.getElementById('message');
+      if (message && message.style.display !== 'none') {
+        const checkButton = document.createElement('button');
+        checkButton.id = 'manual-check-btn';
+        checkButton.className = 'btn btn-sm btn-outline mt-2';
+        checkButton.innerHTML = '<i class="fas fa-sync"></i> Verificar ahora';
+        checkButton.onclick = () => {
+          checkButton.disabled = true;
+          checkButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+          checkEventStatus(eventId).finally(() => {
+            checkButton.disabled = false;
+            checkButton.innerHTML = '<i class="fas fa-sync"></i> Verificar ahora';
+          });
+        };
+        
+        message.appendChild(checkButton);
+      }
+    }
+
+    // Remover botón de verificación manual
+    function removeManualCheckButton() {
+      const existingButton = document.getElementById('manual-check-btn');
+      if (existingButton) {
+        existingButton.remove();
+      }
+    }
+
+    // EVENTO PRINCIPAL - Submit del formulario
+    document.getElementById('personalizationForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const loader = document.getElementById('loader');
+      const saveBtn = document.getElementById('saveBtn');
+      
+      // Mostrar loader
+      loader.style.display = 'block';
+      hideMessage();
+      saveBtn.disabled = true;
+      
+      try {
+        // Recopilar datos del formulario
+        const formData = new FormData(this);
+        const parameters = {};
+        let asyncMode = false;
+        
+        for (let [key, value] of formData.entries()) {
+          if (key === 'asyncMode') {
+            asyncMode = true; // Si está presente en FormData, significa que está checked
+          } else {
+            parameters[key] = value;
+          }
+        }
+        
+        console.log('🔄 Guardando parámetros:', parameters);
+        
+        // Aplicar cambios inmediatamente (optimistic update)
+        applyPersonalizationChanges(parameters);
+        
+        // Verificar si hay checkbox de modo asíncrono
+        const url = `/api/personalization${asyncMode ? '?async=true' : ''}`;
+        
+        console.log('📡 Enviando request a:', url);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ parameters })
+        });
+        
+        console.log('📥 Response status:', response.status);
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const textResponse = await response.text();
+          console.error('❌ Respuesta no es JSON:', textResponse);
+          throw new Error(`Servidor retornó contenido no válido: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📥 Response data:', result);
+        
+        if (result.ok) {
+          if (response.status === 200) {
+            // Procesamiento síncrono completado - éxito directo
+            showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
+            
+            // Actualizar sesión del servidor
+            const refreshResponse = await fetch('/api/refresh-personalization', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (refreshResponse.ok) {
+              const refreshResult = await refreshResponse.json();
+              console.log('✅ Sesión actualizada correctamente');
+            } else {
+              console.log('⚠️ No se pudo actualizar la sesión');
+            }
+          } else if (response.status === 202) {
+            // Procesamiento asíncrono (si implementas colas más adelante)
+            await handleAsyncResponse(result, parameters);
+          }
+        } else {
+          const errorMsg = result.error || result.message || `Error ${response.status}: ${response.statusText}`;
+          console.error('❌ Error del servidor:', errorMsg);
+          throw new Error(errorMsg);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error completo:', error);
+        
+        let errorMessage = error.message;
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          errorMessage = 'Error de conexión. Verifica tu conexión a internet.';
+        } else if (error.message.includes('JSON')) {
+          errorMessage = 'Error de formato de respuesta del servidor.';
+        } else if (error.message.includes('Network')) {
+          errorMessage = 'Error de red. Intenta nuevamente.';
+        }
+        
+        showMessage(`Error: ${errorMessage}`, 'error', 'fas fa-exclamation-triangle');
+        
+        // Revertir cambios en caso de error
+        applyPersonalizationChanges(window.userPersonalization);
+        console.log('🔄 Cambios revertidos por error');
+      } finally {
+        loader.style.display = 'none';
+        saveBtn.disabled = false;
+      }
+    });
+    
+    // Vista previa (cambio inmediato sin guardar)
+    document.getElementById('previewBtn').addEventListener('click', function() {
+      const formData = new FormData(document.getElementById('personalizationForm'));
+      const parameters = {};
+      
+      for (let [key, value] of formData.entries()) {
+        parameters[key] = value;
+      }
+      
+      // Aplicar cambios temporalmente
+      applyPersonalizationChanges(parameters);
+      
+      // Mostrar mensaje de vista previa
+      showMessage('Vista previa aplicada. Guarda los cambios para hacerlos permanentes.', 'info', 'fas fa-eye');
+      
+      setTimeout(() => hideMessage(), 3000);
+    });
+
+    // Conectar a Server-Sent Events para notificaciones en tiempo real
+    function connectToPersonalizationEvents() {
+      if (typeof EventSource === 'undefined') {
+        console.log('⚠️ EventSource no soportado');
+        return;
+      }
+      
+      console.log('📡 Conectando a eventos de personalización...');
+      
+      const eventSource = new EventSource('/api/personalization-events');
+      
+      eventSource.onmessage = function(event) {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'personalization.updated' && data.personalization) {
+            console.log('🎨 Personalización actualizada via SSE');
+            window.userPersonalization = { ...window.userPersonalization, ...data.personalization };
+            applyPersonalizationChanges(data.personalization);
+            showMessage('Personalización actualizada automáticamente', 'success', 'fas fa-magic');
+          }
+        } catch (error) {
+          console.error('❌ Error procesando evento SSE:', error);
+        }
+      };
+      
+      eventSource.onerror = function() {
+        eventSource.close();
+        setTimeout(() => connectToPersonalizationEvents(), 10000);
+      };
+      
+      window.addEventListener('beforeunload', () => {
+        eventSource.close();
+      });
+    }
+
+    // Estilos adicionales para mensajes
+    const additionalStyles = document.createElement('style');
+    additionalStyles.textContent = `
+      .message {
+        display: none;
+      }
+      .message.info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      .message.warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+      }
+      .message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      
+      /* Tema oscuro */
+      body[data-theme="dark"] .message.info {
+        background: rgba(13, 202, 240, 0.2);
+        color: #9eeaf9;
+        border-color: rgba(13, 202, 240, 0.3);
+      }
+      body[data-theme="dark"] .message.warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffda6a;
+        border-color: rgba(255, 193, 7, 0.3);
+      }
+      body[data-theme="dark"] .message.success {
+        background: rgba(25, 135, 84, 0.2);
+        color: #75b798;
+        border-color: rgba(25, 135, 84, 0.3);
+      }
+      body[data-theme="dark"] .message.error {
+        background: rgba(220, 53, 69, 0.2);
+        color: #ea868f;
+        border-color: rgba(220, 53, 69, 0.3);
+      }
+      
+      /* Checkbox para modo asíncrono */
+      .async-mode-option {
+        margin-top: 1rem;
+        padding: 0.5rem;
+        background: rgba(0,0,0,0.05);
+        border-radius: 5px;
+      }
+      
+      .async-mode-option label {
+        font-size: 0.85rem;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+      }
+    `;
+    document.head.appendChild(additionalStyles);
+    
+    // Agregar opción de modo asíncrono al formulario
+    document.addEventListener('DOMContentLoaded', function() {
+      const formActions = document.querySelector('.form-actions');
+      if (formActions) {
+        const asyncOption = document.createElement('div');
+        asyncOption.className = 'async-mode-option';
+        asyncOption.innerHTML = `
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="asyncMode" name="asyncMode">
+            <label class="form-check-label" for="asyncMode">
+              Modo asíncrono (procesamiento en segundo plano)
+            </label>
+          </div>
+        `;
+        formActions.insertBefore(asyncOption, formActions.firstChild);
+      }
+      
+      // Conectar a eventos en tiempo real
+      connectToPersonalizationEvents();
+      
+      console.log('🚀 Perfil cargado con comunicación desacoplada habilitada');
+    });
+    
+    console.log('🚀 Perfil cargado con personalización:', window.userPersonalization);
+    console.log('🔑 Token disponible:', USER_TOKEN ? 'SI' : 'NO');
+  </script>
+</body>
+</html>

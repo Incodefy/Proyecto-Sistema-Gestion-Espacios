@@ -1,0 +1,131 @@
+:root {
+    /* Variables de personalización - valores por defecto */
+    --primary-color: #1a3c7c!important;
+    --primary-color-light: #375ca1!important;
+    --primary-color-dark: #142c59!important;
+    --background-color: white!important;
+    --text-color: #2c2c2c!important;
+    --secondary-text-color: #64748b!important;
+    --card-background: white!important;
+    --border-color: #ddd!important;
+
+    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+    --secondary-gradient: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color-dark) 100%);
+    --terciary-gradient: linear-gradient(135deg, var(--primary-color-dark) 0%, var(--primary-color) 100%);
+    --cuarter-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+
+    --mix-gradient: linear-gradient(90deg, var(--primary-color-dark), var(--primary-color), var(--primary-color-light));
+}
+
+/* Footer */
+.footer {
+    background: var(--primary-color);
+    color: white;
+    padding: 2rem 2rem 1.5rem;
+    margin-top: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: color-mix(in srgb, var(--primary-color-light) 80%, white 20%)
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Logo y empresa */
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+}
+
+.company-logo {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.company-logo img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.company-name {
+    margin-top: 7px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.company-description {
+    font-size: 0.9rem;
+    color: #bfdbfe;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+/* Footer bottom */
+.footer-bottom {
+    margin-top: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.copyright {
+    font-size: 0.85rem;
+    color: #ffffff;
+}
+
+.tech-stack {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.tech-item {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+/* Animaciones sutiles */
+.footer-brand:hover .company-logo {
+    transform: translateY(-2px);
+    transition: transform 0.3s ease;
+}

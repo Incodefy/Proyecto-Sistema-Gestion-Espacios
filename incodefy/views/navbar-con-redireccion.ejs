@@ -1,0 +1,88 @@
+<nav class="custom-navbar">
+  <div class="navbar-toggle" onclick="toggleNavbar()" aria-label="Abrir menú de navegación">
+    <i class="fas fa-bars"></i>
+  </div>
+  
+  <div class="navbar-title">
+    <a class="logo" href="/">
+      <img src="/logos/logo_hospital.png" alt="Home">
+    </a>
+  </div>
+
+  <!-- Overlay para cerrar el menú -->
+  <div class="navbar-overlay" onclick="closeNavbar()"></div>
+
+  <ul class="navbar-menu">
+    <li>
+      <a href="/dashboard" class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" data-tooltip="Dashboard">
+        <img src="/icons/dashboard.webp" alt="">
+        <span>Dashboard</span>
+      </a>
+    </li>
+    <li>
+      <a href="/agenda" class="menu-link <%= currentPath === '/agenda' ? 'active' : '' %>" data-tooltip="Agenda">
+        <img src="/icons/calendario.webp" alt="">
+        <span>Agenda</span>
+      </a>
+    </li>
+    <li>
+      <a href="/box" class="menu-link <%= currentPath.startsWith('/box') ? 'active' : '' %>" data-tooltip="Box">
+        <img src="/icons/box.webp" alt="">
+        <span>Box</span>
+      </a>
+    </li>
+    <li>
+      <a href="/medicos" class="menu-link <%= currentPath === '/medicos' ? 'active' : '' %>" data-tooltip="Médicos">
+        <img src="/icons/doctor.png" alt="">
+        <span>Médicos</span>
+      </a>
+    </li>
+    <li>
+      <a href="/notificaciones" class="menu-link <%= currentPath === '/notificaciones' ? 'active' : '' %>" data-tooltip="Notificaciones">
+        <img src="/icons/notificaciones.webp" alt="" class="noti">
+        <span>Notificaciones</span>
+      </a>
+    </li>
+    <li>
+      <form action="/logout" method="post">
+        <button type="submit" class="logout-button">
+          <span>Cerrar sesión</span>
+        </button>
+      </form>
+    </li>
+  </ul>
+  <div class="reloj-wrapper" id="reloj"></div>
+</nav>
+
+<script>
+  function actualizarReloj() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('reloj').textContent = `${hh} : ${mm} : ${ss}`;
+  }
+
+  function toggleNavbar() {
+    const navbar = document.querySelector('.navbar-menu');
+    const overlay = document.querySelector('.navbar-overlay');
+    navbar.classList.toggle('show');
+    overlay.classList.toggle('show');
+  }
+
+  function closeNavbar() {
+    const navbar = document.querySelector('.navbar-menu');
+    const overlay = document.querySelector('.navbar-overlay');
+    navbar.classList.remove('show');
+    overlay.classList.remove('show');
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeNavbar();
+    }
+  });
+
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+</script>

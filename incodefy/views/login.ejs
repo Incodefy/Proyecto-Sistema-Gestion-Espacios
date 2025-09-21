@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+<div class="wrapper">
+  <div class="login-box">
+    <form method="POST" action="/login" id="loginForm">
+      <h2>Login</h2>
+
+      <% if (error_msg && error_msg.length) { %>
+        <div class="messages-container">
+          <% error_msg.forEach(msg => { %>
+            <div class="alert alert-danger fade-in">
+              <i class="fa-solid fa-exclamation-circle"></i>
+              <%= msg %>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div class="input-box">
+        <span class="icon"><i class="fa-solid fa-user"></i></span>
+        <input type="email" name="correo" id="email" required
+               value="<%= form_data ? form_data.correo : '' %>"
+               class="<%= form_errors && form_errors.email ? 'error' : '' %>">
+        <label>Correo electrónico</label>
+        <div class="error-message" id="email-error"></div>
+      </div>
+
+      <div class="input-box">
+        <span class="icon">
+          <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
+        </span>
+        <input type="password" name="password" id="password" required
+               class="<%= form_errors && form_errors.password ? 'error' : '' %>">
+        <label>Contraseña</label>
+        <div class="error-message" id="password-error"></div>
+      </div>
+
+      <div class="remember-forgot">
+        <label><input type="checkbox" name="remember_me"> Recuérdame</label>
+        <a href="#" onclick="showForgotPassword()">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <button type="submit" id="loginButton">
+        <span class="button-text">Iniciar sesión</span>
+        <div class="spinner" id="spinner" style="display:none;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/login.js"></script>
+</body>
+</html>

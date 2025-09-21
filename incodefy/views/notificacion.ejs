@@ -1,0 +1,81 @@
+<!-- Notificación de importación -->
+<div id="notificacion-importacion" class="notificacion-importacion d-none">
+    <div class="icon-success">
+        <i class="fas fa-check"></i>
+    </div>
+    <div class="mensaje" id="notificacion-importacion-mensaje">
+        Importación completada exitosamente
+    </div>
+    <button class="btn btn-sm ms-3" onclick="verDetallesImportacion()">
+        <i class="fas fa-eye me-1"></i>Ver detalles
+    </button>
+</div>
+
+<!-- Modal para mostrar detalles de la importación -->
+<div class="modal fade" id="modalDetalleImportacion" tabindex="-1" aria-labelledby="detalleImportacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-medical">
+                <h5 class="modal-title" id="detalleImportacionLabel">
+                    Detalles de la Importación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle mb-0">
+                        <caption class="visually-hidden">Detalles de la importación de consultas médicas</caption>
+                        <thead class="table-medical">
+                            <tr>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-calendar me-2"></i>
+                                        <span>Fecha</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-clock me-2"></i>
+                                        <span>Hora Inicio</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-clock me-2"></i>
+                                        <span>Hora Fin</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-user-md me-2"></i>
+                                        <span>Médico</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-door-open me-2"></i>
+                                        <span>Box</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-stethoscope me-2"></i>
+                                        <span>Tipo Consulta</span>
+                                    </div>
+                                </th>
+                                <th scope="col">
+                                    <div class="th-content">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <span>Estado</span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalleImportacionTablaBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

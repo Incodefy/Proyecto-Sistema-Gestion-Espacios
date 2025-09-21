@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Agenda Médica</title>
+        <link rel="stylesheet" href="/css/navbar.css">
+        <link rel="stylesheet" href="/css/calendario.css">
+        <link rel="stylesheet" href="/css/footer.css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+<body>
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <%- include('navbar') %>
+
+            <div class="main" id="main-content">
+                <div class="top-header">
+                    <div class="header-row">
+                        <strong id="label"><%= tipo.toUpperCase() %></strong>
+
+                        <div class="select-group">
+                            <select id="selectParent" onchange="filtrarSubentidades()">
+                                <option value=""><%= config.select_parent_placeholder %></option>
+                                <% config.parent_items.forEach(item => { %>
+                                    <option value="<%= item.id %>"><%= item.nombre %></option>
+                                <% }); %>
+                            </select>
+
+                            <select id="selectEntidad" onchange="cambiarEntidad()">
+                                <option value=""><%= config.select_entidad_placeholder %></option>
+                                <% config.entidad_items.forEach(item => { %>
+                                    <option value="<%= item.id %>" data-parent="<%= item.parent_id %>"><%= item.display_name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 15px; gap: 20px; flex-wrap: wrap;">
+                        <div class="tipo-selector">
+                            <label><input type="radio" name="tipoUsuario" value="Médica" checked> Médico</label>
+                            <label><input type="radio" name="tipoUsuario" value="No médica"> No médico</label>
+                        </div>
+                        <!-- Botón para abrir el modal -->
+                        <button id="btnAgendar" class="btn-agendar">Hacer agendación</button>
+
+                        <!-- Modal -->
+                        <div id="modalAgendar" class="modal">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <span class="close" id="closeModal">&times;</span>
+                                    <h2>Agendar Consulta Médica</h2>
+                                </div>
+                                
+                                <div class="form-container">
+                                    <form id="formAgendar" method="post" action="">
+                                        <div class="section-title">📍 Ubicación</div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="selectPasillo">Selecciona Pasillo:</label>
+                                                <select name="pasillo" id="selectPasillo" onchange="filtrarBoxes()" required>
+                                                    <option value="">-- Selecciona un pasillo --</option>
+                                                    <% pasillos.forEach(pasillo => { %>
+                                                        <option value="<%= pasillo.idpasillo %>"><%= pasillo.nombre %></option>
+                                                    <% }); %>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="selectBox">Selecciona Box:</label>
+                                                <select name="box" id="selectBox" required>
+                                                    <option value="">-- Selecciona un box --</option>
+                                                    <% boxes.forEach(box => { %>
+                                                        <option value="<%= box.idbox %>" data-parent="<%= box.idpasillo %>">
+                                                            <% if (box.nombre) { %>
+                                                                <%= box.nombre %>
+                                                            <% } else { %>
+                                                                Box <%= box.idbox %>
+                                                            <% } %>
+                                                        </option>
+                                                    <% }); %>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="section-title">👨‍⚕️ Personal Médico</div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="selectEspecialidad">Selecciona Especialidad:</label>
+                                                <select name="especialidad" id="selectEspecialidad" onchange="filtrarMedicos()" required>
+                                                    <option value="">-- Selecciona una especialidad --</option>
+                                                    <% especialidades.forEach(especialidad => { %>
+                                                        <option value="<%= especialidad.idespecialidad %>"><%= especialidad.nombre %></option>
+                                                    <% }); %>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="selectMedico">Selecciona Médico:</label>
+                                                <select name="medico" id="selectMedico" required>
+                                                    <option value="">-- Selecciona un médico --</option>
+                                                    <% medicos.forEach(medico => { %>
+                                                        <option value="<%= medico.idmedico %>" data-parent="<%= medico.idespecialidad %>"><%= medico.nombre %></option>
+                                                    <% }); %>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="section-title">📅 Fecha y Hora</div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="fecha">Selecciona Fecha:</label>
+                                                <input type="date" name="fecha" id="fecha" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="hora">Hora:</label>
+                                                <select name="hora" id="hora" required>
+                                                    <option value="">-- Selecciona hora --</option>
+                                                    <% horas.forEach(hora => { %>
+                                                        <option value="<%= hora %>"><%= hora %></option>
+                                                    <% }); %>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-row">
+                                            <div class="form-group full-width">
+                                                <label for="tipoConsulta">Tipo de Consulta:</label>
+                                                <select name="tipoconsulta" id="tipoConsulta" required>
+                                                    <option value="">-- Selecciona tipo --</option>
+                                                    <option value="Medica">🩺 Médica</option>
+                                                    <option value="NoMedica">📋 No médica</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="submit-container">
+                                            <button type="submit">Confirmar Cita</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fecha-range-row">
+                        <button type="button" onclick="cambiarSemana(-1)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="rangoFechas"></span>
+                        <button type="button" onclick="cambiarSemana(1)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="list-wrapper">               
+                        <button class="toggle-filtros-btn" onclick="toggleFiltros()">
+                            <i class="fas fa-sliders-h"></i> <%= config.filtros_title %>
+                        </button>
+                        <div id="contenedorFiltros" class="filtros oculto">
+                            <% config.filtros_items.forEach(item => { %>
+                                <label class="filtro-checkbox">
+                                    <input type="checkbox" class="filtro" value="<%= item.nombre %>" onchange="filtrarItems()">
+                                    <%= item.nombre %>
+                                </label>
+                            <% }); %>
+                        </div>
+
+                        <div id="contenedorItems">
+                            <% config.grupos.forEach(grupo => { %>
+                                <div class="bloque" data-grupo="<%= grupo.nombre %>">
+                                    <h5 class="titulo"><%= grupo.nombre %></h5>
+                                    <div class="grupo row gx-2 gy-2 px-2 lista-items" id="listaItems">
+                                        <% config.items_por_grupo.forEach(item => { %>
+                                            <% if (item.grupo_nombre === grupo.nombre) { %>
+                                                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                                                    <div class="card h-100" draggable="true" ondragstart="drag(event)" ondragend="dragend(event)"
+                                                        id="<%= config.item_id_prefix %><%= item.id %>" data-grupo="<%= item.grupo_nombre %>">
+                                                        <div class="nombre"><%= item.nombre %></div>
+                                                    </div>
+                                                </div>
+                                            <% } %>
+                                        <% }); %>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    </div> 
+                </div>
+        
+                <div class="content-wrapper row justify-content-center">
+                    <div class="row align-items-start">
+                        <div class="col-12 col-sm-9 col-md-9 col-lg-10 col-xl-10 col-xxl-10">
+                            <div class="agenda-wrapper">
+                                <div class="agenda">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Hora</th>
+                                                <th>Lunes</th>
+                                                <th>Martes</th>
+                                                <th>Miércoles</th>
+                                                <th>Jueves</th>
+                                                <th>Viernes</th>
+                                                <th>Sábado</th>
+                                                <th>Domingo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% horas.forEach(hora => { %>
+                                            <tr>
+                                                <td class="hora-col"><%= hora %></td>
+                                                <% dias.forEach((dia, index) => { %>
+                                                <td class="dropzone" data-dia-index="<%= index %>" ondrop="drop(event)" ondragover="allowDrop(event)"></td>
+                                                <% }); %>
+                                            </tr>
+                                            <% }); %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-3 col-md-3 col-lg-2 col-xl-2 col-xxl-2">
+                            <div id="basurero" class="basurero" ondragover="allowDrop(event)" ondrop="moverAlBasurero(event)">
+                                <p>Arrastra aquí para desagendar</p>
+                            </div>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+            <%- include('footer') %>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/calendario.js"></script>
+    <script>
+        // Variables globales para el tipo de calendario y configuración
+        const TIPO_CALENDARIO = '<%= tipo %>';
+        const CONFIG = {
+            entidadParam: '<%= config.entidadParam %>',
+            entidadId: '<%= config.entidadId %>',
+            labelPrefix: '<%= config.labelPrefix %>',
+            eliminarEndpoint: '<%= config.eliminarEndpoint %>',
+            itemIdPrefix: '<%= config.itemIdPrefix %>',
+            itemIdField: '<%= config.itemIdField %>'
+        };
+    </script>
+</body>
+</html>

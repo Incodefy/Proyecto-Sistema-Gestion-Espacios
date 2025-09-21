@@ -1,0 +1,265 @@
+service: personalization-queue-system
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  
+  role: arn:aws:iam::851725349092:role/LabRole
+  
+  environment:
+    # Variables originales
+    USER_POOL_ID: { Ref: CognitoUserPool }
+    USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
+    USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
+    PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
+    PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
+    
+    # Variables para SQS
+    PERSONALIZATION_QUEUE_URL: { Ref: PersonalizationQueue }
+    DLQ_URL: { Ref: PersonalizationDLQ }
+    
+  logs:
+    httpApi: true
+  tracing:
+    lambda: true
+    
+  httpApi:
+    authorizers:
+      cognitoJwt:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl:
+          Fn::Sub:
+            - https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+            - { UserPoolId: { Ref: CognitoUserPool } }
+        audience:
+          - { Ref: CognitoUserPoolClient }
+
+functions:
+  # === FUNCIONES ORIGINALES ===
+  login:
+    handler: src/handlers/login.login
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/login
+
+  refresh:
+    handler: src/handlers/refresh.refresh
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/refresh
+
+  me:
+    handler: src/handlers/me.me
+    events:
+      - httpApi:
+          method: GET
+          path: /me
+          authorizer:
+            name: cognitoJwt
+
+  getMyPermissions:
+    handler: src/handlers/permissions.getMyPermissions
+    events:
+      - httpApi:
+          method: GET
+          path: /my-permissions
+          authorizer:
+            name: cognitoJwt
+
+  checkPermission:
+    handler: src/handlers/permissions.checkPermission
+    events:
+      - httpApi:
+          method: POST
+          path: /check-permission
+          authorizer:
+            name: cognitoJwt
+
+  assignRole:
+    handler: src/handlers/permissions.assignRole
+    events:
+      - httpApi:
+          method: POST
+          path: /admin/assign-role
+          authorizer:
+            name: cognitoJwt
+
+  listAvailablePermissions:
+    handler: src/handlers/permissions.listAvailablePermissions
+    events:
+      - httpApi:
+          method: GET
+          path: /admin/available-permissions
+          authorizer:
+            name: cognitoJwt
+
+  # === FUNCIONES DE PERSONALIZACIÓN DESACOPLADAS ===
+  
+  # GET personalización (sin cambios)
+  getPersonalization:
+    handler: src/handlers/personalization.getPersonalization
+    events:
+      - httpApi:
+          method: GET
+          path: /personalization
+          authorizer:
+            name: cognitoJwt
+
+  # SET personalización ahora publica evento en cola
+  setPersonalization:
+    handler: src/handlers/personalization.setPersonalizationWithQueue
+    events:
+      - httpApi:
+          method: POST
+          path: /personalization
+          authorizer:
+            name: cognitoJwt
+
+  # Worker que procesa eventos de personalización
+  personalizationWorker:
+    handler: src/handlers/personalization.processPersonalizationEvent
+    timeout: 30
+    memorySize: 256
+    reservedConcurrency: 5
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [ PersonalizationQueue, Arn ]
+          batchSize: 10
+          maximumBatchingWindow: 30
+
+  # Worker para DLQ (errores)
+  personalizationDLQWorker:
+    handler: src/handlers/personalization.processDLQMessage
+    timeout: 60
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [ PersonalizationDLQ, Arn ]
+          batchSize: 1
+
+plugins:
+  - serverless-offline
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!**/*.md'
+    - '!**/*.test.*'
+
+resources:
+  Resources:
+    # === RECURSOS ORIGINALES ===
+    UserRolesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-user-roles
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_email
+            KeyType: HASH
+
+    PermissionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-permissions
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: permission_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: permission_id
+            KeyType: HASH
+    
+    ParametersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-parameters
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_sub
+            AttributeType: S
+          - AttributeName: parameter_key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_sub
+            KeyType: HASH
+          - AttributeName: parameter_key
+            KeyType: RANGE
+
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-${sls:stage}-pool
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+            RequireUppercase: true
+
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}-${sls:stage}-app
+        GenerateSecret: false
+        UserPoolId: { Ref: CognitoUserPool }
+        PreventUserExistenceErrors: ENABLED
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        AccessTokenValidity: 60
+        IdTokenValidity: 60
+        RefreshTokenValidity: 30
+        TokenValidityUnits:
+          AccessToken: minutes
+          IdToken: minutes
+          RefreshToken: days
+
+    # === RECURSOS DE COLAS SQS ===
+    
+    # Dead Letter Queue para mensajes fallidos
+    PersonalizationDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-personalization-dlq
+        VisibilityTimeout: 60
+        MessageRetentionPeriod: 1209600  # 14 días
+
+    # Cola principal de personalización
+    PersonalizationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-personalization-queue
+        VisibilityTimeout: 180  # 3 minutos (mayor que timeout de Lambda)
+        MessageRetentionPeriod: 1209600  # 14 días
+        ReceiveMessageWaitTime: 20  # Long polling
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ PersonalizationDLQ, Arn ]
+          maxReceiveCount: 3  # Después de 3 intentos va a DLQ
+
+  Outputs:
+    UserPoolId:
+      Value: { Ref: CognitoUserPool }
+    UserPoolClientId:
+      Value: { Ref: CognitoUserPoolClient }
+    PersonalizationQueueUrl:
+      Value: { Ref: PersonalizationQueue }
+    PersonalizationDLQUrl:
+      Value: { Ref: PersonalizationDLQ }

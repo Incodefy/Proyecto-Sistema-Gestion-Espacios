@@ -1,0 +1,738 @@
+:root {
+    /* Variables de personalización - valores por defecto */
+    --primary-color: #1a3c7c!important;
+    --primary-color-light: #375ca1!important;
+    --primary-color-dark: #142c59!important;
+    --background-color: white!important;
+    --text-color: #2c2c2c!important;
+    --secondary-text-color: #64748b!important;
+    --card-background: white!important;
+    --border-color: #ddd!important;
+
+    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+    --secondary-gradient: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color-dark) 100%);
+    --terciary-gradient: linear-gradient(135deg, var(--primary-color-dark) 0%, var(--primary-color) 100%);
+    --cuarter-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+
+    --mix-gradient: linear-gradient(90deg, var(--primary-color-dark), var(--primary-color), var(--primary-color-light));
+}
+
+:root {
+    /* Colores basados en tu interfaz médica */
+    --primary-blue: #1a3c7c;
+    --primary-blue-light: #1a3c7c;
+    --primary-blue-dark: #142c59;
+    --accent-blue: #4A90E2;
+    --light-blue: #E8F2FF;
+    --gray-light: #F8F9FA;
+    --gray-medium: #6C757D;
+    --gray-dark: #343A40;
+    --white: #FFFFFF;
+    --success-green: #28A745;
+    --warning-orange: #FFC107;
+    --danger-red: #DC3545; 
+
+    --success-gradient: linear-gradient(135deg, #4CAF50 0%, var(--success-green) 100%);
+    
+    /* Sombras y efectos */
+    --card-shadow: 0 8px 25px rgba(43, 76, 126, 0.12);
+    --card-hover-shadow: 0 15px 35px rgba(43, 76, 126, 0.18);
+    --border-radius: 12px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================================
+   DASHBOARD ADMIN - ESTILOS ESPECÍFICOS
+   =================================== */
+
+/* Reset y base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--background-color)!important;
+    min-height: 100vh;
+    color: #334155;
+}
+
+.container-fluid {
+    padding: 0;
+}
+
+.main {
+    margin-left: 0;
+    padding: 6rem 2rem 2rem 2rem!important;
+    min-height: 100vh;
+}
+
+.header-section {
+    background: var(--primary-gradient);
+    color: var(--white);
+    padding: 30px 20px 30px 30px!important;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.header-section h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.header-section p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* --- ESTILOS DE BOTONES DE FILTRO MEJORADOS --- */
+.btn-primary {
+    background: var(--terciary-gradient) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(20, 44, 89, 0.3);
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color-dark) !important;
+    border: none !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(20, 44, 89, 0.4);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color) !important;
+    border: 2px solid var(--primary-color) !important;
+    background: transparent !important;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.btn-outline-primary:hover {
+    background: var(--cuarter-gradient) !important;
+    color: white !important;
+    border-color: transparent !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(20, 44, 89, 0.3);
+}
+
+/* Para que el botón del dropdown mantenga el color al estar activo */
+.btn-primary.dropdown-toggle.show {
+    background: var(--terciary-gradient) !important;
+    border: none !important;
+    transform: translateY(-2px);
+}
+
+/* Sección de títulos mejorada */
+.dashboard-section-title-container {
+    text-align: center;
+    margin: 40px 0 30px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-section-title {
+    display: inline-block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: var(--text-color);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+}
+
+.dashboard-section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: var(--cuarter-gradient);
+    border-radius: 2px;
+}
+
+/* CORRECCIÓN CRÍTICA PARA FILTROS */
+.container.mt-4 {
+    position: relative !important;
+    z-index: 100 !important;
+    overflow: visible !important;
+    margin-bottom: 50px !important; /* Espacio extra para los dropdowns */
+}
+
+.dashboard-filter-section {
+    position: relative !important;
+    z-index: 1000 !important;
+    background: var(--card-background);
+    border-radius: 16px;
+    padding: 25px 25px 25px 25px !important;
+    box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
+    border: 1px solid rgba(20, 44, 89, 0.08);
+    overflow: visible !important;
+}
+
+.dashboard-filter-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--mix-gradient);
+    border-radius: 50px 50px 0 0!important;
+    margin: 0 6px;
+}
+
+/* Dropdowns de filtros con corrección de z-index */
+.dropdown {
+    position: relative !important;
+    z-index: 1010 !important;
+}
+
+.dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: auto !important;
+    z-index: 1020 !important;
+    display: none;
+    float: none !important;
+    min-width: 260px !important;
+    padding: 0.8rem 1rem 1rem 1rem !important;
+    margin: 2px 0 0 !important;
+    font-size: 1rem !important;
+    color: var(--text-colors) !important;
+    text-align: left !important;
+    list-style: none !important;
+    background-color: var(--card-background) !important;
+    background-clip: padding-box !important;
+    border-radius: 12px !important;
+    border-color: #323232 !important;
+    box-shadow: 0 15px 50px rgba(99, 99, 99, 0.02) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    transform: none !important;
+}
+
+.dropdown-menu.show {
+    display: block !important;
+    z-index: 1020 !important;
+}
+
+.dropdown-menu .nombre {
+    color: var(--text-color);
+}
+
+.dropdown-toggle {
+    z-index: 1015 !important;
+}
+
+.form-check {
+    margin-bottom: 0.7rem;
+    padding: 5px 0;
+}
+
+.title {
+    margin-top: -5px;
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: #475569;
+    transition: color 0.2s ease;
+}
+
+.form-check-input:checked ~ .form-check-label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.form-check-input {
+    margin-left: -1rem!important;
+    margin-right: 0.6rem!important;
+}
+
+.form-check-label {
+    color: var(--text-color)!important;
+}
+
+#especialidades-list {
+    margin-bottom: -0.4rem!important;
+    gap: 2rem!important;
+}
+
+#boxes-list .form-check {
+    margin-left: -0.4rem!important;
+}
+
+#boxes-list {
+    margin-bottom: -0.6rem!important;
+}
+
+/* Evita que la fila completa se ponga azul al seleccionar la casilla */
+.dropdown-menu .dropdown-item:active,
+.dropdown-menu .dropdown-item:focus,
+.dropdown-menu .dropdown-item:hover {
+    background-color: transparent !important;
+    color: inherit !important;
+}
+
+/* Estados de focus mejorados */
+.form-control:focus,
+.form-check-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(44, 90, 160, 0.25);
+}
+
+.btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(20, 44, 89, 0.25);
+}
+
+/* --- ESTILOS MEJORADOS PARA LOS KPIs --- */
+.dashboard-kpi-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 55px!important;
+    min-width: 100%;
+    margin: 0 auto 30px auto;
+    position: flex;
+    z-index: 1;
+}
+
+.dashboard-kpi-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    min-height: 100%;
+    padding: 20px 20px 20px 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
+    background: var(--card-background);
+    margin-bottom: 15px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(20, 44, 89, 0.08);
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.dashboard-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+    border-radius: 16px 16px 0 0;
+}
+
+.dashboard-kpi-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(20, 44, 89, 0.15);
+    border-color: rgba(20, 44, 89, 0.2);
+}
+
+.dashboard-kpi-title {
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-color);
+    font-size: 1.1rem;
+    margin-bottom: auto;
+}
+
+.dashboard-kpi-percentage {
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto 0;
+}
+
+/* Mejoras a las variaciones de KPI para mejor visibilidad */
+.dashboard-kpi-variation {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.dashboard-kpi-variation.dashboard-kpi-up {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.dashboard-kpi-variation.dashboard-kpi-down {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.dashboard-kpi-variation:not(.dashboard-kpi-up):not(.dashboard-kpi-down) {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.dashboard-kpi-subpercentage {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-top: 5px;
+    display: block;
+    text-align: center;
+}
+
+.dashboard-kpi-subtext {
+    font-size: 0.85rem;
+    text-align: center;
+    color: var(--secondary-text-color);
+    margin-top: auto;
+}
+
+/* --- ESTILOS OPTIMIZADOS PARA VISUALIZACIONES --- */
+.dashboard-visualization-row {
+    margin: 0 auto;
+    width: 100%;
+    padding: 20px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.compact-chart-row {
+    margin: 0 -10px; /* Compensar padding de las columnas */
+}
+
+.compact-chart-row > [class*="col-"] {
+    padding: 0 10px; /* Padding uniforme entre gráficos */
+    margin-bottom: 20px;
+}
+
+.dashboard-chart-container-card {
+    background: var(--card-background);
+    border-radius: 16px;
+    padding: 20px 15px 15px 15px; /* Reducir padding horizontal para más espacio */
+    box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
+    height: 400px; /* Altura fija más grande para los gráficos */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(20, 44, 89, 0.08);
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.dashboard-chart-container-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+    border-radius: 16px 16px 0 0;
+}
+
+.dashboard-chart-container-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(20, 44, 89, 0.15);
+    border-color: rgba(20, 44, 89, 0.2);
+}
+
+.dashboard-chart-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    text-align: center;
+    flex-shrink: 0; /* No reducir el tamaño del título */
+    line-height: 1.3;
+}
+
+.dashboard-chart-container {
+    position: relative;
+    width: 100%;
+    flex: 1; /* Usar todo el espacio disponible restante */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px; /* Altura mínima más grande */
+}
+
+.dashboard-chart-container canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+}
+
+.dashboard-chart-container-placeholder {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    color: #64748b;
+    padding: 20px;
+    border: 2px dashed rgba(20, 44, 89, 0.2);
+    flex: 1; /* Usar todo el espacio disponible */
+    min-height: 300px;
+}
+
+.dashboard-chart-container-placeholder:hover {
+    border-color: rgba(20, 44, 89, 0.3);
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.dashboard-chart-container-placeholder i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+    color: #142c59;
+}
+
+.dashboard-chart-container-placeholder p {
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+/* --- ANIMACIONES MEJORADAS --- */
+.dashboard-animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease-out;
+}
+
+.dashboard-animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Animaciones mejoradas para elementos que aparecen */
+.dashboard-animate-on-load {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-animate-on-load.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Mejoras en los iconos */
+.dashboard-kpi-title i,
+.dashboard-chart-title i {
+    color: var(--primary-color);
+    margin-right: 8px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Mejoras en la tipografía */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+}
+
+.dashboard-kpi-title,
+.dashboard-chart-title {
+    letter-spacing: -0.02em;
+}
+
+/* Pulido final para elementos interactivos */
+.dropdown-toggle::after {
+    transition: transform 0.3s ease;
+}
+
+.dropdown-toggle.show::after {
+    transform: rotate(180deg);
+}
+
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Loading spinner */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* --- RESPONSIVE DESIGN OPTIMIZADO --- */
+
+/* Responsive para el panel de información */
+@media (max-width: 768px) {
+    .dashboard-info-panel {
+        padding: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .dashboard-info-value {
+        font-size: 1.25rem;
+    }
+    
+    .dashboard-info-label {
+        font-size: 0.8rem;
+    }
+}
+
+@media (min-width: 1400px) {
+    .dashboard-chart-container-card {
+        height: 450px; /* Más alto en pantallas grandes */
+    }
+    
+    .dashboard-chart-container {
+        min-height: 350px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 350px;
+    }
+    
+    .col-xl-4:last-child .dashboard-chart-container-card {
+        /* El gráfico de médicos puede ser un poco más alto */
+        height: 420px;
+    }
+}
+
+@media (max-width: 1199px) {
+    /* En pantallas medianas, mantener buen tamaño */
+    .dashboard-chart-container-card {
+        height: 380px;
+        margin-bottom: 25px;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 280px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 280px;
+    }
+}
+
+@media (max-width: 991px) {
+    .main {
+        padding: 7.5rem 2rem 2rem 2rem!important;
+    }
+    
+    /* En tablets, hacer los gráficos más compactos pero aún aprovechables */
+    .dashboard-chart-container-card {
+        height: 350px;
+        margin-bottom: 20px;
+        padding: 15px 10px 10px 10px;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 250px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 250px;
+    }
+    
+    .dashboard-chart-title {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 767px) {
+    /* En móviles, gráficos apilados pero con buen tamaño */
+    .dashboard-chart-container-card {
+        height: 320px;
+        margin-bottom: 20px;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 220px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 220px;
+    }
+    
+    .compact-chart-row {
+        margin: 0 -5px;
+    }
+    
+    .compact-chart-row > [class*="col-"] {
+        padding: 0 5px;
+    }
+}
+
+/* Mejoras adicionales para el espacio de los gráficos */
+.dashboard-visualization-row .row {
+    --bs-gutter-x: 20px; /* Espaciado entre columnas */
+}
+
+/* Eliminar margins innecesarios que puedan reducir el espacio */
+.dashboard-chart-container * {
+    box-sizing: border-box;
+}
+
+/* Asegurar que el canvas use todo el contenedor */
+.chartjs-render-monitor {
+    animation: none !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.dropdown-menu-scrollable {
+    max-height: 330px;
+    overflow-y: auto;
+    min-width: 260px;
+}
+
+.dropdown-scrollable-content {
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}

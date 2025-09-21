@@ -1,0 +1,106 @@
+<nav class="custom-navbar">
+  <div class="navbar-toggle" onclick="toggleNavbar()" aria-label="Abrir menú de navegación">
+    <i class="fas fa-bars"></i>
+  </div>
+  
+  <div class="navbar-title">
+    <a class="logo" href="/">
+      <img src="/logos/logo_hospital.png" alt="Home">
+    </a>
+  </div>
+
+  <!-- Overlay para cerrar el menú -->
+  <div class="navbar-overlay" onclick="closeNavbar()"></div>
+
+  <ul class="navbar-menu">
+    <% if (user && user.permissions) { %>
+      <!-- Dashboard -->
+      <% if (user.permissions.includes('dashboard.read') || user.permissions.includes('admin.users')) { %>
+        <li>
+          <a href="/dashboard" class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" data-tooltip="Dashboard">
+            <img src="/icons/dashboard.webp" alt="">
+            <span>Dashboard</span>
+          </a>
+        </li>
+      <% } %>
+      
+      <!-- Agenda -->
+      <% if (user.permissions.includes('agenda.read') || user.permissions.includes('admin.users')) { %>
+        <li>
+          <a href="/agenda" class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" data-tooltip="Agenda">
+            <img src="/icons/calendario.webp" alt="">
+            <span>Agenda</span>
+          </a>
+        </li>
+      <% } %>
+      
+      <!-- Box -->
+      <% if (user.permissions.includes('box.read') || user.permissions.includes('admin.users')) { %>
+        <li>
+          <a href="/box" class="menu-link <%= (currentPath.startsWith('/box') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="Box">
+            <img src="/icons/box.webp" alt="">
+            <span>Box</span>
+          </a>
+        </li>
+      <% } %>
+    <% } %>
+    
+    <!-- Notificaciones -->
+    <% if (user && (user.permissions?.includes('notificaciones.read') || user.permissions?.includes('admin.users'))) { %>
+      <li>
+        <a href="/historial-notificaciones" class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" data-tooltip="Notificaciones">
+          <img src="/icons/notificaciones.webp" alt="" class="noti">
+          <span>Notificaciones</span>
+        </a>
+      </li>
+    <% } %>
+
+    <li>
+      <a href="/perfil" class="menu-link <%= currentPath.startsWith('/perfil') ? 'active' : '' %>" data-tooltip="Notificaciones">
+        <img src="/icons/perfil.png" alt="" class="perfil">
+        <span>Perfil</span>
+      </a>
+    </li>
+    
+    <!-- Logout siempre visible -->
+    <li>
+      <a href="/logout" class="logout-button">
+        <span>Cerrar sesión</span>
+      </a>
+    </li>
+  </ul>
+  <div class="reloj-wrapper" id="reloj"></div>
+</nav>
+
+<script>
+  function actualizarReloj() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('reloj').textContent = `${hh} : ${mm} : ${ss}`;
+  }
+
+  function toggleNavbar() {
+    const navbar = document.querySelector('.navbar-menu');
+    const overlay = document.querySelector('.navbar-overlay');
+    navbar.classList.toggle('show');
+    overlay.classList.toggle('show');
+  }
+
+  function closeNavbar() {
+    const navbar = document.querySelector('.navbar-menu');
+    const overlay = document.querySelector('.navbar-overlay');
+    navbar.classList.remove('show');
+    overlay.classList.remove('show');
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeNavbar();
+    }
+  });
+
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+</script>

@@ -1,0 +1,29 @@
+{
+  "name": "personalization-queue-system",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "serverless offline",
+    "deploy": "serverless deploy --stage dev --region us-east-1",
+    "deploy:prod": "serverless deploy --stage prod --region us-east-1",
+    "remove": "serverless remove",
+    "info": "serverless info --verbose",
+    "logs:worker": "serverless logs -f personalizationWorker -t",
+    "logs:dlq": "serverless logs -f personalizationDLQWorker -t",
+    "test:local": "npm run dev",
+    "start:localstack": "docker-compose up -d",
+    "stop:localstack": "docker-compose down"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.6.0",
+    "serverless-offline-sqs": "^8.3.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "@aws-sdk/client-sqs": "^3.600.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.600.0"
+  }
+}

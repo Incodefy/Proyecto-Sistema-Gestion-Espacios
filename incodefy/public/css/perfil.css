@@ -1,0 +1,437 @@
+:root {
+    /* Variables de personalización - valores por defecto */
+    --primary-color: #1a3c7c!important;
+    --primary-color-light: #375ca1!important;
+    --primary-color-dark: #142c59!important;
+    --background-color: white!important;
+    --text-color: #2c2c2c!important;
+    --secondary-text-color: #64748b!important;
+    --card-background: white!important;
+    --border-color: #ddd!important;
+
+    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+    --secondary-gradient: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color-dark) 100%);
+    --terciary-gradient: linear-gradient(135deg, var(--primary-color-dark) 0%, var(--primary-color) 100%);
+    --cuarter-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+
+    --mix-gradient: linear-gradient(90deg, var(--primary-color-dark), var(--primary-color), var(--primary-color-light));
+}
+
+/* Transiciones suaves para cambios de tema */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+  background: var(--background-color)!important;
+  color: var(--text-color);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.main {
+  margin-left: 0;
+  padding: 5rem 0 2rem 0 !important;
+  min-height: 100vh;
+}
+
+.top-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-top: 2rem;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+  color: var(--secondary-text-color);
+  font-weight: 400;
+}
+
+.profile-card {
+  background: var(--card-background);
+  border-radius: 16px;
+  padding: 2rem 2rem 1.4rem 2rem;
+  box-shadow: 0 4px 20px rgba(44, 90, 160, 0.08);
+  border: 1px solid var(--border-color);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-avatar {
+  margin-right: 1rem;
+}
+
+.user-avatar i {
+  font-size: 3rem;
+  color: var(--primary-color);
+}
+
+.user-details h3 {
+  margin: 0;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.user-details p {
+  margin: 0;
+  color: var(--secondary-text-color);
+  font-size: 0.9rem;
+}
+
+.form-section {
+  margin-bottom: 1.6rem!important;
+}
+
+.form-section h4 {
+  color: var(--primary-color);
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color)!important;
+  border-radius: 8px;
+  background: var(--background-color)!important;
+  color: var(--text-color)!important;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+  margin-top: 1rem;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* ESTILOS MEJORADOS PARA RADIO BUTTONS SIN CÍRCULOS */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* Ocultar completamente los radio buttons */
+.radio-group input[type="radio"] {
+  display: none;
+}
+
+/* Estilos para las opciones de modo (claro/oscuro) */
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--background-color);
+  transition: all 0.3s ease;
+  position: relative;
+  transform: translateY(0);
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.radio-option:hover {
+  border-color: var(--primary-color);
+  background-color: color-mix(in srgb, var(--primary-color) 8%, var(--background-color));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Estado seleccionado para opciones de modo */
+.radio-group input[type="radio"]:checked + .radio-option {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary-color) 40%, transparent);
+}
+
+.radio-group input[type="radio"]:checked + .radio-option i {
+  color: white;
+}
+
+/* ESTILOS MEJORADOS PARA COLORES SIN CÍRCULOS */
+.color-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* Ocultar los radio buttons de colores */
+.color-group input[type="radio"] {
+  display: none;
+}
+
+.color-option-wrapper {
+  position: relative;
+}
+
+.color-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 1rem;
+  border: 3px solid var(--border-color);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  min-width: 80px;
+  transform: translateY(0);
+  font-weight: 600;
+}
+
+/* Colores específicos para cada opción */
+.color-option[for="color-1a3c7c"] {
+  background: #1a3c7c;
+  color: white;
+}
+
+.color-option[for="color-d53232ff"] {
+  background: #d53232ff;
+  color: white;
+}
+
+.color-option[for="color-059669"] {
+  background: #059669;
+  color: white;
+}
+
+.color-option[for="color-7c3aed"] {
+  background: #7c3aed;
+  color: white;
+}
+
+.color-option[for="color-ea580c"] {
+  background: #ea580c;
+  color: white;
+}
+
+.color-option:hover {
+  box-shadow: 0 6px 10px rgba(0,0,0,0.2);
+  border-color: var(--text-color);
+}
+
+/* Estado seleccionado para colores */
+.color-group input[type="radio"]:checked + .color-option {
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+}
+
+/* Eliminar el color-preview ya que el fondo del botón es el color */
+.color-preview {
+  display: none;
+}
+
+.color-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: var(--primary-color)!important;
+  color: white!important;
+  border-color: var(--primary-color)!important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-color-dark)!important;
+  border-color: var(--primary-color-dark)!important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary-color)!important;
+  border-color: var(--primary-color)!important;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white!important;
+}
+
+.loader {
+  text-align: center;
+  margin: 1rem 0;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.loader i {
+  margin-right: 0.5rem;
+}
+
+.message {
+  margin: 1.8rem 0 0.4rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  display: flex;
+}
+
+.message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  display: flex;
+}
+
+.message.info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+  display: flex;
+}
+
+.message.warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  display: flex;
+}
+
+/* Tema oscuro */
+body[data-theme="dark"] {
+  --background-color: #181818;
+  --text-color: rgba(241, 241, 241, 0.98);
+  --secondary-text-color: #aab1bb;
+  --card-background: #222222;
+  --border-color: #2b2b2b;
+}
+
+body[data-theme="dark"] .profile-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="dark"] .form-select {
+  background: var(--card-background);
+}
+
+body[data-theme="dark"] .radio-option {
+  background: var(--card-background);
+}
+
+/* En tema oscuro, el hover de colores usa el borde claro */
+body[data-theme="dark"] .color-option:hover {
+  border-color: rgba(241, 241, 241, 0.8);
+}
+
+/* Ajustes para mensajes en tema oscuro */
+body[data-theme="dark"] .message.info {
+  background: rgba(13, 202, 240, 0.2);
+  color: #9eeaf9;
+  border-color: rgba(13, 202, 240, 0.3);
+}
+
+body[data-theme="dark"] .message.warning {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffda6a;
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+body[data-theme="dark"] .message.success {
+  background: rgba(25, 135, 84, 0.2);
+  color: #75b798;
+  border-color: rgba(25, 135, 84, 0.3);
+}
+
+body[data-theme="dark"] .message.error {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ea868f;
+  border-color: rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .radio-group, .color-group {
+    flex-direction: column;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    justify-content: center;
+  }
+  
+  .profile-card {
+    padding: 1.5rem;
+  }
+  
+  .main {
+    padding: 3rem 1rem 2rem 1rem !important;
+  }
+}

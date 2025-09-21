@@ -1,0 +1,444 @@
+:root {
+    /* Variables de personalización - valores por defecto */
+    --primary-color: #1a3c7c!important;
+    --primary-color-light: #375ca1!important;
+    --primary-color-dark: #142c59!important;
+    --background-color: white!important;
+    --text-color: #2c2c2c!important;
+    --secondary-text-color: #64748b!important;
+    --card-background: white!important;
+    --border-color: #ddd!important;
+
+    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+    --secondary-gradient: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color-dark) 100%);
+    --terciary-gradient: linear-gradient(135deg, var(--primary-color-dark) 0%, var(--primary-color) 100%);
+    --cuarter-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-light) 100%);
+
+    --mix-gradient: linear-gradient(90deg, var(--primary-color-dark), var(--primary-color), var(--primary-color-light));
+}
+
+/* NAVBAR GENERAL */
+.custom-navbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  height: 64px !important;
+  background-color: var(--card-background) !important;
+  background: var(--card-background) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 999 !important;
+  gap: 1rem !important;
+  flex-wrap: nowrap !important;
+}
+
+.navbar-title {
+  padding-left: 0.5rem !important;
+}
+
+/* MENÚ */
+.navbar-menu {
+    display: none !important;
+    list-style: none !important;
+    margin: 0 !important;
+}
+
+.navbar-menu li {
+  flex: 0 0 auto !important;
+  transform-style: preserve-3d !important;
+}
+
+/* LINK DE MENÚ */
+.menu-link {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  color: var(--text-color) !important;
+  text-decoration: none !important;
+  padding: 0.4rem 0.9rem!important;
+  border-radius: 10px !important;
+  position: relative !important;
+  will-change: transform !important;
+  backface-visibility: hidden !important;
+  transform: translateZ(0) !important;
+  transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+}
+
+/* ÍCONO */
+.menu-link img {
+  max-height: 25px !important;
+  max-width: 25px !important;
+  height: auto !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+.logo img {
+  max-height: 110px !important;
+  max-width: 110px !important;
+  height: auto !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+.noti{
+  padding: 4px 0!important;
+}
+
+.perfil{
+  padding: 2px 0!important;
+}
+
+/* EFECTO HOVER */
+.menu-link:hover {
+  transform: scale(1.03) translateZ(0) !important;
+}
+
+.menu-link:hover span {
+  transform: translateZ(0) !important;
+}
+
+/* TEXTO */
+.menu-link span {
+  display: inline-block !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  backface-visibility: hidden !important;
+  transform: translateZ(0) !important;
+  transition: transform 0.2s ease !important;
+}
+
+/* ITEM ACTIVO */
+.menu-link.active {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  animation: fadeInActive 0.25s ease !important;
+}
+
+.menu-link.active span {
+  color: #ffffff !important;
+}
+
+.menu-link.active img {
+  filter: brightness(0) invert(1) !important;
+}
+
+/* SUBRAYADO HOVER */
+.menu-link::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -4px !important;
+  left: 10% !important;
+  width: 80% !important;
+  height: 2px !important;
+  background-color: var(--primary-color) !important;
+  transform: scaleX(0) !important;
+  transform-origin: center !important;
+  transition: transform 0.3s ease !important;
+}
+
+.menu-link:hover::after {
+  transform: scaleX(1) !important;
+}
+
+/* ANIMACIÓN ACTIVO */
+@keyframes fadeInActive {
+  from {
+    opacity: 0 !important;
+    transform: scale(0.95) !important;
+  }
+  to {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+  }
+}
+
+/* RELOJ */
+.reloj-wrapper {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  padding: 0.35rem 1rem 0.45rem 1rem !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  white-space: nowrap !important;
+  width: 120px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  align-self: center !important;
+}
+
+
+/* Boton cerrar sesión */
+.logout-button {
+  margin: 0 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.4rem 0.8rem !important;
+  border-radius: 10px !important;
+  border: none !important;
+  background-color: #c22338!important;
+  color: #fff !important;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
+  cursor: pointer !important;
+  text-decoration: none; /* ❌ sin subrayado */
+  transition: background-color 0.3s ease, transform 0.2s ease !important;
+}
+
+.logout-button span {
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+/* Hover animado */
+.logout-button:hover {
+  background-color: #a12031!important;
+  transform: scale(1.01) !important;
+}
+
+
+
+/* Por defecto, el botón hamburguesa está oculto */
+.navbar-toggle {
+    display: none !important;
+    cursor: pointer !important;
+    font-size: 1.5rem !important;
+    padding: 0.5rem 1rem !important;
+}
+
+@media (min-width: 992px) and (max-width: 1200px) {
+    .navbar-menu {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Ocultar texto en resolución media */
+    .menu-link span {
+        display: none !important;
+    }
+
+    /* Ajustar padding solo para iconos */
+    .menu-link {
+        padding: 0.6rem !important;
+        gap: 0 !important;
+    }
+
+    /* Tooltip para mostrar texto al hover */
+    .menu-link::before {
+        content: attr(data-tooltip) !important;
+        position: absolute !important;
+        bottom: -35px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        padding: 0.5rem 0.8rem !important;
+        border-radius: 6px !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transition: opacity 0.3s ease, visibility 0.3s ease !important;
+        z-index: 1000 !important;
+        pointer-events: none !important;
+    }
+
+    /* Flecha del tooltip */
+    .menu-link::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: -5px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 0 !important;
+        height: 0 !important;
+        border-left: 5px solid transparent !important;
+        border-right: 5px solid transparent !important;
+        border-bottom: 5px solid var(--primary-color) !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transition: opacity 0.3s ease, visibility 0.3s ease !important;
+        z-index: 1000 !important;
+    }
+
+    /* Mostrar tooltip al hover */
+    .menu-link:hover::before,
+    .menu-link:hover::after {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* El botón logout mantiene su texto normal en esta resolución */
+}
+
+@media (min-width: 992px) {
+    .navbar-menu {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        flex-wrap: nowrap !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 991px) {
+    .custom-navbar {
+      height: 90px!important;
+      justify-content: flex-start !important;
+      gap: 1rem !important;
+    }
+
+    .navbar-title {
+        padding-left: 0 !important;
+        order: 2 !important;
+    }
+
+    .navbar-toggle {
+        order: 1 !important;
+    }
+
+    .logo img {
+        max-height: 150px!important;
+        max-width: 150px!important;
+    }
+
+    .navbar-menu {
+        flex-direction: column !important;
+        background-color: #ffffff !important;
+        width: 400px !important;
+        height: 100vh !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: -400px !important;
+        border-right: 1px solid #ddd !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
+        padding: 120px 1rem 1rem 1rem!important;
+        z-index: 1001 !important;
+        overflow-y: auto !important;
+        transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        display: flex !important;
+    }
+
+    .menu-link:hover {
+      transform: scale(1.01) translateZ(0) !important;
+    }
+
+    .menu-link:hover span {
+      transform: translateZ(0) !important;
+    }
+
+    .navbar-menu.show {
+        left: 0 !important;
+    }
+
+    .navbar-menu li {
+        width: 100% !important;
+        opacity: 0 !important;
+        transform: translateX(-20px) !important;
+        transition: opacity 0.3s ease, transform 0.3s ease !important;
+    }
+
+    .navbar-menu.show li {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+    }
+
+    /* Efecto escalonado en los elementos del menú */
+    .navbar-menu.show li:nth-child(1) {
+        transition-delay: 0.1s !important;
+    }
+
+    .navbar-menu.show li:nth-child(2) {
+        transition-delay: 0.15s !important;
+    }
+
+    .navbar-menu.show li:nth-child(3) {
+        transition-delay: 0.2s !important;
+    }
+
+    .navbar-menu.show li:nth-child(4) {
+        transition-delay: 0.25s !important;
+    }
+
+    .navbar-menu.show li:nth-child(5) {
+        transition-delay: 0.3s !important;
+    }
+
+    .navbar-menu.show li:nth-child(6) {
+        transition-delay: 0.35s !important;
+    }
+
+    .navbar-menu.show li:nth-child(7) {
+        transition-delay: 0.4s !important;
+    }
+
+    .menu-link {
+        justify-content: flex-start !important;
+        padding: 0.8rem 1.2rem 0.8rem 1.2rem !important;
+        margin-bottom: 8px!important;
+        width: 100% !important;
+        gap: 1rem!important;
+        font-size: 1rem!important;
+    }
+
+    .menu-link img {
+      max-height: 50px !important;
+      max-width: 50px !important;
+    }
+
+    .menu-link span {
+      font-size: 1.5rem!important;
+    }
+
+    .logout-button {
+      margin-top: 8px!important;
+      font-size: 1.1rem!important;
+      padding: 0.5rem 0.9rem!important;
+    }
+
+    .navbar-toggle {
+        display: block !important;
+        font-size: 2.5rem!important;
+        z-index: 1002 !important;
+    }
+
+    .reloj-wrapper {
+        display: none !important;
+    }
+
+    /* Overlay para cerrar el menú al hacer clic fuera */
+    .navbar-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background-color: rgba(0, 0, 0, 0.5) !important;
+        z-index: 1000 !important;
+        display: none !important;
+        opacity: 0 !important;
+        transition: opacity 0.4s ease !important;
+    }
+
+    .navbar-overlay.show {
+        display: block !important;
+        opacity: 1 !important;
+    }
+}

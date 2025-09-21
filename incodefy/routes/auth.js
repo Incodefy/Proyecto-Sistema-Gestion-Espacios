@@ -1,0 +1,281 @@
+// routes/auth.js - ACTUALIZADO PARA USAR COLAS
+const express = require("express");
+const router = express.Router();
+const {
+  CognitoIdentityProviderClient,
+  InitiateAuthCommand,
+  GetUserCommand
+} = require("@aws-sdk/client-cognito-identity-provider");
+const fetch = require('node-fetch');
+
+const cognitoClient = new CognitoIdentityProviderClient({
+  region: process.env.AWS_REGION
+});
+
+// URLs configurables
+const API_BASE_URL = process.env.API_BASE_URL || 'https://ux70372886.execute-api.us-east-1.amazonaws.com';
+const PERMISSIONS_ENDPOINT = process.env.PERMISSIONS_ENDPOINT || '/my-permissions';
+const PERSONALIZATION_ENDPOINT = process.env.PERSONALIZATION_ENDPOINT || '/personalization';
+
+const PERMISSIONS_URL = `${API_BASE_URL}${PERMISSIONS_ENDPOINT}`;
+const PERSONALIZATION_URL = `${API_BASE_URL}${PERSONALIZATION_ENDPOINT}`;
+
+console.log("🔗 URLs configuradas:");
+console.log("   Permisos:", PERMISSIONS_URL);
+console.log("   Personalización:", PERSONALIZATION_URL);
+
+// Función para refrescar personalización del usuario
+const refreshUserPersonalization = async (req) => {
+  try {
+    console.log("🔄 Refrescando personalización para usuario:", req.session.user.email);
+    
+    const personalizationResponse = await fetch(PERSONALIZATION_URL, {
+      headers: {
+        'Authorization': `Bearer ${req.session.user.idToken}`
+      }
+    });
+    
+    if (personalizationResponse.ok) {
+      const personalizationData = await personalizationResponse.json();
+      req.session.user.personalization = personalizationData.final_parameters;
+      console.log("✅ Personalización actualizada en sesión:", personalizationData.final_parameters);
+      return true;
+    } else {
+      console.log("❌ Error en respuesta de personalización:", personalizationResponse.status);
+      return false;
+    }
+  } catch (err) {
+    console.log("❌ Error refrescando personalización:", err.message);
+    return false;
+  }
+};
+
+// Función para sondear el estado de un evento de personalización
+const pollPersonalizationStatus = async (eventId, token, maxAttempts = 10, delayMs = 1000) => {
+  console.log(`🔍 Iniciando polling para evento ${eventId}`);
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔍 Intento ${attempt}/${maxAttempts} - Verificando estado del evento`);
+      
+      // Obtener personalización actual
+      const response = await fetch(PERSONALIZATION_URL, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Verificar si algún parámetro tiene el event_id que estamos buscando
+        // Esto requeriría que el GET personalización incluya metadata del último evento
+        console.log(`✅ Intento ${attempt} exitoso - personalización obtenida`);
+        return { success: true, data: data.final_parameters };
+      }
+      
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Esperando ${delayMs}ms antes del siguiente intento...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        delayMs = Math.min(delayMs * 1.5, 5000); // Backoff exponencial
+      }
+    } catch (error) {
+      console.log(`❌ Error en intento ${attempt}:`, error.message);
+      if (attempt === maxAttempts) {
+        return { success: false, error: error.message };
+      }
+    }
+  }
+  
+  return { success: false, error: 'Timeout - no se pudo confirmar el procesamiento' };
+};
+
+// Página login (sin cambios)
+router.get("/login", (req, res) => {
+  if (req.session.user && req.session.user.idToken) {
+    return res.redirect("/dashboard");
+  }
+
+  res.render("login", {
+    error_msg: req.flash("error") || [],
+    form_errors: {},
+    form_data: {}
+  });
+});
+
+// Procesar login con Cognito (sin cambios)
+router.post("/login", async (req, res) => {
+  try {
+    const { correo, password } = req.body;
+    let form_errors = {};
+    let error_msg = [];
+
+    if (!correo) form_errors.email = "El correo electrónico es requerido";
+    if (!password) form_errors.password = "La contraseña es requerida";
+
+    if (Object.keys(form_errors).length > 0) {
+      console.warn("⚠️ Errores de validación:", form_errors);
+      return res.render("login", {
+        error_msg,
+        form_errors,
+        form_data: { correo }
+      });
+    }
+
+    console.log("➡️ POST /login - intentando autenticar con Cognito:", correo);
+
+    const authCommand = new InitiateAuthCommand({
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: process.env.USER_POOL_CLIENT_ID,
+      AuthParameters: {
+        USERNAME: correo,
+        PASSWORD: password
+      }
+    });
+
+    const authResult = await cognitoClient.send(authCommand);
+    console.log("🔐 Respuesta de Cognito:", authResult);
+
+    if (authResult.ChallengeName) {
+      error_msg.push("Debes cambiar tu contraseña temporal");
+      return res.render("login", {
+        error_msg,
+        form_errors: {},
+        form_data: { correo }
+      });
+    }
+
+    const tokens = authResult.AuthenticationResult;
+    if (!tokens) {
+      throw new Error("No se recibieron tokens de autenticación");
+    }
+
+    const getUserCommand = new GetUserCommand({
+      AccessToken: tokens.AccessToken
+    });
+
+    const userInfo = await cognitoClient.send(getUserCommand);
+    console.log("👤 Información del usuario:", userInfo);
+
+    const userAttributes = {};
+    userInfo.UserAttributes.forEach(attr => {
+      userAttributes[attr.Name] = attr.Value;
+    });
+
+    req.session.user = {
+      sub: userAttributes.sub,
+      username: userInfo.Username,
+      email: userAttributes.email,
+      idToken: tokens.IdToken,
+      accessToken: tokens.AccessToken,
+      refreshToken: tokens.RefreshToken,
+      nombre: userAttributes.name || userAttributes.email.split('@')[0],
+      email: userAttributes.email,
+      authTime: new Date().toISOString()
+    };
+
+    // Obtener permisos y personalización inicial
+    try {
+      console.log("📡 Obteniendo permisos desde:", PERMISSIONS_URL);
+      const permissionsResponse = await fetch(PERMISSIONS_URL, {
+        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
+      });
+      
+      if (permissionsResponse.ok) {
+        const permissionsData = await permissionsResponse.json();
+        req.session.user.permissions = permissionsData.permissions || [];
+        req.session.user.ui_config = permissionsData.ui_config || {};
+        console.log("✅ Permisos obtenidos correctamente");
+      } else {
+        console.log("⚠️ No se pudieron obtener permisos:", permissionsResponse.status);
+      }
+
+      console.log("📡 Obteniendo personalización desde:", PERSONALIZATION_URL);
+      const personalizationResponse = await fetch(PERSONALIZATION_URL, {
+        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
+      });
+      
+      if (personalizationResponse.ok) {
+        const personalizationData = await personalizationResponse.json();
+        req.session.user.personalization = personalizationData.final_parameters;
+        console.log("✅ Personalización obtenida:", personalizationData.final_parameters);
+      } else {
+        console.log("⚠️ No se pudo obtener personalización:", personalizationResponse.status);
+        req.session.user.personalization = {};
+      }
+      
+    } catch (err) {
+      console.log("❌ Error obteniendo datos del usuario:", err.message);
+      req.session.user.permissions = [];
+      req.session.user.ui_config = {};
+      req.session.user.personalization = {};
+    }
+
+    console.log("✅ Sesión creada:", {
+      sub: req.session.user.sub,
+      email: req.session.user.email,
+      nombre: req.session.user.nombre
+    });
+
+    req.flash("success", `¡Bienvenido ${req.session.user.nombre}!`);
+    res.redirect("/dashboard");
+
+  } catch (err) {
+    console.error("❌ Error en login:", err);
+    
+    let errorMessage = "Error interno en el login";
+    let form_errors = {};
+    
+    if (err.name === "NotAuthorizedException") {
+      errorMessage = "Credenciales incorrectas";
+      form_errors = { 
+        email: "Usuario o contraseña incorrectos",
+        password: "Usuario o contraseña incorrectos"
+      };
+    } else if (err.name === "UserNotConfirmedException") {
+      errorMessage = "Tu cuenta no está confirmada. Revisa tu email.";
+    } else if (err.name === "UserNotFoundException") {
+      errorMessage = "No existe una cuenta con este email";
+      form_errors = { email: "Email no registrado" };
+    } else if (err.name === "TooManyRequestsException") {
+      errorMessage = "Demasiados intentos. Intenta más tarde.";
+    }
+
+    res.render("login", {
+      error_msg: [errorMessage],
+      form_errors: form_errors,
+      form_data: { correo: req.body.correo || '' }
+    });
+  }
+});
+
+// Logout
+router.get("/logout", (req, res) => {
+  console.log("📤 Usuario cerrando sesión:", req.session.user?.email);
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Error al destruir sesión:", err);
+    }
+    res.clearCookie('connect.sid');
+    res.redirect("/login");
+  });
+});
+
+// Endpoint para verificar estado de autenticación
+router.get("/profile", (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "No autenticado" });
+  }
+  
+  res.json({
+    user: {
+      sub: req.session.user.sub,
+      email: req.session.user.email,
+      nombre: req.session.user.nombre,
+      username: req.session.user.username
+    }
+  });
+});
+
+// Exportar el router y las funciones auxiliares
+module.exports = router;
+module.exports.refreshUserPersonalization = refreshUserPersonalization;
+module.exports.pollPersonalizationStatus = pollPersonalizationStatus;
