@@ -5,8 +5,39 @@ require('dotenv').config();
 const db = require('./db');
 const fetch = require('node-fetch');
 
+// === i18next configuración para internacionalización ===
+const i18next = require('i18next');
+const Backend = require('i18next-fs-backend');
+const i18nextMiddleware = require('i18next-http-middleware');
+const cookieParser = require('cookie-parser');
+
+i18next
+  .use(Backend)
+  .use(i18nextMiddleware.LanguageDetector)
+  .init({
+    fallbackLng: 'es',
+    preload: ['es', 'en'],
+    backend: {
+      loadPath: __dirname + '/locales/{{lng}}.json'
+    }
+  });
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(i18nextMiddleware.handle(i18next));
+app.use(cookieParser());
+
+// Middleware para exponer la función de traducción en las vistas EJS y usar idioma de sesión
+app.use((req, res, next) => {
+  // Si el usuario tiene idioma en sesión, úsalo globalmente
+  if (req.session && req.session.language) {
+    req.i18n.changeLanguage(req.session.language);
+  }
+  res.locals.t = req.t;
+  res.locals.language = req.session?.language || req.language;
+  next();
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -56,6 +87,24 @@ app.get('/', (req, res) => {
 // Auth routes (públicas)
 const authRoutes = require("./routes/auth");
 app.use("/", authRoutes);
+
+// === RUTA PARA CAMBIAR IDIOMA ===
+app.post('/perfil/idioma', requireAuth, async (req, res) => {
+  const lang = req.body.lang;
+  const userId = req.session.user.id || req.session.user.user_id || req.session.user.sub;
+  try {
+    // Actualiza el idioma en la base de datos
+    await db.query('UPDATE auth_user SET idioma = ? WHERE email = ?', [lang, req.session.user.email]);
+    // Actualiza la sesión
+    req.session.language = lang;
+    req.session.user.idioma = lang;
+    res.cookie('i18next', lang, { maxAge: 900000, httpOnly: true });
+    res.redirect('back');
+  } catch (err) {
+    console.error("❌ Error actualizando idioma:", err);
+    res.redirect('back');
+  }
+});
 
 // === RUTAS PROTEGIDAS (requieren autenticación) ===
 
@@ -129,7 +178,8 @@ app.get('/perfil', requireAuth, (req, res) => {
   res.render('perfil', {
     currentPath: req.path,
     personalization: req.session.user?.personalization || {},
-    idToken: req.session.user?.idToken
+    idToken: req.session.user?.idToken,
+    language: req.session.language || req.language // Usar idioma de sesión
   });
 });
 

@@ -7,7 +7,7 @@ provider:
   region: ${opt:region, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   
-  role: arn:aws:iam::851725349092:role/LabRole
+  role: arn:aws:iam::211125294486:role/LabRole
   
   environment:
     # Variables para las funciones

@@ -1,4 +1,3 @@
-// src/handlers/personalization.js
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 
@@ -24,6 +23,12 @@ const PERSONALIZATION_PARAMETERS = {
     options: ["es", "en"], 
     default: "es",
     name: "Idioma"
+  },
+  "font.scale": {
+    type: "select",
+    options: ["pequeno", "mediano", "grande"],
+    default: "mediano",
+    name: "Escala de fuente"
   }
 };
 
@@ -31,32 +36,18 @@ const PERSONALIZATION_PARAMETERS = {
 const getGlobalParameters = () => ({
   "theme.mode": "light",
   "theme.primary_color": "#1a3c7c", 
-  "locale.language": "es"
+  "locale.language": "es",
+  "font.scale": "mediano"
 });
 
 // Función para generar colores derivados del color principal
 const generateColorVariants = (primaryColor) => {
   const colorVariants = {
-    "#1a3c7c": {
-      light: "#375ca1",
-      dark: "#142c59"
-    },
-    "#d53232ff": {
-      light: "#e76464ff", 
-      dark: "#ad2424ff"
-    },
-    "#059669": {
-      light: "#1ec78fff",
-      dark: "#068d67ff"
-    },
-    "#7c3aed": {
-      light: "#946cf2ff",
-      dark: "#6028bbff"
-    },
-    "#ea580c": {
-      light: "#f3893dff",
-      dark: "#c25125ff"
-    }
+    "#1a3c7c": { light: "#375ca1", dark: "#142c59" },
+    "#d53232ff": { light: "#e76464ff", dark: "#ad2424ff" },
+    "#059669": { light: "#1ec78fff", dark: "#068d67ff" },
+    "#7c3aed": { light: "#946cf2ff", dark: "#6028bbff" },
+    "#ea580c": { light: "#f3893dff", dark: "#c25125ff" }
   };
 
   return colorVariants[primaryColor] || {
@@ -78,38 +69,26 @@ module.exports.getPersonalization = async (event) => {
       return response(401, { ok: false, error: "Usuario no autenticado" });
     }
 
-    // Obtener parámetros específicos del usuario
     const result = await docClient.send(new QueryCommand({
       TableName: process.env.PARAMETERS_TABLE,
       KeyConditionExpression: "user_sub = :userSub",
-      ExpressionAttributeValues: {
-        ":userSub": userSub
-      }
+      ExpressionAttributeValues: { ":userSub": userSub }
     }));
 
-    // Convertir parámetros del usuario a objeto
     const userParameters = {};
     (result.Items || []).forEach(item => {
       userParameters[item.parameter_key] = item.parameter_value;
     });
 
-    // Parámetros globales de la organización
     const globalParameters = getGlobalParameters();
+    const finalParameters = { ...globalParameters, ...userParameters };
 
-    // Parámetros finales: globales sobrescritos por usuario
-    const finalParameters = {
-      ...globalParameters,
-      ...userParameters
-    };
-
-    // Aplicar valores por defecto a parámetros no configurados
     Object.entries(PERSONALIZATION_PARAMETERS).forEach(([key, config]) => {
       if (!(key in finalParameters)) {
         finalParameters[key] = config.default;
       }
     });
 
-    // Generar colores derivados
     const colorVariants = generateColorVariants(finalParameters['theme.primary_color']);
     finalParameters['theme.primary_color_light'] = colorVariants.light;
     finalParameters['theme.primary_color_dark'] = colorVariants.dark;
@@ -136,44 +115,26 @@ module.exports.getPersonalization = async (event) => {
  */
 module.exports.setPersonalization = async (event) => {
   try {
-    console.log("📝 Recibiendo petición:", JSON.stringify(event, null, 2));
-    
     const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
     const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
     
-    console.log("👤 Usuario:", { userSub, userEmail });
-    
-    let requestBody;
-    
-    try {
-      requestBody = JSON.parse(event.body || "{}");
-      console.log("📦 Body parseado:", requestBody);
-    } catch (e) {
-      console.error("❌ Error parseando body:", e);
-      return response(400, { ok: false, error: "Body inválido" });
-    }
-
-    const { parameters } = requestBody;
-    
     if (!userSub) {
-      console.error("❌ Usuario no autenticado");
       return response(401, { ok: false, error: "Usuario no autenticado" });
     }
 
+    const { parameters } = JSON.parse(event.body || "{}");
+
     if (!parameters || typeof parameters !== 'object') {
-      console.error("❌ Parámetros inválidos:", parameters);
       return response(400, { ok: false, error: "parameters es obligatorio y debe ser un objeto" });
     }
 
-    // Validar parámetros
     const validParameters = {};
     const errors = [];
     
-    console.log("🔍 Validando parámetros:", parameters);
-    
-    Object.entries(parameters).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(parameters)) {
       if (PERSONALIZATION_PARAMETERS[key]) {
         if (validateParameter(key, value)) {
+          // El valor es válido, lo agregamos. No se necesita conversión a número.
           validParameters[key] = value;
         } else {
           errors.push(`Valor inválido para ${key}: ${value}`);
@@ -181,29 +142,22 @@ module.exports.setPersonalization = async (event) => {
       } else {
         errors.push(`Parámetro no permitido: ${key}`);
       }
-    });
+    }
 
     if (errors.length > 0) {
-      console.error("❌ Errores de validación:", errors);
       return response(400, { ok: false, errors });
     }
 
-    // Guardar parámetros válidos
     const timestamp = new Date().toISOString();
     const savedParameters = [];
 
-    console.log("💾 Guardando parámetros en DynamoDB...");
-    console.log("📊 Tabla:", process.env.PARAMETERS_TABLE);
-
     for (const [key, value] of Object.entries(validParameters)) {
-      console.log(`💾 Guardando ${key}: ${value}`);
-      
       await docClient.send(new PutCommand({
         TableName: process.env.PARAMETERS_TABLE,
         Item: {
           user_sub: userSub,
           parameter_key: key,
-          parameter_value: value,
+          parameter_value: value, // Ahora se guarda el valor ya convertido a número
           updated_at: timestamp,
           email: userEmail
         }
@@ -211,23 +165,18 @@ module.exports.setPersonalization = async (event) => {
       savedParameters.push({ key, value });
     }
 
-    console.log("✅ Parámetros guardados:", savedParameters);
-
-    // Obtener los parámetros actualizados
-    const updatedParameters = await module.exports.getPersonalization(event);
-    const finalParameters = JSON.parse(updatedParameters.body).final_parameters;
+    const updatedResult = await module.exports.getPersonalization(event);
+    const finalParameters = JSON.parse(updatedResult.body).final_parameters;
 
     return response(200, {
       ok: true,
       message: "Parámetros de personalización actualizados",
       saved_parameters: savedParameters,
-      updated_count: savedParameters.length,
       final_parameters: finalParameters
     });
 
   } catch (err) {
     console.error("❌ Error en setPersonalization:", err);
-    console.error("❌ Stack trace:", err.stack);
     return response(500, { 
       ok: false, 
       error: "Error interno del servidor",
@@ -245,9 +194,11 @@ function validateParameter(key, value) {
   
   switch (config.type) {
     case 'select':
-      return config.options.includes(value);
     case 'color':
       return config.options.includes(value);
+    case 'number':
+      const num = Number(value);
+      return !isNaN(num) && num >= config.min && num <= config.max;
     default:
       return true;
   }

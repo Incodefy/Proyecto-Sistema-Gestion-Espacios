@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= personalization['locale.language'] || 'es' %>">
+<html lang="<%= (locals.personalization && personalization['locale.language']) || 'es' %>">
 <head>
   <meta charset="UTF-8">
   <title>Mi Perfil - Personalización</title>
@@ -9,37 +9,11 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   
-  <!-- Variables CSS personalizadas -->
-  <style id="personalization-styles">
-    :root {
-      --personalization-loaded: true;
-      
-      <% if (personalization && personalization['theme.primary_color']) { %>
-      --primary-color: <%= personalization['theme.primary_color'] %>!important;
-      <% if (personalization['theme.primary_color_light']) { %>
-      --primary-color-light: <%= personalization['theme.primary_color_light'] %>!important;
-      <% } %>
-      <% if (personalization['theme.primary_color_dark']) { %>
-      --primary-color-dark: <%= personalization['theme.primary_color_dark'] %>!important;
-      <% } %>
-      <% } %>
-      
-      <% if (personalization && personalization['theme.mode'] === 'dark') { %>
-      --background-color: #181818 !important;
-      --text-color: rgba(241, 241, 241, 0.98) !important;
-      --secondary-text-color: #aab1bb !important;
-      --card-background: #222222 !important;
-      --border-color: #2b2b2b !important;
-      <% } %>
-    }
-    <% if (personalization && personalization['theme.mode'] === 'dark') { %>
-    .menu-link img {
-      filter: brightness(0) invert(1)!important;
-    }
-    <% } %>
-  </style>
+  <!-- PASO 2 APLICADO: El bloque <style> se reemplaza por esta única línea -->
+  <%- include('partials/personalization-styles') %>
+
 </head>
-<body data-theme="<%= personalization['theme.mode'] || 'light' %>">
+<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
   <div class="container-fluid">
     <div class="row">
       <%- include('navbar') %>
@@ -65,11 +39,10 @@
                 </div>
               </div>
 
-              <!-- Formulario de personalización -->
+              <!-- Formulario de personalización (sin cambios) -->
               <form id="personalizationForm">
                 <div class="form-section">
                   <h4><i class="fas fa-palette"></i> Tema</h4>
-                  
                   <!-- Modo de tema -->
                   <div class="form-group">
                     <label>Modo:</label>
@@ -79,7 +52,6 @@
                       <label class="radio-option" for="light-mode">
                         <i class="fas fa-sun"></i> Claro
                       </label>
-
                       <input type="radio" id="dark-mode" name="theme.mode" value="dark"
                              <%= personalization['theme.mode'] === 'dark' ? 'checked' : '' %>>
                       <label class="radio-option" for="dark-mode">
@@ -87,7 +59,6 @@
                       </label>
                     </div>
                   </div>
-
                   <!-- Color principal -->
                   <div class="form-group">
                     <label>Color principal:</label>
@@ -117,9 +88,37 @@
                   </div>
                 </div>
 
+                <!-- Selector de escala de fuente -->
+                <div class="form-section">
+                  <h4><i class="fas fa-text-height"></i> Tamaño de fuente</h4>
+                  <div class="form-group">
+                    <label>Escala de texto:</label>
+                    <div class="radio-group">
+                      <% 
+                        const fontScales = [
+                          { value: 'pequeno', label: 'Pequeño', icon: 'fa-font' },
+                          { value: 'mediano', label: 'Mediano', icon: 'fa-font' },
+                          { value: 'grande', label: 'Grande', icon: 'fa-font' }
+                        ];
+                        const currentScale = (personalization && personalization['font.scale']) || 'mediano';
+                      %>
+                      <% fontScales.forEach(scale => { %>
+                        <input type="radio" 
+                               id="font-<%= scale.value %>" 
+                               name="font.scale" 
+                               value="<%= scale.value %>"
+                               <%= currentScale === scale.value ? 'checked' : '' %>>
+                        <label class="radio-option" for="font-<%= scale.value %>">
+                          <i class="fas <%= scale.icon %>" style="font-size: <%= scale.value === 'pequeno' ? '0.8em' : (scale.value === 'grande' ? '1.2em' : '1em') %>;"></i> 
+                          <%= scale.label %>
+                        </label>
+                      <% }); %>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="form-section">
                   <h4><i class="fas fa-globe"></i> Idioma</h4>
-                  
                   <div class="form-group">
                     <label>Idioma de la interfaz:</label>
                     <select name="locale.language" class="form-select">
@@ -159,390 +158,60 @@
   </div>
 
 <script>
-    // Personalización actual
-    window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
-    
-    // Función para aplicar cambios de personalización inmediatamente
-    function applyPersonalizationChanges(parameters) {
-      console.log('🎨 Aplicando personalización:', parameters);
-      
-      replacePersonalizationStyles(parameters);
-      updateRootVariables(parameters);
-      
-      window.userPersonalization = { ...window.userPersonalization, ...parameters };
-      console.log('✅ Personalización aplicada');
-      
-      // Forzar repaint
-      document.body.style.display = 'none';
-      document.body.offsetHeight; // Trigger reflow
-      document.body.style.display = '';
-    }
-
-    // Función para reemplazar completamente los estilos de personalización
-    function replacePersonalizationStyles(parameters) {
-      let personalizationStyle = document.getElementById('personalization-styles');
-      
-      if (!personalizationStyle) {
-        const existingStyles = Array.from(document.head.querySelectorAll('style'));
-        personalizationStyle = existingStyles.find(style => 
-          style.textContent.includes('--personalization-loaded')
-        );
-        
-        if (personalizationStyle) {
-          personalizationStyle.id = 'personalization-styles';
-        } else {
-          personalizationStyle = document.createElement('style');
-          personalizationStyle.id = 'personalization-styles';
-          document.head.appendChild(personalizationStyle);
-        }
-      }
-      
-      const finalParams = { ...window.userPersonalization, ...parameters };
-      
-      const colorVariants = {
-        '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
-        '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
-        '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
-        '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
-        '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
-      };
-      
-      const primaryColor = finalParams['theme.primary_color'] || '#1a3c7c';
-      const themeMode = finalParams['theme.mode'] || 'light';
-      const variants = colorVariants[primaryColor] || { light: primaryColor + '99', dark: primaryColor + 'dd' };
-      
-      let styleContent = `
-          :root {
-            --personalization-loaded: true;
-            --primary-color: ${primaryColor}!important;
-            --primary-color-light: ${variants.light}!important;
-            --primary-color-dark: ${variants.dark}!important;
-      `;
-      
-      if (themeMode === 'dark') {
-        styleContent += `
-            --background-color: #181818 !important;
-            --text-color: rgba(241, 241, 241, 0.98) !important;
-            --secondary-text-color: #aab1bb !important;
-            --card-background: #222222 !important;
-            --border-color: #2b2b2b !important;
-        `;
-      } else {
-        styleContent += `
-            --background-color: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
-            --text-color: #2c2c2c !important;
-            --secondary-text-color: #64748b !important;
-            --card-background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-            --border-color: #ddd !important;
-        `;
-      }
-      
-      styleContent += `
-            --primary-gradient: linear-gradient(135deg, ${primaryColor} 0%, ${variants.dark} 100%) !important;
-            --secondary-gradient: linear-gradient(135deg, ${variants.light} 0%, ${variants.dark} 100%) !important;
-            --terciary-gradient: linear-gradient(135deg, ${variants.dark} 0%, ${primaryColor} 100%) !important;
-            --cuarter-gradient: linear-gradient(135deg, ${primaryColor} 0%, ${variants.light} 100%) !important;
-            --mix-gradient: linear-gradient(90deg, ${variants.dark}, ${primaryColor}, ${variants.light}) !important;
-          }
-          
-          body {
-            transition: all 0.3s ease;
-          }
-      `;
-      
-      if (themeMode === 'dark') {
-        styleContent += `
-          body[data-theme="dark"] .menu-link img {
-            filter: brightness(0) invert(1) !important;
-          }
-          
-          body {
-            background: #181818 !important;
-            color: rgba(241, 241, 241, 0.98) !important;
-          }
-          
-          .radio-option {
-            background: #222222 !important;
-            border-color: #2b2b2b !important;
-            color: rgba(241, 241, 241, 0.98) !important;
-          }
-        `;
-      } else {
-        styleContent += `
-          body {
-            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
-            color: #2c2c2c !important;
-          }
-          
-          .menu-link img {
-            filter: none !important;
-          }
-          
-          .radio-option {
-            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
-            border-color: #ddd !important;
-            color: #2c2c2c !important;
-          }
-        `;
-      }
-      
-      styleContent += `
-        .user-avatar i,
-        .user-details h3,
-        .form-section h4 {
-          color: ${primaryColor} !important;
-        }
-        
-        .btn-primary {
-          background: ${primaryColor} !important;
-          border-color: ${primaryColor} !important;
-        }
-        
-        .btn-primary:hover:not(:disabled) {
-          background: ${variants.dark} !important;
-          border-color: ${variants.dark} !important;
-        }
-        
-        .btn-outline {
-          color: ${primaryColor} !important;
-          border-color: ${primaryColor} !important;
-        }
-        
-        .btn-outline:hover:not(:disabled) {
-          background: ${primaryColor} !important;
-        }
-        
-        .loader {
-          color: ${primaryColor} !important;
-        }
-        
-        .radio-option:hover {
-          border-color: ${primaryColor} !important;
-        }
-        
-        .radio-group input[type="radio"]:checked + .radio-option {
-          border-color: ${primaryColor} !important;
-          background: ${primaryColor} !important;
-          color: white !important;
-        }
-        
-        .radio-group input[type="radio"]:checked + .radio-option i {
-          color: white !important;
-        }
-        
-        .form-select:focus {
-          border-color: ${primaryColor} !important;
-        }
-        
-        .color-group input[type="radio"]:checked + .color-option {
-          border-color: ${primaryColor} !important;
-          border-width: 4px !important;
-        }
-      `;
-      
-      personalizationStyle.textContent = styleContent;
-      document.body.setAttribute('data-theme', themeMode);
-      console.log('🎨 Estilos de personalización reemplazados');
-    }
-
-    function updateRootVariables(parameters) {
-      const root = document.documentElement;
-      
-      Object.entries(parameters).forEach(([key, value]) => {
-        switch(key) {
-          case 'theme.primary_color':
-            root.style.setProperty('--primary-color', value, 'important');
-            
-            const colorVariants = {
-              '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
-              '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
-              '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
-              '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
-              '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
-            };
-            
-            if (colorVariants[value]) {
-              root.style.setProperty('--primary-color-light', colorVariants[value].light, 'important');
-              root.style.setProperty('--primary-color-dark', colorVariants[value].dark, 'important');
-            }
-            break;
-            
-          case 'theme.mode':
-            if (value === 'dark') {
-              root.style.setProperty('--background-color', '#181818', 'important');
-              root.style.setProperty('--text-color', 'rgba(241, 241, 241, 0.98)', 'important');
-              root.style.setProperty('--secondary-text-color', '#aab1bb', 'important');
-              root.style.setProperty('--card-background', '#222222', 'important');
-              root.style.setProperty('--border-color', '#2b2b2b', 'important');
-            } else {
-              root.style.setProperty('--background-color', 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)', 'important');
-              root.style.setProperty('--text-color', '#2c2c2c', 'important');
-              root.style.setProperty('--secondary-text-color', '#64748b', 'important');
-              root.style.setProperty('--card-background', 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', 'important');
-              root.style.setProperty('--border-color', '#ddd', 'important');
-            }
-            break;
-            
-          case 'locale.language':
-            document.documentElement.lang = value;
-            break;
-        }
-      });
-    }
-
-    function showMessage(text, type = 'info', icon = 'fas fa-info-circle') {
-      const message = document.getElementById('message');
-      message.innerHTML = `<i class="${icon}"></i> ${text}`;
-      message.className = `message ${type}`;
-      message.style.display = 'block';
-    }
-
-    function hideMessage() {
-      const message = document.getElementById('message');
-      message.style.display = 'none';
-    }
-
-    // Evento principal - Submit del formulario
+    // Evento principal - Submit del formulario (guardar cambios)
     document.getElementById('personalizationForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
       const loader = document.getElementById('loader');
       const saveBtn = document.getElementById('saveBtn');
-      
+      const messageDiv = document.getElementById('message');
+
+      // Mostrar loader y deshabilitar botón
       loader.style.display = 'block';
-      hideMessage();
       saveBtn.disabled = true;
-      
+      messageDiv.style.display = 'none';
+
       try {
         const formData = new FormData(this);
-        const parameters = {};
-        
-        for (let [key, value] of formData.entries()) {
-          parameters[key] = value;
-        }
-        
-        console.log('🔄 Guardando parámetros:', parameters);
-        
-        // Aplicar cambios inmediatamente
-        applyPersonalizationChanges(parameters);
+        const parameters = Object.fromEntries(formData.entries());
         
         const response = await fetch('/api/personalization', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ parameters })
         });
-        
-        console.log('📥 Response status:', response.status);
-        
-        if (!response.headers.get('content-type')?.includes('application/json')) {
-          throw new Error(`Servidor retornó contenido no válido: ${response.status}`);
-        }
-        
+
         const result = await response.json();
-        console.log('📥 Response data:', result);
-        
-        if (result.ok) {
-          showMessage('Cambios guardados y aplicados correctamente', 'success', 'fas fa-check-circle');
-          
-          // Actualizar sesión del servidor
-          const refreshResponse = await fetch('/api/refresh-personalization', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          if (refreshResponse.ok) {
-            console.log('✅ Sesión actualizada correctamente');
-          } else {
-            console.log('⚠️ No se pudo actualizar la sesión');
-          }
-        } else {
-          const errorMsg = result.error || result.message || `Error ${response.status}`;
-          throw new Error(errorMsg);
+        if (!result.ok) {
+          throw new Error(result.error || 'Error al guardar los cambios.');
         }
-        
+
+        // Mostrar mensaje de éxito y recargar la página para aplicar cambios
+        messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> Cambios guardados. La página se recargará...`;
+        messageDiv.className = 'message success';
+        messageDiv.style.display = 'block';
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500); // Espera para que el usuario vea el mensaje
+
       } catch (error) {
-        console.error('❌ Error completo:', error);
-        
-        let errorMessage = error.message;
-        
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          errorMessage = 'Error de conexión. Verifica tu conexión a internet.';
-        }
-        
-        showMessage(`Error: ${errorMessage}`, 'error', 'fas fa-exclamation-triangle');
-        
-        // Revertir cambios en caso de error
-        applyPersonalizationChanges(window.userPersonalization);
-        console.log('🔄 Cambios revertidos por error');
-      } finally {
+        messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error: ${error.message}`;
+        messageDiv.className = 'message error';
+        messageDiv.style.display = 'block';
         loader.style.display = 'none';
         saveBtn.disabled = false;
-        
-        setTimeout(() => hideMessage(), 8000);
       }
-    });
-    
-    // Vista previa
-    document.getElementById('previewBtn').addEventListener('click', function() {
-      const formData = new FormData(document.getElementById('personalizationForm'));
-      const parameters = {};
-      
-      for (let [key, value] of formData.entries()) {
-        parameters[key] = value;
-      }
-      
-      applyPersonalizationChanges(parameters);
-      showMessage('Vista previa aplicada. Guarda los cambios para hacerlos permanentes.', 'info', 'fas fa-eye');
-      
-      setTimeout(() => hideMessage(), 3000);
     });
 
-    // Estilos adicionales
-    const additionalStyles = document.createElement('style');
-    additionalStyles.textContent = `
-      .message {
-        display: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        margin-top: 10px;
-      }
-      .message.info {
-        background: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
-      }
-      .message.success {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-      }
-      .message.error {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-      }
-      
-      body[data-theme="dark"] .message.info {
-        background: rgba(13, 202, 240, 0.2);
-        color: #9eeaf9;
-        border-color: rgba(13, 202, 240, 0.3);
-      }
-      body[data-theme="dark"] .message.success {
-        background: rgba(25, 135, 84, 0.2);
-        color: #75b798;
-        border-color: rgba(25, 135, 84, 0.3);
-      }
-      body[data-theme="dark"] .message.error {
-        background: rgba(220, 53, 69, 0.2);
-        color: #ea868f;
-        border-color: rgba(220, 53, 69, 0.3);
-      }
-    `;
-    document.head.appendChild(additionalStyles);
-    
-    console.log('🚀 Perfil cargado con personalización:', window.userPersonalization);
-  </script>
+    // El botón de vista previa ya no es necesario con este flujo, pero lo dejamos por si se reutiliza.
+    // Puedes ocultarlo o eliminarlo del HTML si lo deseas.
+    document.getElementById('previewBtn').addEventListener('click', function() {
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = `<i class="fas fa-info-circle"></i> La vista previa está desactivada. Guarda los cambios para aplicarlos.`;
+        messageDiv.className = 'message info';
+        messageDiv.style.display = 'block';
+        setTimeout(() => { messageDiv.style.display = 'none'; }, 4000);
+    });
+</script>
 </body>
 </html>

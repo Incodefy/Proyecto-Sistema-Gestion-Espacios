@@ -4,7 +4,7 @@ const mysql = require("mysql2/promise");
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "qwertf",
+  password: "David5111",
   database: "incodefy",
   waitForConnections: true,
   connectionLimit: 10,

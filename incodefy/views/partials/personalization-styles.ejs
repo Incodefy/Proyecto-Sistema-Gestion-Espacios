@@ -1,0 +1,92 @@
+<style id="personalization-styles">
+  :root {
+    /* --- 1. Colores y Tema (sin cambios) --- */
+    --primary-color: #1a3c7c;
+    --primary-color-light: #375ca1;
+    --primary-color-dark: #142c59;
+    --background-color: #f8fafc;
+    --text-color: #2c2c2c;
+    --card-background: #ffffff;
+    --border-color: #e2e8f0;
+    --secondary-text-color: #64748b;
+
+    <%-
+      (() => {
+        if (!locals.personalization) return '';
+        let styles = '';
+        const colorVariants = {
+            '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
+            '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
+            '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
+            '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
+            '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
+        };
+        const primaryColor = personalization['theme.primary_color'];
+        if (primaryColor && colorVariants[primaryColor]) {
+            styles += `--primary-color: ${primaryColor} !important;`;
+            styles += `--primary-color-light: ${colorVariants[primaryColor].light} !important;`;
+            styles += `--primary-color-dark: ${colorVariants[primaryColor].dark} !important;`;
+        }
+        if (personalization['theme.mode'] === 'dark') {
+          styles += `
+            --background-color: #181818 !important;
+            --text-color: rgba(241, 241, 241, 0.98) !important;
+            --secondary-text-color: #aab1bb !important;
+            --card-background: #222222 !important;
+            --border-color: #2b2b2b !important;
+          `;
+        }
+        return styles;
+      })()
+    %>
+
+    /* --- 2. Sistema Tipográfico (NUEVO) --- */
+    /* Perfil Mediano (por defecto) */
+    --font-size-base: 16px;      /* Texto normal (p, li, etc.) */
+    --font-size-h1: 2.25rem;     /* Títulos principales (e.g., 36px) */
+    --font-size-h2: 1.75rem;     /* Títulos de sección (e.g., 28px) */
+    --font-size-h3: 1.25rem;     /* Títulos de tarjeta (e.g., 20px) */
+    --font-size-small: 0.875rem; /* Texto secundario, labels (e.g., 14px) */
+    --font-size-btn: 1rem;       /* Texto de botones (e.g., 16px) */
+    --line-height-base: 1.6;
+
+    /* Perfil Pequeño */
+    <% if (locals.personalization && personalization['font.scale'] === 'pequeno') { %>
+      --font-size-base: 13px;
+      --font-size-h1: 1.8rem;
+      --font-size-h2: 1.4rem;
+      --font-size-h3: 1.1rem;
+      --font-size-small: 0.8rem;
+      --font-size-btn: 0.85rem;
+      --line-height-base: 1.5;
+    <% } %>
+
+    /* Perfil Grande */
+    <% if (locals.personalization && personalization['font.scale'] === 'grande') { %>
+      --font-size-base: 19px;
+      --font-size-h1: 2.8rem;
+      --font-size-h2: 2.2rem;
+      --font-size-h3: 1.5rem;
+      --font-size-small: 1rem;
+      --font-size-btn: 1.15rem;
+      --line-height-base: 1.7;
+    <% } %>
+  }
+
+  /* --- 3. Aplicación Base --- */
+  html {
+    font-size: var(--font-size-base) !important;
+  }
+  body {
+    background: var(--background-color);
+    color: var(--text-color);
+    line-height: var(--line-height-base);
+  }
+
+  /* --- 4. Regla para modo oscuro (sin cambios) --- */
+  <% if (locals.personalization && personalization['theme.mode'] === 'dark') { %>
+  .menu-link img {
+    filter: brightness(0) invert(1) !important;
+  }
+  <% } %>
+</style>

@@ -7,7 +7,8 @@ const {
   GetUserCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
 const fetch = require('node-fetch');
-
+const db = require('../db'); // Asegúrate de importar tu conexión a la base de datos
+const requireAuth = require('../middleware/requireAuth');
 const cognitoClient = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION
 });
@@ -122,6 +123,19 @@ router.post("/login", async (req, res) => {
       userAttributes[attr.Name] = attr.Value;
     });
 
+    // Obtener idioma del usuario desde la base de datos
+    let idioma = 'es';
+    let userDb = null;
+    try {
+      const [rows] = await db.query('SELECT * FROM auth_user WHERE email = ?', [userAttributes.email]);
+      userDb = rows[0];
+      if (userDb && userDb.idioma) {
+        idioma = userDb.idioma;
+      }
+    } catch (err) {
+      console.error("❌ Error obteniendo idioma de usuario:", err);
+    }
+
     req.session.user = {
       sub: userAttributes.sub,
       username: userInfo.Username,
@@ -131,8 +145,10 @@ router.post("/login", async (req, res) => {
       refreshToken: tokens.RefreshToken,
       nombre: userAttributes.name || userAttributes.email.split('@')[0],
       email: userAttributes.email,
-      authTime: new Date().toISOString()
+      authTime: new Date().toISOString(),
+      idioma: idioma // Guardar idioma en la sesión
     };
+    req.session.language = idioma;
 
     // Obtener permisos y personalización inicial
     try {
@@ -182,7 +198,8 @@ router.post("/login", async (req, res) => {
     console.log("✅ Sesión creada:", {
       sub: req.session.user.sub,
       email: req.session.user.email,
-      nombre: req.session.user.nombre
+      nombre: req.session.user.nombre,
+      idioma: req.session.user.idioma
     });
 
     req.flash("success", `¡Bienvenido ${req.session.user.nombre}!`);
@@ -217,6 +234,24 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// Cambiar idioma desde el perfil y guardar en la base de datos y sesión
+router.post('/perfil/idioma', requireAuth, async (req, res) => {
+  const lang = req.body.lang;
+  const userId = req.session.user.id || req.session.user.user_id || req.session.user.sub; // Ajusta según tu modelo
+  try {
+    // Actualiza el idioma en la base de datos
+    await db.query('UPDATE auth_user SET idioma = ? WHERE email = ?', [lang, req.session.user.email]);
+    // Actualiza la sesión
+    req.session.language = lang;
+    req.session.user.idioma = lang;
+    res.cookie('i18next', lang, { maxAge: 900000, httpOnly: true });
+    res.redirect('back');
+  } catch (err) {
+    console.error("❌ Error actualizando idioma:", err);
+    res.redirect('back');
+  }
+});
+
 // Logout
 router.get("/logout", (req, res) => {
   console.log("📤 Usuario cerrando sesión:", req.session.user?.email);
@@ -240,7 +275,8 @@ router.get("/profile", (req, res) => {
       sub: req.session.user.sub,
       email: req.session.user.email,
       nombre: req.session.user.nombre,
-      username: req.session.user.username
+      username: req.session.user.username,
+      idioma: req.session.user.idioma
     }
   });
 });

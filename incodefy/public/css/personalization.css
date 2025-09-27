@@ -1,0 +1,10 @@
+:root {
+  --primary-color: #1a3c7c;
+  --primary-color-light: #375ca1;
+  --primary-color-dark: #142c59;
+  --user-font-size: 16px;
+}
+
+html, body {
+  font-size: var(--user-font-size);
+}
