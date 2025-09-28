@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard de Administración</title>
+    <title><%= t('dashboard.title') %></title>
     <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/footer.css">
@@ -24,9 +24,9 @@
                 <div class="header-section">
                     <h1>
                         <i class="fas fa-chart-line me-2 header-icon"></i>
-                        Dashboard de Administración
+                        <%= t('dashboard.header') %>
                     </h1>
-                    <p>Panel de métricas y notificaciones en tiempo real</p>
+                    <p><%= t('dashboard.subheader') %></p>
                 </div>
 
                 <!-- Filtros -->
@@ -38,18 +38,18 @@
                                 <div class="dropdown">
                                     <button class="btn btn-primary dropdown-toggle" type="button"
                                             data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                                        <i class="fas fa-calendar-alt me-2"></i>Rango fecha
+                                        <i class="fas fa-calendar-alt me-2"></i><%= t('dashboard.filters.date_range') %>
                                     </button>
                                     <div class="dropdown-menu">
                                         <div class="mb-3">
                                             <label for="fechaInicioFiltro" class="form-label">
-                                                <div class="nombre"> Desde </div>
+                                                <div class="nombre"> <%= t('dashboard.filters.from') %> </div>
                                             </label>
                                             <input type="date" class="form-control" id="fechaInicioFiltro" name="fecha_inicio">
                                         </div>
                                         <div class="mb-1">
                                             <label for="fechaFinFiltro" class="form-label">
-                                                <div class="nombre"> Hasta </div>
+                                                <div class="nombre"> <%= t('dashboard.filters.to') %> </div>
                                             </label>
                                             <input type="date" class="form-control" id="fechaFinFiltro" name="fecha_fin">
                                         </div>
@@ -62,13 +62,13 @@
                                 <div class="dropdown">
                                     <button class="btn btn-primary dropdown-toggle" type="button"
                                             data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                                        <i class="fas fa-stethoscope me-2"></i>Especialidades
+                                        <i class="fas fa-stethoscope me-2"></i><%= t('dashboard.filters.specialties') %>
                                     </button>
                                     <ul class="dropdown-menu" style="min-width: 260px;">
                                         <li>
                                             <div class="form-check title dropdown-item">
                                                 <input class="form-check-input" type="checkbox" id="selectAllEspecialidades">
-                                                <span class="form-check-label fw-bold">Seleccionar Todo</span>
+                                                <span class="form-check-label fw-bold"><%= t('dashboard.filters.select_all') %></span>
                                             </div>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
@@ -82,13 +82,13 @@
                                 <div class="dropdown">
                                     <button class="btn btn-primary dropdown-toggle" type="button"
                                             data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                                        <i class="fas fa-door-open me-2"></i>Boxes
+                                        <i class="fas fa-door-open me-2"></i><%= t('dashboard.filters.boxes') %>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-scrollable p-0">
                                         <li class="dropdown-header-fixed p-2">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" id="selectAllBoxes">
-                                                <span class="form-check-label fw-bold">Seleccionar Todo</span>
+                                                <span class="form-check-label fw-bold"><%= t('dashboard.filters.select_all') %></span>
                                             </div>
                                             <hr class="dropdown-divider mt-2 mb-0">
                                         </li>
@@ -102,7 +102,7 @@
                             <!-- Botón Resetear -->
                             <div class="col-auto">
                                 <button type="button" id="resetearFiltros" class="btn btn-outline-primary">
-                                    <i class="fas fa-refresh me-2"></i>Resetear
+                                    <i class="fas fa-refresh me-2"></i><%= t('dashboard.filters.reset') %>
                                 </button>
                             </div>
                         </div>
@@ -111,71 +111,71 @@
 
                 <!-- KPIs -->
                 <div class="dashboard-section-title-container dashboard-animate-on-load" style="animation-delay: 100ms;">
-                    <h2 class="dashboard-section-title">Indicadores Clave</h2>
+                    <h2 class="dashboard-section-title"><%= t('dashboard.kpi.title') %></h2>
                 </div>
                 
                 <div class="row gy-4 dashboard-kpi-container">
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="dashboard-kpi-card">
-                            <div class="dashboard-kpi-title"><i class="fas fa-chart-pie me-2"></i>Ocupación de boxes</div>
+                            <div class="dashboard-kpi-title"><i class="fas fa-chart-pie me-2"></i><%= t('dashboard.kpi.occupation') %></div>
                             <div class="dashboard-kpi-percentage" id="ocupacion-actual">--</div>
-                            <div class="dashboard-kpi-subtext" id="ocupacion-subtext">Cargando datos...</div>
+                            <div class="dashboard-kpi-subtext" id="ocupacion-subtext"><%= t('dashboard.loading') %></div>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="dashboard-kpi-card">
-                            <div class="dashboard-kpi-title"><i class="fas fa-clipboard-list me-2"></i>Total de consultas</div>
+                            <div class="dashboard-kpi-title"><i class="fas fa-clipboard-list me-2"></i><%= t('dashboard.kpi.total_appointments') %></div>
                             <div class="dashboard-kpi-percentage" id="total-consultas">--</div>
-                            <div class="dashboard-kpi-subtext" id="consultas-subtext">Cargando datos...</div>
+                            <div class="dashboard-kpi-subtext" id="consultas-subtext"><%= t('dashboard.loading') %></div>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="dashboard-kpi-card">
-                            <div class="dashboard-kpi-title"><i class="fas fa-chart-line me-2"></i>Promedio diario</div>
+                            <div class="dashboard-kpi-title"><i class="fas fa-chart-line me-2"></i><%= t('dashboard.kpi.daily_average') %></div>
                             <div class="dashboard-kpi-percentage" id="promedio-consultas-diario">--</div>
-                            <div class="dashboard-kpi-subtext" id="promedio-subtext">Cargando datos...</div>
+                            <div class="dashboard-kpi-subtext" id="promedio-subtext"><%= t('dashboard.loading') %></div>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="dashboard-kpi-card">
-                            <div class="dashboard-kpi-title"><i class="fas fa-trophy me-2"></i>Especialidad más demandada</div>
+                            <div class="dashboard-kpi-title"><i class="fas fa-trophy me-2"></i><%= t('dashboard.kpi.most_demanded_specialty') %></div>
                             <div class="dashboard-kpi-percentage" id="especialidad-demandada">--</div>
-                            <div class="dashboard-kpi-subtext" id="especialidad-subtext">Cargando datos...</div>
+                            <div class="dashboard-kpi-subtext" id="especialidad-subtext"><%= t('dashboard.loading') %></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Gráficos -->
                 <div class="dashboard-section-title-container dashboard-animate-on-load" style="animation-delay: 400ms;">
-                    <h2 class="dashboard-section-title">Análisis Visual</h2>
+                    <h2 class="dashboard-section-title"><%= t('dashboard.charts.title') %></h2>
                 </div>
 
                 <div class="dashboard-visualization-row">
                     <div class="row gy-4 compact-chart-row">
                         <div class="col-12 col-sm-6 col-lg-6 col-xl-4">
                             <div class="dashboard-chart-container-card">
-                                <div class="dashboard-chart-title"><i class="fas fa-chart-bar me-2"></i>Consultas por Especialidad</div>
+                                <div class="dashboard-chart-title"><i class="fas fa-chart-bar me-2"></i><%= t('dashboard.charts.appointments_by_specialty') %></div>
                                 <canvas id="consultasEspecialidadChart"></canvas>
                                 <div id="consultasEspecialidadPlaceholder" class="dashboard-chart-container-placeholder">
-                                    <i class="fas fa-chart-bar"></i><p><strong>No hay datos</strong></p>
+                                    <i class="fas fa-chart-bar"></i><p><strong><%= t('dashboard.charts.no_data') %></strong><br><small><%= t('dashboard.charts.no_data_desc') %></small></p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 col-sm-6 col-lg-6 col-xl-4">
                             <div class="dashboard-chart-container-card">
-                                <div class="dashboard-chart-title"><i class="fas fa-calendar-week me-2"></i>Consultas por día</div>
+                                <div class="dashboard-chart-title"><i class="fas fa-calendar-week me-2"></i><%= t('dashboard.charts.appointments_by_day') %></div>
                                 <canvas id="consultasPorDiaChart"></canvas>
                                 <div id="consultasPorDiaPlaceholder" class="dashboard-chart-container-placeholder">
-                                    <i class="fas fa-calendar-week"></i><p><strong>No hay datos</strong></p>
+                                    <i class="fas fa-calendar-week"></i><p><strong><%= t('dashboard.charts.no_data') %></strong><br><small><%= t('dashboard.charts.no_data_desc') %></small></p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 col-sm-12 col-lg-12 col-xl-4">
                             <div class="dashboard-chart-container-card">
-                                <div class="dashboard-chart-title"><i class="fas fa-user-md me-2"></i>Rendimiento de médicos</div>
+                                <div class="dashboard-chart-title"><i class="fas fa-user-md me-2"></i><%= t('dashboard.charts.doctor_performance') %></div>
                                 <canvas id="rendimientoMedicosChart"></canvas>
                                 <div id="rendimientoMedicosPlaceholder" class="dashboard-chart-container-placeholder">
-                                    <i class="fas fa-user-md"></i><p><strong>No hay datos</strong></p>
+                                    <i class="fas fa-user-md"></i><p><strong><%= t('dashboard.charts.no_data') %></strong><br><small><%= t('dashboard.charts.no_data_desc') %></small></p>
                                 </div>
                             </div>
                         </div>
@@ -191,6 +191,14 @@
     <script src="/js/dashboard.js"></script>
     <script>
         window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+        window.i18nDashboard = {
+            noData: "<%= t('dashboard.charts.no_data') %>",
+            applyFilters: "<%= t('dashboard.charts.no_data_desc') %>",
+            ocupacionSubtext: "<%= t('common.box_usage') %>",
+            periodSelected: "<%= t('dashboard.kpi.appointments_per_day') %>",
+            perDay: "<%= t('dashboard.kpi.appointments_per_day') %>",
+            currentPeriod: "<%= t('common.visual_analysis') %>"
+        };
     </script>
 </body>
 </html>

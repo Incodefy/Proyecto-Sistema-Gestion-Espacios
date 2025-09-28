@@ -56,23 +56,22 @@ router.get("/consultas/en-curso/api", async (req, res) => {
       ahora,
     ]);
 
-    const data = results.map((a) => ({
-      idagenda: a.idagenda,
-      fecha: a.fecha
-        ? new Date(a.fecha).toISOString().split("T")[0]
-        : null,
-      horainicio: a.horainicio || "",
-      horafin: a.horafin || "",
-      box: a.box || "-",
-      medico: a.medico || "-",
-      tipoconsulta: a.tipoconsulta || "—",
-      estado_id: a.estado_id,
-      estado:
-        a.estado ||
-        (a.estado_id === ESTADO_REALIZADA_ID
-          ? "Confirmada"
-          : "Pendiente"),
-    }));
+    const data = results.map((a) => {
+      const estadoKey = a.estado_id === ESTADO_REALIZADA_ID ? 'confirmed' : 'pending';
+      return {
+        idagenda: a.idagenda,
+        fecha: a.fecha
+          ? new Date(a.fecha).toISOString().split("T")[0]
+          : null,
+        horainicio: a.horainicio || "",
+        horafin: a.horafin || "",
+        box: a.box || "-",
+        medico: a.medico || "-",
+        tipoconsulta: a.tipoconsulta || "—",
+        estado_id: a.estado_id,
+        estado: req.t(`common.${estadoKey}`)
+      };
+    });
 
     const slot = data.length
       ? `${data[0].horainicio} – ${data[0].horafin}`

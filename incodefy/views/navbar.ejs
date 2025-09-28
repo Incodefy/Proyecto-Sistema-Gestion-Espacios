@@ -17,9 +17,9 @@
       <!-- Dashboard -->
       <% if (user.permissions.includes('dashboard.read') || user.permissions.includes('admin.users')) { %>
         <li>
-          <a href="/dashboard" class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" data-tooltip="Dashboard">
+          <a href="/dashboard" class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" data-tooltip="<%= t('navbar.dashboard') %>">
             <img src="/icons/dashboard.webp" alt="">
-            <span>Dashboard</span>
+            <span><%= t('navbar.dashboard') %></span>
           </a>
         </li>
       <% } %>
@@ -27,9 +27,9 @@
       <!-- Agenda -->
       <% if (user.permissions.includes('agenda.read') || user.permissions.includes('admin.users')) { %>
         <li>
-          <a href="/agenda" class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" data-tooltip="Agenda">
+          <a href="/agenda" class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" data-tooltip="<%= t('navbar.agenda') %>">
             <img src="/icons/calendario.webp" alt="">
-            <span>Agenda</span>
+            <span><%= t('navbar.agenda') %></span>
           </a>
         </li>
       <% } %>
@@ -37,9 +37,9 @@
       <!-- Box -->
       <% if (user.permissions.includes('box.read') || user.permissions.includes('admin.users')) { %>
         <li>
-          <a href="/box" class="menu-link <%= (currentPath.startsWith('/box') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="Box">
+          <a href="/box" class="menu-link <%= (currentPath.startsWith('/box') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="<%= t('navbar.box') %>">
             <img src="/icons/box.webp" alt="">
-            <span>Box</span>
+            <span><%= t('navbar.box') %></span>
           </a>
         </li>
       <% } %>
@@ -48,24 +48,24 @@
     <!-- Notificaciones -->
     <% if (user && (user.permissions?.includes('notificaciones.read') || user.permissions?.includes('admin.users'))) { %>
       <li>
-        <a href="/historial-notificaciones" class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" data-tooltip="Notificaciones">
+        <a href="/historial-notificaciones" class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" data-tooltip="<%= t('navbar.notifications') %>">
           <img src="/icons/notificaciones.webp" alt="" class="noti">
-          <span>Notificaciones</span>
+          <span><%= t('navbar.notifications') %></span>
         </a>
       </li>
     <% } %>
 
     <li>
-      <a href="/perfil" class="menu-link <%= currentPath.startsWith('/perfil') ? 'active' : '' %>" data-tooltip="Notificaciones">
+      <a href="/perfil" class="menu-link <%= currentPath.startsWith('/perfil') ? 'active' : '' %>" data-tooltip="<%= t('navbar.profile') %>">
         <img src="/icons/perfil.png" alt="" class="perfil">
-        <span>Perfil</span>
+        <span><%= t('navbar.profile') %></span>
       </a>
     </li>
     
     <!-- Logout siempre visible -->
     <li>
       <a href="/logout" class="logout-button">
-        <span>Cerrar sesión</span>
+        <span><%= t('navbar.logout') %></span>
       </a>
     </li>
   </ul>

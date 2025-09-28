@@ -5,6 +5,17 @@ const db = require("../db"); // tu conexión a la BD (MySQL, Postgres, etc.)
 const checkPermission = require("../middleware/checkPermission");
 
 // --- Helpers ---
+
+// Función para normalizar y crear claves de traducción
+const toKey = (str) => {
+  if (!str) return '';
+  return str.toLowerCase()
+    .normalize("NFD") // Descomponer tildes y caracteres especiales
+    .replace(/[\u0300-\u036f]/g, "") // Eliminar tildes
+    .replace(/\s+/g, '_'); // Reemplazar espacios con guiones bajos
+};
+
+
 function obtenerSemanaActual() {
   const hoy = new Date();
   const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes
@@ -90,10 +101,10 @@ router.get("/dashboard/filtros-iniciales", async (req, res) => {
     // Consultar boxes con nombres de columnas correctos según los modelos Django
     const [boxes] = await db.query("SELECT idbox AS id, nombre FROM box");
 
-    // Formatear datos consistentemente
+    // Formatear datos consistentemente y TRADUCIRLOS
     const especialidadesFormatted = especialidades.map(esp => ({
       id: esp.id,
-      nombre: esp.nombre
+      nombre: req.t(`specialties.${toKey(esp.nombre)}`, esp.nombre) // Usar t() con fallback al nombre original
     }));
 
     const boxesFormatted = boxes.map(box => ({
@@ -131,8 +142,9 @@ router.post("/dashboard/datos", async (req, res) => {
 
     console.log(`Procesando dashboard con filtros:`, { especialidades, boxes, fecha_inicio, fecha_fin });
 
-    const kpis = await calcularKpis(especialidades, boxes, fecha_inicio, fecha_fin);
-    const graficos = await calcularGraficos(especialidades, boxes, fecha_inicio, fecha_fin);
+    // Pasar req para acceder a la función de traducción t()
+    const kpis = await calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin);
+    const graficos = await calcularGraficos(req, especialidades, boxes, fecha_inicio, fecha_fin);
 
     res.json({ success: true, kpis, graficos });
   } catch (err) {
@@ -144,7 +156,7 @@ router.post("/dashboard/datos", async (req, res) => {
 // ==========================
 // 4. Función: calcular KPIs (MEJORADA)
 // ==========================
-async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
+async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   // **NUEVO: Calcular período anterior para comparaciones**
   const periodoAnterior = calcularPeriodoAnterior(fechaInicio, fechaFin);
   
@@ -215,7 +227,7 @@ async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
   variacionPromedioDiario = parseFloat((promedioConsultasDiario - promedioAnterior).toFixed(1));
 
   // **CORREGIDO: Especialidad más demandada con tendencia - usando tabla 'medico'**
-  const [especialidadTop] = await db.query(
+  const [especialidadTopRows] = await db.query(
     `SELECT e.nombre, COUNT(a.idagenda) AS consultas
      FROM agenda a
      JOIN medico m ON a.idmedico = m.idmedico
@@ -226,6 +238,7 @@ async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
      LIMIT 1`,
     params
   );
+  const especialidadTop = especialidadTopRows[0];
 
   let tendenciaEspecialidad = "igual";
   if (especialidadTop && periodoAnterior) {
@@ -240,14 +253,14 @@ async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
        JOIN especialidad e ON m.idespecialidad = e.idespecialidad
        ${filtrosAnt} AND e.nombre = ?
        GROUP BY e.nombre`,
-      [...paramsAnt, especialidadTop[0].nombre]
+      [...paramsAnt, especialidadTop.nombre]
     );
     
     if (especialidadAnt && especialidadAnt.length > 0) {
       const consultasAnteriores = especialidadAnt[0].consultas;
-      if (especialidadTop[0].consultas > consultasAnteriores) {
+      if (especialidadTop.consultas > consultasAnteriores) {
         tendenciaEspecialidad = "sube";
-      } else if (especialidadTop[0].consultas < consultasAnteriores) {
+      } else if (especialidadTop.consultas < consultasAnteriores) {
         tendenciaEspecialidad = "baja";
       }
     }
@@ -257,23 +270,23 @@ async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
     // **KPI principal**
     total_consultas: totalActual.total,
     variacion_consultas: variacionConsultas,
-    consultas_subtext: `En ${diasPeriodo} ${diasPeriodo === 1 ? 'día' : 'días'}`,
+    consultas_subtext: req.t('dashboard.kpi.days_in_period', { count: diasPeriodo }),
 
     // **Ocupación**
     ocupacion_actual: ocupacionActual,
     variacion_ocupacion: variacionOcupacion,
-    ocupacion_subtext: `Capacidad total: ${total_boxes} boxes`,
+    ocupacion_subtext: req.t('dashboard.kpi.total_capacity', { count: total_boxes }),
 
     // **NUEVO: Promedio diario**
     promedio_consultas_diario: promedioConsultasDiario,
     variacion_promedio_diario: variacionPromedioDiario,
-    promedio_subtext: "Consultas por día",
+    promedio_subtext: req.t('dashboard.kpi.appointments_per_day'),
 
     // **Especialidad top mejorada**
-    especialidad_mas_demandada: especialidadTop[0]?.nombre || null,
-    consultas_especialidad_top: especialidadTop[0]?.consultas || 0,
+    especialidad_mas_demandada: especialidadTop ? req.t(`specialties.${toKey(especialidadTop.nombre)}`, especialidadTop.nombre) : null,
+    consultas_especialidad_top: especialidadTop?.consultas || 0,
     tendencia_especialidad: tendenciaEspecialidad,
-    especialidad_subtext: especialidadTop[0] ? `${especialidadTop[0].consultas} consultas` : "",
+    especialidad_subtext: especialidadTop ? req.t('dashboard.kpi.appointments_count', { count: especialidadTop.consultas }) : "",
 
     // **NUEVOS: Información adicional**
     total_boxes_disponibles: total_boxes,
@@ -291,7 +304,7 @@ async function calcularKpis(especialidades, boxes, fechaInicio, fechaFin) {
 // ==========================
 // 5. Función: calcular Gráficos (MEJORADA)
 // ==========================
-async function calcularGraficos(especialidades, boxes, fechaInicio, fechaFin) {
+async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFin) {
   const { filtros, params } = construirFiltrosSQL(especialidades, boxes, fechaInicio, fechaFin);
 
   // **CORREGIDO: Consultas por especialidad - usando tabla 'medico'**
@@ -307,7 +320,7 @@ async function calcularGraficos(especialidades, boxes, fechaInicio, fechaFin) {
   );
 
   const consultasPorEspecialidad = espRows.length ? {
-    labels: espRows.map((e) => e.nombre),
+    labels: espRows.map((e) => req.t(`specialties.${toKey(e.nombre)}`, e.nombre)),
     data: espRows.map((e) => e.consultas),
     total: espRows.reduce((sum, e) => sum + e.consultas, 0) // **NUEVO**
   } : null;
@@ -322,7 +335,10 @@ async function calcularGraficos(especialidades, boxes, fechaInicio, fechaFin) {
     params
   );
   
-  const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const dias = [
+    req.t('days.monday'), req.t('days.tuesday'), req.t('days.wednesday'), 
+    req.t('days.thursday'), req.t('days.friday'), req.t('days.saturday'), req.t('days.sunday')
+  ];
   const consultasPorDia = Array(7).fill(0);
   
   diaRows.forEach((row) => {
@@ -349,7 +365,7 @@ async function calcularGraficos(especialidades, boxes, fechaInicio, fechaFin) {
   const rendimientoMedicos = medRows.length ? {
     labels: medRows.map((m) => m.nombre),
     data: medRows.map((m) => m.consultas),
-    especialidades: medRows.map((m) => m.especialidad), // **NUEVO**
+    especialidades: medRows.map((m) => req.t(`specialties.${toKey(m.especialidad)}`, m.especialidad)), // **NUEVO Y TRADUCIDO**
     promedio: parseFloat((medRows.reduce((sum, m) => sum + m.consultas, 0) / medRows.length).toFixed(1)) // **NUEVO**
   } : null;
 

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
-  <title>Detalle Box</title>
+  <title><%= t('detalle_box.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/detalle_box.css">
   <link rel="stylesheet" href="/css/footer.css">
@@ -42,7 +42,7 @@
         <% } %>
     </style>
 </head>
-<body data-box-id="<%= box_id %>">
+<body data-box-id="<%= box_id %>" data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
     <div class="container-fluid">
         <div class="row">
             <%- include("navbar") %>
@@ -59,28 +59,28 @@
                                 <div class="card-icon me-3">
                                     <i class="fas fa-info-circle"></i>
                                 </div>
-                                <h3 class="card-title mb-4">Información del Box</h3>
+                                <h3 class="card-title mb-4"><%= t('common.box_info') %></h3>
                             </div>
                             <div class="info-grid">
                                 <div class="info-item">
                                     <div class="info-icon">
                                         <i class="fas fa-tag"></i>
                                     </div>
-                                    <span class="info-label">Nombre:</span>
+                                    <span class="info-label"><%= t('common.name') %>:</span>
                                     <span class="info-value"> <%= nombre %></span>
                                 </div>
                                 <div class="info-item">
                                     <div class="info-icon">
                                         <i class="fas fa-map-marker-alt"></i>
                                     </div>
-                                    <span class="info-label">Pasillo:</span>
+                                    <span class="info-label"><%= t('common.corridor_label') %>:</span>
                                     <span class="info-value"><%= idpasillo %></span>
                                 </div>
                                 <div class="info-item">
                                     <div class="info-icon">
                                         <i class="fas fa-check-circle"></i>
                                     </div>
-                                    <span class="info-label">Estado:</span>
+                                    <span class="info-label"><%= t('common.state_label') %>:</span>
                                     <span class="info-value">
                                         <span class="status-badge status-activo"> <%= estado %> </span>
                                     </span>
@@ -88,7 +88,7 @@
                             </div>
                             <button class="instruments-btn" onclick="abrirModalInstrumentos()">
                                 <i class="fas fa-stethoscope"></i>
-                                Ver Instrumentos del Box
+                                <%= t('common.box_instruments') %>
                             </button>
                         </div>
                     </div>
@@ -98,21 +98,21 @@
                                 <div class="card-icon me-3">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
-                                <h3 class="card-title mb-4">Seleccionar Fecha</h3>
+                                <h3 class="card-title mb-4"><%= t('common.select_date_label') %></h3>
                             </div>
                             <div class="date-controls">
-                                <button class="date-btn" onclick="cambiarFecha(-1)" aria-label="Día anterior" title="Día anterior">
+                                <button class="date-btn" onclick="cambiarFecha(-1)" aria-label="<%= t('common.previous_day') %>" title="<%= t('common.previous_day') %>">
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
 
                                 <div class="current-date" id="fechaLabel"></div>
 
-                                <button class="date-btn" onclick="cambiarFecha(1)" aria-label="Día siguiente" title="Día siguiente">
+                                <button class="date-btn" onclick="cambiarFecha(1)" aria-label="<%= t('common.next_day') %>" title="<%= t('common.next_day') %>">
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                             </div>
                             <div class="mt-3 text-center">
-                                <input type="date" class="date-input" id="selectorFecha" aria-label="Seleccionar fecha" onchange="seleccionarFecha(this.value)">
+                                <input type="date" class="date-input" id="selectorFecha" aria-label="<%= t('common.select_date_input') %>" onchange="seleccionarFecha(this.value)">
                             </div>
                         </div>
                     </div>
@@ -120,24 +120,24 @@
 
                 <div class="custom-tabs fade-in">
                     <button class="tab-btn active" onclick="mostrarTab('consultas')">
-                        <i class="fas fa-clipboard-list"></i> Consultas del Día
+                        <i class="fas fa-clipboard-list"></i> <%= t('common.appointments_today') %>
                     </button>
                     <button class="tab-btn" onclick="mostrarTab('estadisticas')">
-                        <i class="fas fa-chart-bar"></i> Estadísticas y Métricas
+                        <i class="fas fa-chart-bar"></i> <%= t('common.statistics_metrics') %>
                     </button>
                 </div>
 
                 <!-- Contenido Consultas -->
                 <div id="tab-consultas" class="tab-content active fade-in">
                     <div class="enhanced-table">
-                        <table class="table table-hover mb-0" aria-label="Consultas del día">
+                        <table class="table table-hover mb-0" aria-label="<%= t('common.appointments_today') %>">
                             <thead>
                                 <tr>
-                                    <th scope="col"><i class="fas fa-clock" aria-hidden="true"></i> Hora</th>
-                                    <th scope="col"><i class="fas fa-user-md" aria-hidden="true"></i> Médico</th>
-                                    <th scope="col"><i class="fas fa-heartbeat" aria-hidden="true"></i> Especialidad</th>
-                                    <th scope="col"><i class="fas fa-info-circle" aria-hidden="true"></i> Estado</th>
-                                    <th scope="col"><i class="fas fa-notes-medical" aria-hidden="true"></i> Tipo Consulta</th>
+                                    <th scope="col"><i class="fas fa-clock" aria-hidden="true"></i> <%= t('common.consult_time') %></th>
+                                    <th scope="col"><i class="fas fa-user-md" aria-hidden="true"></i> <%= t('common.doctor') %></th>
+                                    <th scope="col"><i class="fas fa-heartbeat" aria-hidden="true"></i> <%= t('common.specialty') %></th>
+                                    <th scope="col"><i class="fas fa-info-circle" aria-hidden="true"></i> <%= t('common.state') %></th>
+                                    <th scope="col"><i class="fas fa-notes-medical" aria-hidden="true"></i> <%= t('common.type') %></th>
                                 </tr>
                             </thead>
                             <tbody id="tablaHorarios"></tbody>
@@ -152,25 +152,25 @@
                         <div class="col-6 col-lg-3">
                             <div class="metric-card">
                                 <div class="metric-value" id="totalConsultas"></div>
-                                <div class="metric-label">Total Consultas</div>
+                                <div class="metric-label"><%= t('common.total_appointments_metric') %></div>
                             </div>
                         </div>
                         <div class="col-6 col-lg-3">
                             <div class="metric-card">
                                 <div class="metric-value" id="usoBox"><span></span></div>
-                                <div class="metric-label">Uso del Box</div>
+                                <div class="metric-label"><%= t('common.box_usage') %></div>
                             </div>
                         </div>
                         <div class="col-6 col-lg-3">
                             <div class="metric-card">
                                 <div class="metric-value" id="noRealizadas"></div>
-                                <div class="metric-label">No Realizadas</div>
+                                <div class="metric-label"><%= t('common.not_done') %></div>
                             </div>
                         </div>
                         <div class="col-6 col-lg-3">
                             <div class="metric-card">
                                 <div class="metric-value" id="cumplimiento"></div>
-                                <div class="metric-label">Cumplimiento</div>
+                                <div class="metric-label"><%= t('common.compliance') %></div>
                             </div>
                         </div>
                     </div>
@@ -179,13 +179,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="chart-card">
-                                <h4 class="chart-title">Uso del Box</h4>
+                                <h4 class="chart-title"><%= t('common.box_usage_chart') %></h4>
                                 <canvas id="graficoUso" style="max-height: 350px;"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="chart-card">
-                                <h4 class="chart-title">Cumplimiento de Consultas</h4>
+                                <h4 class="chart-title"><%= t('common.compliance_chart') %></h4>
                                 <canvas id="graficoCumplimiento" style="max-height: 350px;"></canvas>
                             </div>
                         </div>
@@ -199,22 +199,22 @@
                     <div class="modal-header-enhanced">
                         <h3 class="modal-title-enhanced">
                             <i class="fas fa-stethoscope"></i>
-                            Instrumentos del Box
+                            <%= t('common.box_instruments') %>
                         </h3>
-                        <button class="close-btn" onclick="cerrarModalInstrumentos()" aria-label="Cerrar modal">
+                        <button class="close-btn" onclick="cerrarModalInstrumentos()" aria-label="<%= t('common.close') %>">
                             <i class="fas fa-times" aria-hidden="true"></i>
                         </button>
                     </div>
 
                     <!-- Tabs de categoría -->
-                    <div class="instrument-tabs" role="tablist" aria-label="Categorías de instrumentos">
+                    <div class="instrument-tabs" role="tablist" aria-label="<%= t('detalle_box.instrument_categories_aria') %>">
                         <button id="tab-medico" class="tab-btn active" role="tab" aria-selected="true"
                                 onclick="filtrarInstrumentos('MEDICO')" aria-controls="lista-instrumentos">
-                            <i class="fas fa-stethoscope"></i> Médicos
+                            <i class="fas fa-stethoscope"></i> <%= t('common.medical_instruments') %>
                         </button>
                         <button id="tab-inmobiliario" class="tab-btn" role="tab" aria-selected="false"
                                 onclick="filtrarInstrumentos('INMOBILIARIO')" aria-controls="lista-instrumentos">
-                            <i class="fas fa-chair"></i> Inmobiliario
+                            <i class="fas fa-chair"></i> <%= t('common.furniture') %>
                         </button>
                     </div>
 
@@ -228,9 +228,9 @@
                                     </li>
                                 <% }) %>
                             </ul>
-                            <p id="msg-vacio" class="muted" style="display:none;">No hay elementos en esta categoría.</p>
+                            <p id="msg-vacio" class="muted" style="display:none;"><%= t('common.no_items_in_category') %></p>
                         <% } else { %>
-                            <p>No se han registrado instrumentos para este box.</p>
+                            <p><%= t('common.no_instruments_registered') %></p>
                         <% } %>
                     </div>
                 </div>
@@ -246,6 +246,13 @@
     <script src="/js/detalle_box.js?v=<%= Date.now() %>"></script>
     <script>
         window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+        window.translations = {
+            noData: "<%= t('common.no_data') %>",
+            usage: "<%= t('common.box_usage') %>",
+            notDone: "<%= t('common.not_done') %>",
+            compliance: "<%= t('common.compliance') %>",
+            appointments: "<%= t('common.appointments') %>"
+        };
     </script>
 </body>
 </html>

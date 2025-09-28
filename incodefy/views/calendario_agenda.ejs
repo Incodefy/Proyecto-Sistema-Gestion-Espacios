@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
     <head>
         <meta charset="UTF-8">
-        <title>Agenda Médica</title>
+        <title><%= t('calendar.title') %></title>
         <link rel="stylesheet" href="/css/navbar.css">
         <link rel="stylesheet" href="/css/calendario.css">
         <link rel="stylesheet" href="/css/footer.css">
@@ -23,14 +23,14 @@
 
                         <div class="select-group">
                             <select id="selectParent" onchange="filtrarSubentidades()">
-                                <option value=""><%= config.select_parent_placeholder %></option>
+                                <option value=""><%= t('calendar.select_parent_placeholder', { parent: tipo }) %></option>
                                 <% config.parent_items.forEach(item => { %>
                                     <option value="<%= item.id %>"><%= item.nombre %></option>
                                 <% }); %>
                             </select>
 
                             <select id="selectEntidad" onchange="cambiarEntidad()">
-                                <option value=""><%= config.select_entidad_placeholder %></option>
+                                <option value=""><%= t('calendar.select_entity_placeholder', { entity: tipo }) %></option>
                                 <% config.entidad_items.forEach(item => { %>
                                     <option value="<%= item.id %>" data-parent="<%= item.parent_id %>"><%= item.display_name %></option>
                                 <% }); %>
@@ -40,37 +40,37 @@
 
                     <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 15px; gap: 20px; flex-wrap: wrap;">
                         <div class="tipo-selector">
-                            <label><input type="radio" name="tipoUsuario" value="Médica" checked> Médico</label>
-                            <label><input type="radio" name="tipoUsuario" value="No médica"> No médico</label>
+                            <label><input type="radio" name="tipoUsuario" value="Médica" checked> <%= t('common.medical') %></label>
+                            <label><input type="radio" name="tipoUsuario" value="No médica"> <%= t('common.non_medical') %></label>
                         </div>
                         <!-- Botón para abrir el modal -->
-                        <button id="btnAgendar" class="btn-agendar">Hacer agendación</button>
+                        <button id="btnAgendar" class="btn-agendar"><%= t('calendar.schedule_button') %></button>
 
                         <!-- Modal -->
                         <div id="modalAgendar" class="modal">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <span class="close" id="closeModal">&times;</span>
-                                    <h2>Agendar Consulta Médica</h2>
+                                    <h2><%= t('calendar.modal.title') %></h2>
                                 </div>
                                 
                                 <div class="form-container">
                                     <form id="formAgendar" method="post" action="">
-                                        <div class="section-title">📍 Ubicación</div>
+                                        <div class="section-title">📍 <%= t('calendar.modal.location') %></div>
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label for="selectPasillo">Selecciona Pasillo:</label>
+                                                <label for="selectPasillo"><%= t('common.select_corridor') %>:</label>
                                                 <select name="pasillo" id="selectPasillo" onchange="filtrarBoxes()" required>
-                                                    <option value="">-- Selecciona un pasillo --</option>
+                                                    <option value=""><%= t('calendar.modal.select_corridor_placeholder') %></option>
                                                     <% pasillos.forEach(pasillo => { %>
                                                         <option value="<%= pasillo.idpasillo %>"><%= pasillo.nombre %></option>
                                                     <% }); %>
                                                 </select>
                                             </div>
                                             <div class="form-group">
-                                                <label for="selectBox">Selecciona Box:</label>
+                                                <label for="selectBox"><%= t('common.select_box') %>:</label>
                                                 <select name="box" id="selectBox" required>
-                                                    <option value="">-- Selecciona un box --</option>
+                                                    <option value=""><%= t('calendar.modal.select_box_placeholder') %></option>
                                                     <% boxes.forEach(box => { %>
                                                         <option value="<%= box.idbox %>" data-parent="<%= box.idpasillo %>">
                                                             <% if (box.nombre) { %>
@@ -84,21 +84,21 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="section-title">👨‍⚕️ Personal Médico</div>
+                                        <div class="section-title">👨‍⚕️ <%= t('calendar.modal.medical_staff') %></div>
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label for="selectEspecialidad">Selecciona Especialidad:</label>
+                                                <label for="selectEspecialidad"><%= t('common.select_specialty') %>:</label>
                                                 <select name="especialidad" id="selectEspecialidad" onchange="filtrarMedicos()" required>
-                                                    <option value="">-- Selecciona una especialidad --</option>
+                                                    <option value=""><%= t('calendar.modal.select_specialty_placeholder') %></option>
                                                     <% especialidades.forEach(especialidad => { %>
                                                         <option value="<%= especialidad.idespecialidad %>"><%= especialidad.nombre %></option>
                                                     <% }); %>
                                                 </select>
                                             </div>
                                             <div class="form-group">
-                                                <label for="selectMedico">Selecciona Médico:</label>
+                                                <label for="selectMedico"><%= t('common.select_doctor') %>:</label>
                                                 <select name="medico" id="selectMedico" required>
-                                                    <option value="">-- Selecciona un médico --</option>
+                                                    <option value=""><%= t('calendar.modal.select_doctor_placeholder') %></option>
                                                     <% medicos.forEach(medico => { %>
                                                         <option value="<%= medico.idmedico %>" data-parent="<%= medico.idespecialidad %>"><%= medico.nombre %></option>
                                                     <% }); %>
@@ -106,16 +106,16 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="section-title">📅 Fecha y Hora</div>
+                                        <div class="section-title">📅 <%= t('calendar.modal.date_time') %></div>
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label for="fecha">Selecciona Fecha:</label>
+                                                <label for="fecha"><%= t('common.select_date') %>:</label>
                                                 <input type="date" name="fecha" id="fecha" required>
                                             </div>
                                             <div class="form-group">
-                                                <label for="hora">Hora:</label>
+                                                <label for="hora"><%= t('common.select_time') %>:</label>
                                                 <select name="hora" id="hora" required>
-                                                    <option value="">-- Selecciona hora --</option>
+                                                    <option value=""><%= t('calendar.modal.select_time_placeholder') %></option>
                                                     <% horas.forEach(hora => { %>
                                                         <option value="<%= hora %>"><%= hora %></option>
                                                     <% }); %>
@@ -125,17 +125,17 @@
                                         
                                         <div class="form-row">
                                             <div class="form-group full-width">
-                                                <label for="tipoConsulta">Tipo de Consulta:</label>
+                                                <label for="tipoConsulta"><%= t('common.type') %>:</label>
                                                 <select name="tipoconsulta" id="tipoConsulta" required>
-                                                    <option value="">-- Selecciona tipo --</option>
-                                                    <option value="Medica">🩺 Médica</option>
-                                                    <option value="NoMedica">📋 No médica</option>
+                                                    <option value=""><%= t('common.select_type') %></option>
+                                                    <option value="Medica">🩺 <%= t('common.medical') %></option>
+                                                    <option value="NoMedica">📋 <%= t('common.non_medical') %></option>
                                                 </select>
                                             </div>
                                         </div>
                                         
                                         <div class="submit-container">
-                                            <button type="submit">Confirmar Cita</button>
+                                            <button type="submit"><%= t('common.confirm_appointment') %></button>
                                         </div>
                                     </form>
                                 </div>
@@ -196,14 +196,14 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>Hora</th>
-                                                <th>Lunes</th>
-                                                <th>Martes</th>
-                                                <th>Miércoles</th>
-                                                <th>Jueves</th>
-                                                <th>Viernes</th>
-                                                <th>Sábado</th>
-                                                <th>Domingo</th>
+                                                <th><%= t('calendar.table.hour') %></th>
+                                                <th><%= t('calendar.table.monday') %></th>
+                                                <th><%= t('calendar.table.tuesday') %></th>
+                                                <th><%= t('calendar.table.wednesday') %></th>
+                                                <th><%= t('calendar.table.thursday') %></th>
+                                                <th><%= t('calendar.table.friday') %></th>
+                                                <th><%= t('calendar.table.saturday') %></th>
+                                                <th><%= t('calendar.table.sunday') %></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -222,7 +222,7 @@
                         </div>
                         <div class="col-12 col-sm-3 col-md-3 col-lg-2 col-xl-2 col-xxl-2">
                             <div id="basurero" class="basurero" ondragover="allowDrop(event)" ondrop="moverAlBasurero(event)">
-                                <p>Arrastra aquí para desagendar</p>
+                                <p><%= t('calendar.drag_to_unschedule') %></p>
                             </div>
                         </div>
                     </div> 
@@ -244,6 +244,13 @@
             eliminarEndpoint: '<%= config.eliminarEndpoint %>',
             itemIdPrefix: '<%= config.itemIdPrefix %>',
             itemIdField: '<%= config.itemIdField %>'
+        };
+        window.translations = {
+            appointmentScheduled: "<%= t('calendar.toast.appointment_scheduled') %>",
+            appointmentUnscheduled: "<%= t('calendar.toast.appointment_unscheduled') %>",
+            errorScheduling: "<%= t('calendar.toast.error_scheduling') %>",
+            errorUnscheduling: "<%= t('calendar.toast.error_unscheduling') %>",
+            unscheduleConfirmation: "<%= t('calendar.toast.unschedule_confirmation') %>"
         };
     </script>
 </body>

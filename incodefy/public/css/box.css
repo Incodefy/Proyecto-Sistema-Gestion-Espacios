@@ -242,21 +242,25 @@ body {
   margin-top: 0.7rem;
 }
 
-.estado-bar.libre {
+.estado-bar.libre,
+.estado-bar.free {
   background-color: #f85e5e;
 }
 
-.estado-bar.en-espera {
+.estado-bar.en-espera,
+.estado-bar.waiting {
   background-color: #eee459;
   color: black;
 }
 
-.estado-bar.en-uso {
+.estado-bar.en-uso,
+.estado-bar.in-use {
   background-color: #a4e88e;
   color: black;
 }
 
-.estado-bar.inhabilitado {
+.estado-bar.inhabilitado,
+.estado-bar.disabled {
   background-color: #111;
 }
 

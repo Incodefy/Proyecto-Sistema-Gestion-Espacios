@@ -6,49 +6,26 @@ const db = require('./db');
 const fetch = require('node-fetch');
 
 // === i18next configuración para internacionalización ===
-const i18next = require('i18next');
-const Backend = require('i18next-fs-backend');
-const i18nextMiddleware = require('i18next-http-middleware');
+const i18next = require('./i18n');
+const i18nextHttpMiddleware = require('i18next-http-middleware');
 const cookieParser = require('cookie-parser');
-
-i18next
-  .use(Backend)
-  .use(i18nextMiddleware.LanguageDetector)
-  .init({
-    fallbackLng: 'es',
-    preload: ['es', 'en'],
-    backend: {
-      loadPath: __dirname + '/locales/{{lng}}.json'
-    }
-  });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(i18nextMiddleware.handle(i18next));
-app.use(cookieParser());
-
-// Middleware para exponer la función de traducción en las vistas EJS y usar idioma de sesión
-app.use((req, res, next) => {
-  // Si el usuario tiene idioma en sesión, úsalo globalmente
-  if (req.session && req.session.language) {
-    req.i18n.changeLanguage(req.session.language);
-  }
-  res.locals.t = req.t;
-  res.locals.language = req.session?.language || req.language;
-  next();
-});
-
+// Configuración del motor de vistas EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public')));
 
+// === Middlewares de base ===
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
+// === Configuración de Sesión ===
 const session = require("express-session");
 const flash = require("connect-flash");
-const checkPermission = require('./middleware/checkPermission');
 
 app.use(session({
   secret: process.env.SESSION_SECRET || "clave-secreta",
@@ -59,6 +36,29 @@ app.use(session({
   }
 }));
 
+// === Integración de i18next (Internacionalización) ===
+// 1. Añade las funciones de i18next (req.t, req.i18n) a cada petición.
+//    Debe ir DESPUÉS de la sesión para poder persistir el idioma.
+app.use(i18nextHttpMiddleware.handle(i18next));
+
+// 2. Middleware para cambiar el idioma basado en la sesión y exponer la función `t` a las vistas.
+app.use((req, res, next) => {
+  // Si el usuario tiene un idioma guardado en la sesión, lo usamos.
+  if (req.session && req.session.language && req.i18n?.language !== req.session.language) {
+    req.i18n.changeLanguage(req.session.language);
+  }
+  // Hacemos la función `t` y el idioma actual disponibles en TODAS las vistas EJS
+  res.locals.t = req.t;
+  const currentLang = req.i18n?.language || req.language;
+  res.locals.lng = currentLang;
+  res.locals.language = currentLang; // Alias para consistencia
+  // Compatibilidad con plantillas que esperan `i18n.language`
+  res.locals.i18n = { language: currentLang };
+  next();
+});
+
+
+// === Middlewares de aplicación (dependen de sesión) ===
 app.use(flash());
 
 app.use((req, res, next) => {
@@ -68,8 +68,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Importar middleware de autenticación
+// Importar middlewares
 const requireAuth = require('./middleware/requireAuth');
+const personalizationMiddleware = require('./middleware/personalization');
+const setLanguage = require('./middleware/setLanguage');
+const checkPermission = require('./middleware/checkPermission');
+
+// === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
+// Estos se ejecutarán en todas las rutas que vengan después de ellos.
+app.use(personalizationMiddleware);
+app.use(setLanguage);
+
 
 // === RUTAS PÚBLICAS (sin autenticación) ===
 
@@ -220,6 +229,17 @@ app.post('/api/personalization', requireAuth, async (req, res) => {
       // Actualizar la sesión con los parámetros finales del Lambda
       if (result.final_parameters) {
         req.session.user.personalization = result.final_parameters;
+        // Si se cambió el idioma en personalización, reflejarlo en la sesión inmediatamente
+        const newLang = result.final_parameters['locale.language'];
+        if (newLang && typeof newLang === 'string') {
+          req.session.language = newLang;
+          // Cambiar idioma activo en esta petición
+          if (req.i18n?.language !== newLang) {
+            try { req.i18n.changeLanguage(newLang); } catch {}
+          }
+          // Cookie de i18next para el detector
+          res.cookie('i18next', newLang, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+        }
       }
 
       return res.status(200).json({

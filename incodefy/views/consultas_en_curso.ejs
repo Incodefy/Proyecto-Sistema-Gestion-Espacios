@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8" />
-  <title>Consultas en Curso</title>
+  <title><%= t('in_progress.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css?v=<%= Date.now() %>">
   <link rel="stylesheet" href="/css/consultas_en_curso.css?v=<%= Date.now() %>">
   <link rel="stylesheet" href="/css/footer.css?v=<%= Date.now() %>">
@@ -38,7 +38,7 @@
         <% } %>
     </style>
 </head>
-<body>
+<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
   <div class="container-fluid">
     <div class="row">
       <%- include("navbar") %>
@@ -49,9 +49,9 @@
         <div class="header-section">
           <h1>
             <i class="fas fa-stethoscope me-2 header-icon"></i>
-            Consultas en Curso
+            <%= t('in_progress.header') %>
           </h1>
-          <p>Monitoreo en tiempo real del estado de las consultas médicas</p>
+          <p><%= t('in_progress.subheader') %></p>
         </div>
 
         <!-- Estadísticas -->
@@ -61,7 +61,7 @@
               <div class="card stat-card stat-pendientes">
                 <div class="card-body text-center">
                   <div class="stat-number" id="stat-pendientes">—</div>
-                  <p class="stat-label">Consultas Pendientes</p>
+                  <p class="stat-label"><%= t('common.pending_appointments') %></p>
                 </div>
               </div>
             </div>
@@ -69,7 +69,7 @@
               <div class="card stat-card stat-confirmadas">
                 <div class="card-body text-center">
                   <div class="stat-number" id="stat-confirmadas">—</div>
-                  <p class="stat-label">Consultas Confirmadas</p>
+                  <p class="stat-label"><%= t('common.confirmed_appointments') %></p>
                 </div>
               </div>
             </div>
@@ -77,7 +77,7 @@
               <div class="card stat-card stat-total">
                 <div class="card-body text-center">
                   <div class="stat-number" id="stat-total">—</div>
-                  <p class="stat-label">Total en Curso</p>
+                  <p class="stat-label"><%= t('common.total_in_progress') %></p>
                 </div>
               </div>
             </div>
@@ -88,19 +88,38 @@
         <div class="card consultas-card">
           <div class="leyenda" id="leyendaEstado" hidden>
             <div class="caja">
-                <span class="estado-badge estado-pendiente">Pendiente</span> 
-                <div class="detalle">Consulta por confirmar</div>
+                <span class="estado-badge estado-pendiente"><%= t('common.pending') %></span> 
+                <div class="detalle"><%= t('in_progress.legend.pending') %></div>
             </div>
             <div class="caja">
-                <span class="estado-badge estado-confirmada">Confirmada</span> 
-                <div class="detalle">Consulta ya realizada</div>
+                <span class="estado-badge estado-confirmada"><%= t('common.confirmed') %></span> 
+                <div class="detalle"><%= t('in_progress.legend.confirmed') %></div>
             </div>
           </div>
           <div class="table-container" id="contenedor_en_curso">
             <div class="loading-container">
-              <div class="loading-spinner"></div>
-              <div>Cargando consultas...</div>
+              <div class="spinner"></div>
+              <p><%= t('in_progress.loading') %></p>
             </div>
+            <div class="no-results-container" style="display: none;">
+              <h3><%= t('in_progress.no_appointments_title') %></h3>
+              <p><%= t('in_progress.no_appointments_desc') %></p>
+            </div>
+            <table class="table table-hover align-middle" id="tabla-consultas" style="display: none;">
+              <thead>
+                <tr>
+                  <th><%= t('common.box') %></th>
+                  <th><%= t('common.doctor') %></th>
+                  <th><%= t('common.start_time') %></th>
+                  <th><%= t('common.end_time') %></th>
+                  <th><%= t('common.status') %></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filas se insertarán dinámicamente -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -114,6 +133,22 @@
   <script src="/js/consultas_en_curso.js?v=<%= Date.now() %>"></script>
   <script>
         window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+        window.i18nConsultas = {
+          horario: "<%= t('common.start_time') %>",
+          medico: "<%= t('common.doctor') %>",
+          box: "<%= t('common.box') %>",
+          tipoConsulta: "<%= t('common.consult_type') %>",
+          estado: "<%= t('common.status') %>",
+          pendiente: "<%= t('common.pending') %>",
+          confirmada: "<%= t('common.confirmed') %>",
+          confirmar: "<%= t('common.confirm_appointment') %>",
+          desconfirmar: "<%= t('common.confirm_appointment') %>",
+          desconfirmar: "<%= t('common.unconfirm_appointment') %>",
+          cargando: "<%= t('in_progress.loading') %>",
+          noHay: "<%= t('in_progress.no_appointments_title') %>",
+          noHayDesc: "<%= t('in_progress.no_appointments_desc') %>",
+          errorCargar: "<%= t('common.error') %>"
+        };
   </script>
 </body>
 </html>

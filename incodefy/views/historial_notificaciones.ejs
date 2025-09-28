@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
-  <title>Historial Notificaciones</title>
+  <title><%= t('notifications.history_title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/historial_notificaciones.css">
   <link rel="stylesheet" href="/css/footer.css">
@@ -24,9 +24,9 @@
         <div class="header-section">
           <h1>
             <i class="fas fa-bell me-2 header-icon"></i>
-            Historial de Notificaciones
+            <%= t('notifications.history_header') %>
           </h1>
-          <p>Mantente al día con todas las actividades y actualizaciones del sistema</p>
+          <p><%= t('notifications.history_subheader') %></p>
         </div>
 
         <div class="notificaciones-container">
@@ -48,14 +48,28 @@
       <div class="modal-content">
         <div class="modal-header bg-medical">
           <h5 class="modal-title" id="detalleImportacionLabel">
-            Detalles de la Importación
+            <%= t('common.import_details') %>
           </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="<%= t('common.close') %>"></button>
         </div>
         <div class="modal-body">
           <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle mb-0">
-              <!-- ...existing code... -->
+              <caption class="visually-hidden"><%= t('common.import_table_caption') %></caption>
+              <thead>
+                <tr>
+                  <th><%= t('common.date') %></th>
+                  <th><%= t('common.start_time') %></th>
+                  <th><%= t('common.end_time') %></th>
+                  <th><%= t('common.doctor') %></th>
+                  <th><%= t('common.box') %></th>
+                  <th><%= t('common.consult_type') %></th>
+                  <th><%= t('common.status') %></th>
+                </tr>
+              </thead>
+              <tbody id="detalleImportacionTablaBody">
+                <!-- Filas se insertan dinámicamente -->
+              </tbody>
             </table>
           </div>
         </div>
@@ -65,6 +79,20 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Locale to use for date/time formatting based on current UI language
+    const CURRENT_LOCALE = '<%= i18n.language %>';
+
+    // Basic HTML escaping to avoid injection from notification messages
+    function escapeHTML(str) {
+      if (typeof str !== 'string') return str;
+      return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
     function cargarHistorialNotificaciones() {
       const loadingSpinner = document.getElementById('loadingSpinner');
       const contenedor = document.getElementById('notificacionesLista');
@@ -77,93 +105,115 @@
         .then(data => {
           loadingSpinner.style.display = 'none';
           contenedor.style.display = 'block';
-          mostrarNotificaciones(data);
+          // Pasar las cabeceras traducidas a la función que muestra las notificaciones
+          mostrarNotificaciones(data.notificaciones, data.headers);
         })
         .catch(() => {
           loadingSpinner.style.display = 'none';
           contenedor.style.display = 'block';
           contenedor.innerHTML = `
             <div class="empty-state">
-              <i class="fas fa-exclamation-triangle"></i>
-              <h4>Error al cargar notificaciones</h4>
-              <p>Por favor, intenta nuevamente más tarde.</p>
+              <i class="fas fa-exclamation-circle empty-state-icon"></i>
+              <p class="empty-state-title"><%= t('common.error_loading_notifications') %></p>
+              <p class="empty-state-text"><%= t('common.try_again_later') %></p>
             </div>
           `;
         });
     }
 
-    function mostrarNotificaciones(data) {
+    function mostrarNotificaciones(notificaciones, headers) {
       const contenedor = document.getElementById('notificacionesLista');
-      contenedor.innerHTML = "";
-
-      if (!data.notificaciones.length) {
+      if (!notificaciones || notificaciones.length === 0) {
         contenedor.innerHTML = `
           <div class="empty-state">
-            <i class="fas fa-bell-slash"></i>
-            <h4>No hay notificaciones</h4>
-            <p>Cuando tengas nuevas notificaciones, aparecerán aquí.</p>
+            <i class="fas fa-bell-slash empty-state-icon"></i>
+            <p class="empty-state-title"><%= t('common.no_notifications') %></p>
+            <p class="empty-state-text"><%= t('common.no_notifications_desc') %></p>
           </div>
         `;
         return;
       }
 
-      data.notificaciones.forEach(n => {
-        const item = document.createElement("div");
-        item.className = "notificacion-item";
-        item.innerHTML = `
-          <div class="fecha-noti"><i class="fas fa-clock"></i> ${n.fecha}</div>
-          <div class="mensaje-noti">${n.mensaje}</div>
-          <button class="btn btn-detalle" aria-label="Ver detalles de notificación" onclick='mostrarDetalleImportacion(${JSON.stringify(n.detalle)})'>
-            <i class="fas fa-eye me-2" aria-hidden="true"></i>Ver detalles
-          </button>
+      const notificacionesPorFecha = notificaciones.reduce((acc, n) => {
+        const fecha = new Date(n.fecha).toISOString().split('T')[0];
+        if (!acc[fecha]) acc[fecha] = [];
+        acc[fecha].push(n);
+        return acc;
+      }, {});
+
+      let html = '';
+      for (const fecha in notificacionesPorFecha) {
+        const fechaLabel = new Intl.DateTimeFormat(CURRENT_LOCALE, {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        }).format(new Date(fecha));
+
+        html += `<div class="fecha-grupo">
+                    <div class="fecha-etiqueta"><i class=\"far fa-calendar-alt me-2\"></i>${fechaLabel}</div>`;
+        notificacionesPorFecha[fecha].forEach(n => {
+          const detalleString = JSON.stringify(n.detalle).replace(/"/g, '&quot;');
+          const horaLabel = new Intl.DateTimeFormat(CURRENT_LOCALE, { hour: '2-digit', minute: '2-digit' }).format(new Date(n.fecha));
+          html += `
+            <div class="notificacion-item">
+              <div class="fecha-noti"><i class="far fa-clock me-2"></i> ${horaLabel}</div>
+              <div class="mensaje-noti">${escapeHTML(n.mensaje)}</div>
+              <button class="btn btn-detalle" 
+                      aria-label="<%= t('notifications.view_details_aria') %>"
+                      data-bs-toggle="modal" 
+                      data-bs-target="#modalDetalleImportacion" 
+                      data-detalle='${detalleString}'>
+                <%= t('common.view_details') %>
+              </button>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+      contenedor.innerHTML = html;
+
+      // Actualizar las cabeceras del modal dinámicamente
+      const modalHeaderRow = document.querySelector('#modalDetalleImportacion thead tr');
+      if (modalHeaderRow && headers) {
+        modalHeaderRow.innerHTML = `
+          <th>${headers.date}</th>
+          <th>${headers.start_time}</th>
+          <th>${headers.end_time}</th>
+          <th>${headers.doctor}</th>
+          <th>${headers.box}</th>
+          <th>${headers.consult_type}</th>
+          <th>${headers.status}</th>
         `;
-        contenedor.appendChild(item);
-      });
-    }
-
-    function mostrarDetalleImportacion(detalle) {
-      const tbody = document.getElementById("detalleImportacionTablaBody");
-      tbody.innerHTML = "";
-
-      detalle.forEach(c => {
-        const row = document.createElement("tr");
-        
-        let badgeClass = 'badge-pendiente';
-        if (c.estado && c.estado.toLowerCase() === 'atendido') {
-          badgeClass = 'badge-confirmado';
-        } else if (c.estado && c.estado.toLowerCase() === 'cancelado') {
-          badgeClass = 'badge-cancelado';
-        }
-        
-        row.innerHTML = `
-          <td>${c.fecha || '-'}</td>
-          <td>${c.horainicio || '-'}</td>
-          <td>${c.horafin || '-'}</td>
-          <td>${c.medico || '-'}</td>
-          <td>${c.box || '-'}</td>
-          <td>${c.tipoconsulta || '-'}</td>
-          <td><span class="badge badge-estado ${badgeClass}">${c.estado || 'Pendiente'}</span></td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      // Mostrar modal
-      const modal = new bootstrap.Modal(document.getElementById('modalDetalleImportacion'));
-      modal.show();
-      
-      // Remover la notificación si existe
-      const notificacionExistente = document.querySelector('.notificacion-importacion');
-      if (notificacionExistente) {
-        notificacionExistente.classList.remove('show');
-        setTimeout(() => {
-          notificacionExistente.remove();
-        }, 300);
       }
     }
-    document.addEventListener('DOMContentLoaded', cargarHistorialNotificaciones);
-  </script>
-  <script>
-    window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarHistorialNotificaciones();
+
+      const modal = document.getElementById('modalDetalleImportacion');
+      modal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const detalle = JSON.parse(button.getAttribute('data-detalle'));
+        const tablaBody = document.getElementById('detalleImportacionTablaBody');
+        
+        tablaBody.innerHTML = '';
+        if (Array.isArray(detalle)) {
+          detalle.forEach(d => {
+            // Nota: d.estado se compara contra el texto traducido ya renderizado del lado servidor
+            const row = `
+              <tr>
+                <td>${d.fecha || '-'}</td>
+                <td>${d.horainicio || '-'}</td>
+                <td>${d.horafin || '-'}</td>
+                <td>${d.medico || '-'}</td>
+                <td>${d.box || '-'}</td>
+                <td>${d.tipoconsulta || '-'}</td>
+                <td><span class="badge ${d.estado === '<%= t("common.pending") %>' ? 'bg-warning' : 'bg-success'}">${d.estado || '-'}</span></td>
+              </tr>
+            `;
+            tablaBody.innerHTML += row;
+          });
+        }
+      });
+    });
   </script>
 </body>
 </html>

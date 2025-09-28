@@ -185,10 +185,10 @@ function actualizarKPIs(kpis) {
         } else {
             ocupacionElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
         }
-        ocupacionSubtext.textContent = kpis.ocupacion_subtext || 'Ocupación actual de boxes';
+    ocupacionSubtext.textContent = kpis.ocupacion_subtext || (window.i18nDashboard?.ocupacionSubtext || '');
     } else {
         ocupacionElement.textContent = '--%';
-        ocupacionSubtext.textContent = 'Aplica filtros para ver el KPI';
+    ocupacionSubtext.textContent = window.i18nDashboard?.applyFilters || '';
     }
 
     // KPI 2: Total consultas
@@ -203,7 +203,7 @@ function actualizarKPIs(kpis) {
     } else if (kpis.variacion_consultas === 0 && kpis.total_consultas > 0) {
         consultasElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
     }
-    consultasSubtext.textContent = kpis.consultas_subtext || 'En el período seleccionado';
+    consultasSubtext.textContent = kpis.consultas_subtext || (window.i18nDashboard?.periodSelected || '');
 
     // KPI 3: Promedio diario (NUEVO)
     const promedioElement = document.getElementById('promedio-consultas-diario');
@@ -217,7 +217,7 @@ function actualizarKPIs(kpis) {
     } else if (kpis.variacion_promedio_diario === 0 && kpis.promedio_consultas_diario > 0) {
         promedioElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
     }
-    promedioSubtext.textContent = kpis.promedio_subtext || 'Consultas por día';
+    promedioSubtext.textContent = kpis.promedio_subtext || (window.i18nDashboard?.perDay || '');
 
     // KPI 4: Especialidad más demandada
     const especialidadElement = document.getElementById('especialidad-demandada');
@@ -232,10 +232,10 @@ function actualizarKPIs(kpis) {
         } else {
             especialidadElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
         }
-        especialidadSubtext.textContent = kpis.especialidad_subtext || 'En el período actual';
+        especialidadSubtext.textContent = kpis.especialidad_subtext || (window.i18nDashboard?.currentPeriod || '');
     } else {
-        especialidadElement.textContent = 'Sin datos';
-        especialidadSubtext.textContent = 'Aplica filtros para ver el KPI';
+        especialidadElement.textContent = window.i18nDashboard?.noData || '—';
+        especialidadSubtext.textContent = window.i18nDashboard?.applyFilters || '';
     }
 }
 

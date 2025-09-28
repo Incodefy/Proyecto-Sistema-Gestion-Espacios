@@ -60,11 +60,11 @@ function ensureTableSkeleton() {
         <table class="table consultas-table mb-0" id="tablaConsultas">
           <thead>
             <tr>
-              <th><i class="fas fa-clock me-2"></i>Horario</th>
-              <th><i class="fas fa-user-md me-2"></i>Médico</th>
-              <th><i class="fas fa-door-open me-2"></i>Box</th>
-              <th><i class="fas fa-notes-medical me-2"></i>Tipo Consulta</th>
-              <th><i class="fas fa-info-circle me-2"></i>Estado</th>
+              <th><i class="fas fa-clock me-2"></i>${window.i18nConsultas.horario}</th>
+              <th><i class="fas fa-user-md me-2"></i>${window.i18nConsultas.medico}</th>
+              <th><i class="fas fa-door-open me-2"></i>${window.i18nConsultas.box}</th>
+              <th><i class="fas fa-notes-medical me-2"></i>${window.i18nConsultas.tipoConsulta}</th>
+              <th><i class="fas fa-info-circle me-2"></i>${window.i18nConsultas.estado}</th>
               <th style="width:1%"></th>
             </tr>
           </thead>
@@ -81,14 +81,14 @@ function ensureTableSkeleton() {
 function rowHTML(c) {
   const pend = Number(c.estado_id) === 2; // 2=pendiente, 1=confirmada
   const estado = pend
-    ? `<span class="estado-badge estado-pendiente">Pendiente</span>`
-    : `<span class="estado-badge estado-confirmada">Confirmada</span>`;
+    ? `<span class="estado-badge estado-pendiente">${window.i18nConsultas.pendiente}</span>`
+    : `<span class="estado-badge estado-confirmada">${window.i18nConsultas.confirmada}</span>`;
   const btn = pend
     ? `<button class="btn btn-confirmar btn-sm" data-action="toggle" data-to="1" data-id="${c.idagenda}">
-         <i class="fas fa-check me-1"></i> Confirmar
+         <i class="fas fa-check me-1"></i> ${window.i18nConsultas.confirmar}
        </button>`
     : `<button class="btn btn-desconfirmar btn-sm" data-action="toggle" data-to="2" data-id="${c.idagenda}">
-         <i class="fas fa-undo me-1"></i> Desconfirmar
+         <i class="fas fa-undo me-1"></i> ${window.i18nConsultas.desconfirmar}
        </button>`;
   return `
     <td class="text-nowrap fw-semibold">${c.horainicio ?? "-"}–${c.horafin ?? "-"}</td>
@@ -177,7 +177,7 @@ async function cargarEnCurso() {
     document.getElementById("contenedor_en_curso").innerHTML =
       `<div class="loading-container">
          <div class="loading-spinner"></div>
-         <div>Cargando consultas...</div>
+         <div>${window.i18nConsultas.cargando}</div>
        </div>`;
   }
   if (refreshInflight) { refreshQueued = true; return; }
@@ -189,8 +189,8 @@ async function cargarEnCurso() {
       document.getElementById("contenedor_en_curso").innerHTML = `
         <div class="empty-state">
           <i class="fas fa-calendar-check"></i>
-          <h4>No hay consultas en curso</h4>
-          <p>En este momento no hay consultas programadas.</p>
+          <h4>${window.i18nConsultas.noHay}</h4>
+          <p>${window.i18nConsultas.noHayDesc}</p>
         </div>`;
       document.getElementById("leyendaEstado").hidden = true;
       consultasState.clear();
@@ -202,7 +202,7 @@ async function cargarEnCurso() {
       document.getElementById("contenedor_en_curso").innerHTML = `
         <div class="empty-state">
           <i class="fas fa-exclamation-triangle text-danger"></i>
-          <h4>Error al cargar</h4>
+          <h4>${window.i18nConsultas.errorCargar}</h4>
           <p>${e?.message || e}</p>
         </div>`;
     }

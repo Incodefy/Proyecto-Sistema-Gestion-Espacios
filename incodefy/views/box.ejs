@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
-  <title>Box por Pasillo</title>
+  <title><%= t('box.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/box.css">
   <link rel="stylesheet" href="/css/footer.css">
@@ -24,10 +24,10 @@
                 <% if (canWrite) { %>
                     <a href="/en-curso"
                         class="fab-consultas"
-                        aria-label="Ir a Consultas en curso"
+                        aria-label="<%= t('box.in_progress_aria') %>"
                         data-bs-toggle="tooltip"
                         data-bs-placement="left"
-                        title="Consultas en curso">
+                        title="<%= t('box.in_progress_title') %>">
                         <i class="fas fa-stethoscope" aria-hidden="true"></i>
                     </a>
                 <% } %>
@@ -36,33 +36,33 @@
                 <button id="backToTop"
                         class="back-to-top"
                         type="button"
-                        aria-label="Volver a la parte superior"
-                        title="Volver arriba">
+                        aria-label="<%= t('box.back_to_top_aria') %>"
+                        title="<%= t('box.back_to_top_title') %>">
                     <i class="fas fa-arrow-up" aria-hidden="true"></i>
                 </button>
 
                 <div class="top-header">
                     <div class="header-row">
-                    <h1>Pasillos y Boxes</h1>
+                    <h1><%= t('box.header') %></h1>
                     </div>
                 </div>
 
                 <!-- Filtros -->
                 <div class="filtros">
                     <div class="filtros-inputs">
-                    <input type="text" id="filtroPasillo" placeholder="Filtrar por número de pasillo" aria-label="Filtrar por número de pasillo">
-                    <input type="text" id="filtroBox" placeholder="Filtrar por número de box" aria-label="Filtrar por número de box">
-                    <select id="filtroEstado" aria-label="Filtrar por estado del box">
-                        <option value="">Mostrar todos</option>
-                        <option value="en-uso">En uso</option>
-                        <option value="en-espera">En espera</option>
-                        <option value="libre">Libre</option>
-                        <option value="inhabilitado">Inhabilitado</option>
+                    <input type="text" id="filtroPasillo" placeholder="<%= t('box.filters.filter_corridor') %>" aria-label="<%= t('box.filters.filter_corridor') %>">
+                    <input type="text" id="filtroBox" placeholder="<%= t('box.filters.filter_box') %>" aria-label="<%= t('box.filters.filter_box') %>">
+                    <select id="filtroEstado" aria-label="<%= t('box.filters.filter_state') %>">
+                        <option value=""><%= t('box.filters.show_all') %></option>
+                        <option value="en-uso"><%= t('common.state_in_use') %></option>
+                        <option value="en-espera"><%= t('common.state_waiting') %></option>
+                        <option value="libre"><%= t('common.state_free') %></option>
+                        <option value="inhabilitado"><%= t('common.state_disabled') %></option>
                     </select>
                     </div>
                     <div class="filtros-botones">
-                    <button onclick="reiniciarFiltros()">Reiniciar filtros</button>
-                    <button id="toggle-detalles" class="btn-toggle-detalles">Mostrar detalles</button>
+                    <button onclick="reiniciarFiltros()"><%= t('common.reset_filters') %></button>
+                    <button id="toggle-detalles" class="btn-toggle-detalles"><%= t('common.show_details') %></button>
                     </div>
                 </div>
 
@@ -70,25 +70,25 @@
                 <div class="resumen-estados row align-items-stretch" id="resumenEstados">
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card libre">
-                        <h4>Boxes Libres</h4>
+                        <h4><%= t('common.boxes_free') %></h4>
                         <p id="count-libre">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-espera">
-                        <h4>En espera</h4>
+                        <h4><%= t('common.boxes_waiting') %></h4>
                         <p id="count-en-espera">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-uso">
-                        <h4>En Uso</h4>
+                        <h4><%= t('common.boxes_in_use') %></h4>
                         <p id="count-en-uso">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card inhabilitado">
-                        <h4>Inhabilitados</h4>
+                        <h4><%= t('common.boxes_disabled') %></h4>
                         <p id="count-inhabilitado">0</p>
                     </div>
                     </div>
@@ -97,14 +97,17 @@
                 <!-- Mensaje sin resultados -->
                 <div id="mensaje-no-resultados" class="no-resultados" style="display: none;">
                     <i class="fas fa-search"></i>
-                    <h3>No se encontraron resultados</h3>
-                    <p>No hay boxes que coincidan con los filtros aplicados. Intenta ajustar los criterios de búsqueda.</p>
+                    <h3><%= t('common.no_results') %></h3>
+                    <p><%= t('common.no_results_desc') %></p>
                 </div>
 
                 <!-- Render dinámico de pasillos y boxes -->
-                <% Object.keys(pasillo_box_map).forEach(pasilloNombre => { %>
+                <% Object.keys(pasillo_box_map).forEach(pasilloNombre => { 
+                    const match = pasilloNombre.match(/\d+/);
+                    const count = match ? parseInt(match[0], 10) : 0;
+                %>
                     <div class="pasillo-bloque" data-pasillo-nombre="<%= pasilloNombre %>">
-                        <div class="pasillo-nombre"><%= pasilloNombre %></div>
+                        <div class="pasillo-nombre"><%= count ? t('box.corridor_prefix', { count: count }) : pasilloNombre %></div>
                         <div class="pasillo-content row">
                         <% pasillo_box_map[pasilloNombre].forEach(box => { %>
                             <div class="col-12 col-sm-6 col-md-4 col-lg-4 col-xl-3 col-xxl-2 mb-3">
@@ -119,14 +122,14 @@
                                 <div class="box-card disabled" 
                                 data-box-nombre="<%= box.nombre %>" 
                                 data-pasillo="<%= pasilloNombre %>"
-                                title="Sin permisos para ver detalles">
+                                title="<%= t('box.no_permission_title') %>">
                             <% } %>
                                 <h3><%= box.nombre %></h3>
                                 <div id="info-box-<%= box.id %>" class="info-box">
                                     <div class="contenido-box oculto">
-                                        <p>Próxima consulta: No hay próxima consulta hoy</p>
+                                        <p><%= t('box.next_appointment_placeholder') %></p>
                                     </div>
-                                    <div class="estado-bar <%= box.estado.toLowerCase().replace(' ', '-') %>">
+                                    <div class="estado-bar <%= box.estado.replace(/\s+/g, '-').toLowerCase() %>">
                                         <%= box.estado %>
                                     </div>
                                 </div>
@@ -147,9 +150,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/box.js?v=<%= Date.now() %>"></script>
     <script>
-        window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+        window.translations = {
+            nextAppointment: "<%= t('box.next_appointment') %>",
+            doctor: "<%= t('common.doctor') %>",
+            specialty: "<%= t('common.specialty') %>",
+            time: "<%= t('common.hour') || t('common.start_time') %>",
+            hideDetails: "<%= t('box.hide_details') %>",
+            showDetails: "<%= t('common.show_details') %>"
+        };
     </script>
+    <script src="/js/box.js?v=<%= Date.now() %>"></script>
 </body>
 </html>

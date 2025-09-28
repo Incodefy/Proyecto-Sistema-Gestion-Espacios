@@ -36,6 +36,7 @@ router.get("/box", checkPermission('box.read'), async (req, res) => {
     const [agendas] = await db.query(sqlAgendas);
 
     const pasillo_box_map = generarPasillosConBoxes(
+      req, // Pasar req para acceder a t()
       pasillos,
       boxes,
       agendas,
@@ -81,7 +82,7 @@ function expandirRangos(texto) {
   return Array.from(resultado).sort((a, b) => a - b);
 }
 
-function generarPasillosConBoxes(pasillos, boxes, agendas, filtroPasillo, filtroBox, filtroEstado, hoy, horaActual) {
+function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, filtroBox, filtroEstado, hoy, horaActual) {
   const resultado = {};
 
   pasillos.forEach(pasillo => {
@@ -93,7 +94,8 @@ function generarPasillosConBoxes(pasillos, boxes, agendas, filtroPasillo, filtro
     boxesFiltrados.forEach(box => {
       if (filtroBox && !filtroBox.includes(box.idBox)) return;
 
-      let estado = box.estado === 0 ? "Inhabilitado" : "Libre";
+      let estadoKey = box.estado === 0 ? "disabled" : "free";
+      let estado = req.t(`common.state_${estadoKey}`);
 
       if (box.estado !== 0) {
         const consultas = agendas.filter(a => {
@@ -123,7 +125,8 @@ function generarPasillosConBoxes(pasillos, boxes, agendas, filtroPasillo, filtro
           const ahora = new Date(`${hoy}T${horaActual}`);
 
           if (ahora >= inicio && ahora < fin) {
-            estado = "En uso";
+            estadoKey = "in_use";
+            estado = req.t(`common.state_${estadoKey}`);
             break;
           }
         }
@@ -181,8 +184,8 @@ router.get("/estado-boxes", async (req, res) => {
     }));
 
     const data = {};
-    boxes.forEach(box => {
-      const estado = contexto.obtenerEstado(box, hoy, ahora, agendas);
+    for (const box of boxes) {
+      const estado = contexto.obtenerEstado(req, box, hoy, ahora, agendas);
       data[box.idBox] = {
         estado: estado.nombre,
         medico: estado.medico,
@@ -192,7 +195,7 @@ router.get("/estado-boxes", async (req, res) => {
         proxima_consulta: estado.proxima_consulta,
         inhabilitado: box.estado === 0,
       };
-    });
+    }
 
     res.json(data);
   } catch (err) {
@@ -213,13 +216,13 @@ class EstadoBox {
 }
 
 class EstadoInhabilitado {
-  calcularEstado(box, fecha, horaActual, agendas) {
-    return new EstadoBox({ nombre: 'Inhabilitado' });
+  calcularEstado(req, box, fecha, horaActual, agendas) {
+    return new EstadoBox({ nombre: req.t('common.state_disabled') });
   }
 }
 
 class EstadoConConsulta {
-  calcularEstado(box, fecha, horaActual, agendas) {
+  calcularEstado(req, box, fecha, horaActual, agendas) {
     const consultas = agendas.filter(a => {
         const fechaAgenda = new Date(a.fecha).toISOString().split("T")[0];
         const fechaHoy = fecha;
@@ -251,12 +254,12 @@ class EstadoConConsulta {
 
       if (ahora >= inicio && ahora < fin) {
         const estadoNombre = consulta.estado ? consulta.estado.toLowerCase() : '';
-        let nombreEstado = 'En uso';
+        let nombreEstado = req.t('common.state_in_use');
 
         if (estadoNombre === 'en espera' || estadoNombre === 'no atendido') {
-          nombreEstado = 'En espera';
+          nombreEstado = req.t('common.state_waiting');
         } else if (estadoNombre === 'atendido') {
-          nombreEstado = 'En uso';
+          nombreEstado = req.t('common.state_in_use');
         }
 
         return new EstadoBox({
@@ -274,7 +277,7 @@ class EstadoConConsulta {
 }
 
 class EstadoLibre {
-  calcularEstado(box, fecha, horaActual, agendas) {
+  calcularEstado(req, box, fecha, horaActual, agendas) {
     const proximas = agendas.filter(a => {
         const fechaAgenda = new Date(a.fecha).toISOString().split("T")[0];
         const fechaHoy = fecha;
@@ -292,31 +295,28 @@ class EstadoLibre {
 
     if (proxima) {
       return new EstadoBox({
-        nombre: 'Libre',
+        nombre: req.t('common.state_free'),
         medico: proxima.medico,
         especialidad: proxima.especialidad,
-        proxima_consulta: `${proxima.horaInicio} - ${proxima.horaFin}`
+        proxima_consulta: `${proxima.horaInicio} - ${proxima.horaFin || ''}`
       });
     }
 
-    return new EstadoBox({
-      nombre: 'Libre',
-      proxima_consulta: "No hay próximas consultas hoy"
-    });
+    return new EstadoBox({ nombre: req.t('common.state_free') });
   }
 }
 
 class ContextoEstado {
-  obtenerEstado(box, fecha, horaActual, agendas) {
+  obtenerEstado(req, box, fecha, horaActual, agendas) {
 
     if (box.estado === 0) {
-      return new EstadoInhabilitado().calcularEstado(box, fecha, horaActual, agendas);
+      return new EstadoInhabilitado().calcularEstado(req, box, fecha, horaActual, agendas);
     }
 
-    let estado = new EstadoConConsulta().calcularEstado(box, fecha, horaActual, agendas);
+    let estado = new EstadoConConsulta().calcularEstado(req, box, fecha, horaActual, agendas);
 
     if (!estado) {
-      estado = new EstadoLibre().calcularEstado(box, fecha, horaActual, agendas);
+      estado = new EstadoLibre().calcularEstado(req, box, fecha, horaActual, agendas);
     }
 
     return estado;

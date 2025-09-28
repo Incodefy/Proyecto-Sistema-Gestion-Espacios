@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="<%= (locals.personalization && personalization['locale.language']) || 'es' %>">
+<html lang="<%= lng || 'es' %>">
 <head>
   <meta charset="UTF-8">
-  <title>Mi Perfil - Personalización</title>
+  <title><%= t('profile.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/perfil.css">
   <link rel="stylesheet" href="/css/footer.css">
@@ -20,8 +20,8 @@
 
       <div class="main">
         <div class="top-header">
-          <h1 class="page-title">Mi Perfil</h1>
-          <p class="page-subtitle">Personaliza la apariencia de tu interfaz</p>
+          <h1 class="page-title"><%= t('profile.header') %></h1>
+          <p class="page-subtitle"><%= t('profile.subtitle') %></p>
         </div>
 
         <div class="row justify-content-center">
@@ -42,33 +42,33 @@
               <!-- Formulario de personalización (sin cambios) -->
               <form id="personalizationForm">
                 <div class="form-section">
-                  <h4><i class="fas fa-palette"></i> Tema</h4>
+                  <h4><i class="fas fa-palette"></i> <%= t('profile.theme.title') %></h4>
                   <!-- Modo de tema -->
                   <div class="form-group">
-                    <label>Modo:</label>
+                    <label><%= t('profile.theme.mode') %></label>
                     <div class="radio-group">
                       <input type="radio" id="light-mode" name="theme.mode" value="light" 
                              <%= (!personalization['theme.mode'] || personalization['theme.mode'] === 'light') ? 'checked' : '' %>>
                       <label class="radio-option" for="light-mode">
-                        <i class="fas fa-sun"></i> Claro
+                        <i class="fas fa-sun"></i> <%= t('profile.theme.light') %>
                       </label>
                       <input type="radio" id="dark-mode" name="theme.mode" value="dark"
                              <%= personalization['theme.mode'] === 'dark' ? 'checked' : '' %>>
                       <label class="radio-option" for="dark-mode">
-                        <i class="fas fa-moon"></i> Oscuro
+                        <i class="fas fa-moon"></i> <%= t('profile.theme.dark') %>
                       </label>
                     </div>
                   </div>
                   <!-- Color principal -->
                   <div class="form-group">
-                    <label>Color principal:</label>
+                    <label><%= t('profile.theme.primary_color') %></label>
                     <div class="color-group">
                       <% const colors = [
-                        { value: '#1a3c7c', name: 'Azul' },
-                        { value: '#d53232ff', name: 'Rojo' },
-                        { value: '#059669', name: 'Verde' },
-                        { value: '#7c3aed', name: 'Morado' },
-                        { value: '#ea580c', name: 'Naranja' }
+                        { value: '#1a3c7c', name: 'blue' },
+                        { value: '#d53232ff', name: 'red' },
+                        { value: '#059669', name: 'green' },
+                        { value: '#7c3aed', name: 'purple' },
+                        { value: '#ea580c', name: 'orange' }
                       ]; %>
                       <% colors.forEach(color => { %>
                         <div class="color-option-wrapper">
@@ -80,7 +80,7 @@
                                      personalization['theme.primary_color'] === color.value ? 'checked' : '' %>>
                           <label for="color-<%= color.value.replace('#', '') %>" class="color-option">
                             <span class="color-preview" style="background-color: <%= color.value %>"></span>
-                            <span class="color-name"><%= color.name %></span>
+                            <span class="color-name"><%= t('colors.' + color.name) %></span>
                           </label>
                         </div>
                       <% }); %>
@@ -90,15 +90,15 @@
 
                 <!-- Selector de escala de fuente -->
                 <div class="form-section">
-                  <h4><i class="fas fa-text-height"></i> Tamaño de fuente</h4>
+                  <h4><i class="fas fa-text-height"></i> <%= t('profile.font.title') %></h4>
                   <div class="form-group">
-                    <label>Escala de texto:</label>
+                    <label><%= t('profile.font.scale') %></label>
                     <div class="radio-group">
                       <% 
                         const fontScales = [
-                          { value: 'pequeno', label: 'Pequeño', icon: 'fa-font' },
-                          { value: 'mediano', label: 'Mediano', icon: 'fa-font' },
-                          { value: 'grande', label: 'Grande', icon: 'fa-font' }
+                          { value: 'pequeno', label: 'small' },
+                          { value: 'mediano', label: 'medium' },
+                          { value: 'grande', label: 'large' }
                         ];
                         const currentScale = (personalization && personalization['font.scale']) || 'mediano';
                       %>
@@ -109,8 +109,8 @@
                                value="<%= scale.value %>"
                                <%= currentScale === scale.value ? 'checked' : '' %>>
                         <label class="radio-option" for="font-<%= scale.value %>">
-                          <i class="fas <%= scale.icon %>" style="font-size: <%= scale.value === 'pequeno' ? '0.8em' : (scale.value === 'grande' ? '1.2em' : '1em') %>;"></i> 
-                          <%= scale.label %>
+                          <i class="fas fa-font" style="font-size: <%= scale.value === 'pequeno' ? '0.8em' : (scale.value === 'grande' ? '1.2em' : '1em') %>;"></i> 
+                          <%= t('font_scales.' + scale.label) %>
                         </label>
                       <% }); %>
                     </div>
@@ -118,15 +118,15 @@
                 </div>
 
                 <div class="form-section">
-                  <h4><i class="fas fa-globe"></i> Idioma</h4>
+                  <h4><i class="fas fa-globe"></i> <%= t('profile.language.title') %></h4>
                   <div class="form-group">
-                    <label>Idioma de la interfaz:</label>
+                    <label><%= t('profile.language.interface_language') %></label>
                     <select name="locale.language" class="form-select">
                       <option value="es" <%= (!personalization['locale.language'] || personalization['locale.language'] === 'es') ? 'selected' : '' %>>
-                        🇪🇸 Español
+                        🇪🇸 <%= t('languages.es') %>
                       </option>
                       <option value="en" <%= personalization['locale.language'] === 'en' ? 'selected' : '' %>>
-                        🇺🇸 English
+                        🇺🇸 <%= t('languages.en') %>
                       </option>
                     </select>
                   </div>
@@ -135,16 +135,16 @@
                 <!-- Botones de acción -->
                 <div class="form-actions">
                   <button type="button" id="previewBtn" class="btn btn-outline">
-                    <i class="fas fa-eye"></i> Vista previa
+                    <i class="fas fa-eye"></i> <%= t('profile.buttons.preview') %>
                   </button>
                   <button type="submit" id="saveBtn" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Guardar cambios
+                    <i class="fas fa-save"></i> <%= t('profile.buttons.save') %>
                   </button>
                 </div>
 
                 <!-- Loader y mensajes -->
                 <div id="loader" class="loader" style="display: none;">
-                  <i class="fas fa-spinner fa-spin"></i> Guardando...
+                  <i class="fas fa-spinner fa-spin"></i> <%= t('profile.messages.saving') %>
                 </div>
                 <div id="message" class="message"></div>
               </form>
@@ -182,11 +182,11 @@
 
         const result = await response.json();
         if (!result.ok) {
-          throw new Error(result.error || 'Error al guardar los cambios.');
+          throw new Error(result.error || '<%= t('profile.messages.save_error') %>');
         }
 
         // Mostrar mensaje de éxito y recargar la página para aplicar cambios
-        messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> Cambios guardados. La página se recargará...`;
+        messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> <%= t('profile.messages.save_success') %>`;
         messageDiv.className = 'message success';
         messageDiv.style.display = 'block';
 
@@ -207,7 +207,7 @@
     // Puedes ocultarlo o eliminarlo del HTML si lo deseas.
     document.getElementById('previewBtn').addEventListener('click', function() {
         const messageDiv = document.getElementById('message');
-        messageDiv.innerHTML = `<i class="fas fa-info-circle"></i> La vista previa está desactivada. Guarda los cambios para aplicarlos.`;
+        messageDiv.innerHTML = `<i class="fas fa-info-circle"></i> <%= t('profile.messages.preview_disabled') %>`;
         messageDiv.className = 'message info';
         messageDiv.style.display = 'block';
         setTimeout(() => { messageDiv.style.display = 'none'; }, 4000);

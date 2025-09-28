@@ -1,4 +1,4 @@
-        let detallesVisibles = localStorage.getItem("detallesVisibles");
+let detallesVisibles = localStorage.getItem("detallesVisibles");
         detallesVisibles = detallesVisibles === null ? false : detallesVisibles === "true";
         let filtroTimeout;
 
@@ -33,14 +33,15 @@
                 for (const [id, info] of Object.entries(data)) {
                     const contenedor = document.getElementById(`info-box-${id}`);
                     if (contenedor) {
+                        const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
                         contenedor.innerHTML = `
                             <div class="contenido-box ${detallesVisibles ? '' : 'oculto'}">
-                                ${info.proxima_consulta ? `<p>Próxima consulta: ${info.proxima_consulta}</p>` : ''}
-                                ${info.consulta_actual ? `<p>Hora: ${info.consulta_actual}</p>` : ''}
-                                ${info.medico ? `<p>Doctor: ${info.medico}</p>` : ''}
-                                ${info.especialidad ? `<p>Especialidad: ${info.especialidad}</p>` : ''}
+                                ${info.proxima_consulta ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` : ''}
+                                ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
+                                ${info.medico ? `<p>${window.translations.doctor}: ${info.medico}</p>` : ''}
+                                ${info.especialidad ? `<p>${window.translations.specialty}: ${info.especialidad}</p>` : ''}
                             </div>
-                            <div class="estado-bar ${info.estado.replace(' ', '-').toLowerCase()}">${info.estado}</div>
+                            <div class="estado-bar ${estadoClassName}">${info.estado}</div>
                         `;
                     }
                 }
@@ -108,14 +109,15 @@
                 for (const [id, info] of Object.entries(data)) {
                     const contenedor = document.getElementById(`info-box-${id}`);
                     if (contenedor) {
+                        const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
                         contenedor.innerHTML = `
                             <div class="contenido-box ${detallesVisibles ? '' : 'oculto'}">
-                                ${info.proxima_consulta ? `<p>Próxima consulta: ${info.proxima_consulta}</p>` : ''}
-                                ${info.consulta_actual ? `<p>Hora: ${info.consulta_actual}</p>` : ''}
-                                ${info.medico ? `<p>Doctor: ${info.medico}</p>` : ''}
-                                ${info.especialidad ? `<p>Especialidad: ${info.especialidad}</p>` : ''}
+                                ${info.proxima_consulta ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` : ''}
+                                ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
+                                ${info.medico ? `<p>${window.translations.doctor}: ${info.medico}</p>` : ''}
+                                ${info.especialidad ? `<p>${window.translations.specialty}: ${info.especialidad}</p>` : ''}
                             </div>
-                            <div class="estado-bar ${info.estado.replace(' ', '-').toLowerCase()}">${info.estado}</div>
+                            <div class="estado-bar ${estadoClassName}">${info.estado}</div>
                         `;
                     }
                 }
@@ -265,12 +267,12 @@
             detallesVisibles = localStorage.getItem("detallesVisibles");
             detallesVisibles = detallesVisibles === null ? false : detallesVisibles === "true";
 
-            botonToggle.textContent = detallesVisibles ? "Ocultar detalles" : "Mostrar detalles";
+            botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
 
             botonToggle.addEventListener("click", function () {
                 detallesVisibles = !detallesVisibles;
                 localStorage.setItem("detallesVisibles", detallesVisibles);
-                botonToggle.textContent = detallesVisibles ? "Ocultar detalles" : "Mostrar detalles";
+                botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
                 aplicarEstadoVisual();
             });
 

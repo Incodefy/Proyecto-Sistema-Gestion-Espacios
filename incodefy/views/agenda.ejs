@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
-  <title>Agenda</title>
+  <title><%= t('agenda.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/agenda.css">
   <link rel="stylesheet" href="/css/footer.css">
@@ -20,8 +20,8 @@
 
       <div class="main">
         <div class="top-header">
-          <h1 class="page-title">Sistema de Agenda</h1>
-          <p class="page-subtitle">Gestiona tu agenda médica de forma eficiente</p>
+          <h1 class="page-title"><%= t('agenda.main_title') %></h1>
+          <p class="page-subtitle"><%= t('agenda.main_subtitle') %></p>
         </div>
 
         <div class="row g-4 gap-5 justify-content-center">
@@ -33,21 +33,21 @@
                 <div class="section-icon">
                   <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                 </div>
-                <h2 class="section-title">Gestión de Agenda</h2>
-                <p class="section-description">Visualiza y administra tus citas médicas</p>
+                <h2 class="section-title"><%= t('agenda.management.title') %></h2>
+                <p class="section-description"><%= t('agenda.management.description') %></p>
               </div>
 
               <div class="row gy-4 justify-content-center">
                 <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                   <a href="/agenda/calendario/box" class="option-card">
                     <i class="fa-solid fa-boxes-stacked"></i>
-                    <span>Box</span>
+                    <span><%= t('agenda.management.box') %></span>
                   </a>
                 </div>
                 <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                   <a href="/agenda/calendario/medico" class="option-card">
                     <i class="fa-solid fa-user-doctor" aria-hidden="true"></i>
-                    <span>Médico</span>
+                    <span><%= t('agenda.management.doctor') %></span>
                   </a>
                 </div>
               </div>
@@ -61,8 +61,8 @@
                 <div class="section-icon">
                   <i class="fas fa-exchange-alt" aria-hidden="true"></i>
                 </div>
-                <h2 class="section-title">Gestión de Datos</h2>
-                <p class="section-description">Exporta e importa información de consultas</p>
+                <h2 class="section-title"><%= t('agenda.data.title') %></h2>
+                <p class="section-description"><%= t('agenda.data.description') %></p>
               </div>
 
               <div class="row gy-4 justify-content-center">
@@ -71,7 +71,7 @@
                   <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                     <a href="/importar" class="option-card">
                       <i class="fas fa-download" aria-hidden="true"></i>
-                      <span>Importar</span>
+                      <span><%= t('agenda.data.import') %></span>
                     </a>
                   </div>
                 <% } %>
@@ -81,7 +81,7 @@
                   <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                     <a href="/exportar" class="option-card">
                       <i class="fas fa-upload" aria-hidden="true"></i>
-                      <span>Exportar</span>
+                      <span><%= t('agenda.data.export') %></span>
                     </a>
                   </div>
                 <% } %>
@@ -93,8 +93,8 @@
           <% if (!canViewAgenda && !canImport && !canExport) { %>
             <div class="col-12 text-center">
               <div class="alert alert-warning">
-                <h4>Sin permisos disponibles</h4>
-                <p>No tienes permisos para acceder a ninguna sección de la agenda. Contacta al administrador.</p>
+                <h4><%= t('agenda.no_permissions.title') %></h4>
+                <p><%= t('agenda.no_permissions.description') %></p>
               </div>
             </div>
           <% } %>

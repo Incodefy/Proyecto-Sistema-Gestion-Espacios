@@ -96,6 +96,24 @@ body {
     border: 1px solid rgba(43, 76, 126, 0.1);
 }
 
+.fecha-grupo {
+    margin-bottom: 1.5rem;
+}
+
+.fecha-etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: color-mix(in srgb, var(--light-blue) 65%, white);
+    color: var(--primary-blue);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(43, 76, 126, 0.15);
+}
+
 .notificacion-item {
     background: color-mix(in srgb, var(--background-color) 98%, white)!important;
     border-radius: var(--border-radius);
