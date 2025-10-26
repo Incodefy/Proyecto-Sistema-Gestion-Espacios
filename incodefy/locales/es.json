@@ -36,13 +36,15 @@
     },
     "buttons": {
       "preview": "Vista previa",
-      "save": "Guardar cambios"
+      "save": "Guardar cambios",
+      "reset": "Reiniciar cambios"
     },
     "messages": {
       "saving": "Guardando...",
       "save_error": "Error al guardar los cambios.",
       "save_success": "Cambios guardados. La página se recargará...",
-      "preview_disabled": "La vista previa está desactivada. Guarda los cambios para aplicarlos."
+      "preview_disabled": "La vista previa está desactivada. Guarda los cambios para aplicarlos.",
+      "unsaved": "Cambios sin guardar"
     }
   },
   "navbar": {

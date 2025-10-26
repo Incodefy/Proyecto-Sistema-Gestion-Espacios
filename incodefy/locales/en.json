@@ -36,13 +36,15 @@
     },
     "buttons": {
       "preview": "Preview",
-      "save": "Save Changes"
+      "save": "Save Changes",
+      "reset": "Reset changes"
     },
     "messages": {
       "saving": "Saving...",
       "save_error": "Error saving changes.",
       "save_success": "Changes saved. The page will reload...",
-      "preview_disabled": "Preview is disabled. Save changes to apply them."
+      "preview_disabled": "Preview is disabled. Save changes to apply them.",
+      "unsaved": "Unsaved changes"
     }
   },
   "navbar": {

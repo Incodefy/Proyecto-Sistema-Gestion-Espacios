@@ -434,20 +434,31 @@ body {
     margin-bottom: 20px;
 }
 
+/* === BLOQUE AJUSTADO PARA ALTURA ESTABLE Y PLACEHOLDER === */
 .dashboard-chart-container-card {
     background: var(--card-background);
     border-radius: 16px;
-    padding: 20px 15px 15px 15px; /* Reducir padding horizontal para más espacio */
+    padding: 20px 15px 15px 15px;
     box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
-    height: 400px; /* Altura fija más grande para los gráficos */
+    min-height: 380px; /* Mantiene altura estable desde el inicio */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
     border: 1px solid rgba(20, 44, 89, 0.08);
     position: relative;
     z-index: 1;
     overflow: hidden;
 }
+
+.dashboard-chart-container-card canvas {
+    width: 100% !important;
+    height: 280px !important; /* Altura fija estable */
+    display: none; /* oculto por defecto hasta que haya datos */
+    transition: opacity 0.3s ease;
+}
+
 
 .dashboard-chart-container-card::before {
     content: '';
@@ -500,28 +511,23 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--background-color);
     border-radius: 12px;
     height: 100%;
     width: 100%;
     text-align: center;
-    color: #64748b;
+    color: var(--secondary-text-color);
     padding: 20px;
-    border: 2px dashed rgba(20, 44, 89, 0.2);
-    flex: 1; /* Usar todo el espacio disponible */
+    border: 2px dashed var(--border-color);
+    flex: 1;
     min-height: 300px;
-}
-
-.dashboard-chart-container-placeholder:hover {
-    border-color: rgba(20, 44, 89, 0.3);
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
 }
 
 .dashboard-chart-container-placeholder i {
     font-size: 3rem;
     margin-bottom: 15px;
     opacity: 0.5;
-    color: #142c59;
+    color: var(--secondary-text-color);
 }
 
 .dashboard-chart-container-placeholder p {

@@ -1,0 +1,45 @@
+{
+  "AVAILABLE_PERMISSIONS": {
+    "dashboard.read": "Ver Dashboard",
+    "dashboard.write": "Modificar Dashboard",
+    
+    "agenda.read": "Ver Agenda", 
+    "agenda.write": "Gestionar Agenda",
+    
+    "box.read": "Ver Box",
+    "box.write": "Gestionar Box",
+    "box.detalle.read": "Ver Detalle de Box",
+    "box.detalle.write": "Modificar Detalle de Box",
+    
+    "data.import": "Importar Datos",
+    "data.export": "Exportar Datos", 
+    
+    "medicos.read": "Ver Médicos",
+    
+    "notificaciones.read": "Ver Notificaciones",
+    "notificaciones.historial": "Ver Historial de Notificaciones",
+    
+    "admin.users": "Administrar Sistema"
+  },
+  "PREDEFINED_ROLES": {
+    "consulta": [
+        "dashboard.read", "agenda.read", "box.read", "box.detalle.read",
+        "medicos.read", "notificaciones.read", "notificaciones.historial"
+    ],
+    "operador": [
+        "dashboard.read", "agenda.read", "agenda.write", "box.read", "box.write",
+        "box.detalle.read", "medicos.read", "notificaciones.read"
+    ],
+    "gestor": [
+        "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+        "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+        "data.import", "data.export", "medicos.read", 
+        "notificaciones.read", "notificaciones.historial"
+    ],
+    "medico": [
+        "dashboard.read", "agenda.read", "medicos.read", 
+        "notificaciones.read", "notificaciones.historial"
+    ],
+    "admin": ["admin.users"]
+  }
+}

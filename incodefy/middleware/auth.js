@@ -39,11 +39,25 @@ const checkAndRefreshTokens = async (req, res, next) => {
     const now = Math.floor(Date.now() / 1000);
     const tokenExp = tokenPayload.exp;
     
+    // Verificar si el token ya ha expirado
+    if (tokenExp < now) {
+      console.log("Token expirado, cerrando sesión");
+      req.session.destroy();
+      return res.redirect('/login');
+    }
+
     // Si el token expira en menos de 5 minutos, renovarlo
     const fiveMinutes = 5 * 60;
     if (tokenExp - now < fiveMinutes) {
       console.log("Token próximo a expirar, renovando...");
       
+      // Verificar que existe un refreshToken en la sesión
+      if (!req.session.user.refreshToken) {
+        console.log("No hay refresh token disponible, cerrando sesión");
+        req.session.destroy();
+        return res.redirect('/login');
+      }
+
       const refreshCommand = new InitiateAuthCommand({
         AuthFlow: "REFRESH_TOKEN_AUTH",
         ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -53,6 +67,13 @@ const checkAndRefreshTokens = async (req, res, next) => {
       });
 
       const refreshResult = await cognitoClient.send(refreshCommand);
+
+      if (!refreshResult.AuthenticationResult) {
+        console.log("No se pudo renovar el token, cerrando sesión");
+        req.session.destroy();
+        return res.redirect('/login');
+      }
+
       const newTokens = refreshResult.AuthenticationResult;
 
       // Actualizar tokens en la sesión

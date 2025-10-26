@@ -13,7 +13,6 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.890.0",
-    "@aws-sdk/client-sqs": "^3.893.0",
     "bcryptjs": "^3.0.2",
     "connect-flash": "^0.1.1",
     "connect-mysql2": "^2.2.6",

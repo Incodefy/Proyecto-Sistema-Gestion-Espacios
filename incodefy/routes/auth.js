@@ -1,4 +1,6 @@
 // routes/auth.js
+require('dotenv').config();
+
 const express = require("express");
 const router = express.Router();
 const {
@@ -14,9 +16,9 @@ const cognitoClient = new CognitoIdentityProviderClient({
 });
 
 // URLs configurables
-const API_BASE_URL = process.env.API_BASE_URL || 'https://0llhfn3ycj.execute-api.us-east-1.amazonaws.com';
-const PERMISSIONS_ENDPOINT = process.env.PERMISSIONS_ENDPOINT || '/my-permissions';
-const PERSONALIZATION_ENDPOINT = process.env.PERSONALIZATION_ENDPOINT || '/personalization';
+const API_BASE_URL = process.env.API_BASE_URL;
+const PERMISSIONS_ENDPOINT = process.env.PERMISSIONS_ENDPOINT;
+const PERSONALIZATION_ENDPOINT = process.env.PERSONALIZATION_ENDPOINT;
 
 const PERMISSIONS_URL = `${API_BASE_URL}${PERMISSIONS_ENDPOINT}`;
 const PERSONALIZATION_URL = `${API_BASE_URL}${PERSONALIZATION_ENDPOINT}`;

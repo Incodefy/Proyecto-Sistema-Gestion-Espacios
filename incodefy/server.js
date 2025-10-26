@@ -1,7 +1,6 @@
 // server.js
 const express = require('express');
 const path = require('path');
-require('dotenv').config();
 const db = require('./db');
 const fetch = require('node-fetch');
 
@@ -197,18 +196,20 @@ app.post('/api/personalization', requireAuth, async (req, res) => {
   try {
     console.log('📡 POST /api/personalization - Usuario:', req.session.user?.email);
     console.log('📡 Datos recibidos:', req.body);
+    console.log('📡 Parámetros a actualizar:', req.body.parameters);
 
+    // Validación de token
     if (!req.session.user?.idToken) {
-      return res.status(401).json({ 
-        ok: false, 
-        error: 'Usuario no autenticado' 
+      return res.status(401).json({
+        ok: false,
+        error: 'Usuario no autenticado'
       });
     }
 
-    const API_BASE_URL = process.env.API_BASE_URL || 'https://0llhfn3ycj.execute-api.us-east-1.amazonaws.com';
-    
-    console.log('📡 Enviando request a Lambda...');
+    const API_BASE_URL = process.env.API_BASE_URL;
+    console.log('📡 Enviando request a Lambda:', `${API_BASE_URL}/personalization`);
 
+    // Llamada a Lambda
     const response = await fetch(`${API_BASE_URL}/personalization`, {
       method: 'POST',
       headers: {
@@ -221,48 +222,71 @@ app.post('/api/personalization', requireAuth, async (req, res) => {
     });
 
     console.log('📥 Response status de Lambda:', response.status);
-    
     const result = await response.json();
     console.log('📥 Response data de Lambda:', result);
 
     if (response.ok && result.ok) {
-      // Actualizar la sesión con los parámetros finales del Lambda
+      // Actualizar personalización en sesión
       if (result.final_parameters) {
         req.session.user.personalization = result.final_parameters;
-        // Si se cambió el idioma en personalización, reflejarlo en la sesión inmediatamente
+
+        // Manejo adicional de idioma (locale.language)
         const newLang = result.final_parameters['locale.language'];
         if (newLang && typeof newLang === 'string') {
           req.session.language = newLang;
-          // Cambiar idioma activo en esta petición
+
           if (req.i18n?.language !== newLang) {
-            try { req.i18n.changeLanguage(newLang); } catch {}
+            try {
+              req.i18n.changeLanguage(newLang);
+            } catch (e) {
+              console.warn('⚠️ No se pudo cambiar idioma en i18n:', e.message);
+            }
           }
-          // Cookie de i18next para el detector
-          res.cookie('i18next', newLang, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+
+          // Guardar cookie persistente en el navegador (30 días)
+          res.cookie('i18next', newLang, {
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            httpOnly: true
+          });
         }
       }
 
-      return res.status(200).json({
-        ok: true,
-        message: 'Personalización actualizada correctamente',
-        saved_parameters: result.saved_parameters,
-        personalization: req.session.user.personalization
+      // Guardar sesión explícitamente antes de responder
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Error guardando sesión:', err);
+          return res.status(500).json({
+            ok: false,
+            error: 'Error guardando la sesión'
+          });
+        }
+
+        return res.status(200).json({
+          ok: true,
+          message: 'Personalización actualizada correctamente',
+          saved_parameters: result.saved_parameters,
+          personalization: req.session.user.personalization
+        });
       });
+
     } else {
-      return res.status(response.status).json({
+      console.error('❌ Error del Lambda:', result);
+      return res.status(response.status || 400).json({
         ok: false,
         error: result.error || result.message || 'Error al actualizar personalización'
       });
     }
 
   } catch (error) {
-    console.error('❌ Error completo:', error);
+    console.error('❌ Error en /api/personalization:', error);
     res.status(500).json({
       ok: false,
-      error: 'Error interno del servidor'
+      error: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
+
 
 // Refrescar personalización en sesión
 app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
