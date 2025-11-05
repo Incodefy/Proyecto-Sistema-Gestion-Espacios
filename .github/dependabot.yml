@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # Mantener dependencias de npm actualizadas (incodefy)
+  - package-ecosystem: "npm"
+    directory: "/incodefy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "incodefy"
+
+  # Mantener dependencias de npm actualizadas (aws)
+  - package-ecosystem: "npm"
+    directory: "/aws"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "aws"
+
+  # Mantener GitHub Actions actualizadas
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"

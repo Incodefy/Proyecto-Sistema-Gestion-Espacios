@@ -2,10 +2,10 @@ const mysql = require("mysql2/promise");
 
 // crea el pool de conexiones
 const db = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "David5111",
-  database: "incodefy",
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "David5111",
+  database: process.env.DB_NAME || "incodefy",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

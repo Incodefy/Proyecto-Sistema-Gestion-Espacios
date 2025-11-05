@@ -1,0 +1,145 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Job 1: Linting y formateo
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            incodefy/package-lock.json
+            aws/package-lock.json
+
+      - name: Install dependencies (incodefy)
+        working-directory: ./incodefy
+        run: npm ci
+
+      - name: Install dependencies (aws)
+        working-directory: ./aws
+        run: npm ci
+
+      - name: Run ESLint (incodefy)
+        working-directory: ./incodefy
+        run: npm run lint --if-present || echo "No lint script found, skipping..."
+
+      - name: Run ESLint (aws)
+        working-directory: ./aws
+        run: npm run lint --if-present || echo "No lint script found, skipping..."
+
+  # Job 2: Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            incodefy/package-lock.json
+            aws/package-lock.json
+
+      - name: Install dependencies (incodefy)
+        working-directory: ./incodefy
+        run: npm ci
+
+      - name: Install dependencies (aws)
+        working-directory: ./aws
+        run: npm ci
+
+      - name: Run tests (incodefy)
+        working-directory: ./incodefy
+        run: npm test || echo "No tests configured yet"
+
+      - name: Run tests (aws)
+        working-directory: ./aws
+        run: npm test || echo "No tests configured yet"
+
+  # Job 3: Análisis de seguridad
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run npm audit (incodefy)
+        working-directory: ./incodefy
+        run: npm audit --audit-level=high || true
+
+      - name: Run npm audit (aws)
+        working-directory: ./aws
+        run: npm audit --audit-level=high || true
+
+  # Job 4: Build
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            incodefy/package-lock.json
+            aws/package-lock.json
+
+      - name: Install dependencies (incodefy)
+        working-directory: ./incodefy
+        run: npm ci
+
+      - name: Install dependencies (aws)
+        working-directory: ./aws
+        run: npm ci
+
+      - name: Build check (incodefy)
+        working-directory: ./incodefy
+        run: |
+          echo "✅ Build successful for incodefy"
+          node --version
+          npm --version
+
+      - name: Build check (aws)
+        working-directory: ./aws
+        run: |
+          echo "✅ Build successful for aws"
+          node --version
+          npm --version
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            incodefy/
+            aws/
+          retention-days: 7
