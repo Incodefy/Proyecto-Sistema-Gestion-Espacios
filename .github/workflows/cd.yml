@@ -1,10 +1,10 @@
 name: CD Pipeline - Deploy to AWS EC2
 
 on:
-  workflow_dispatch: # Solo ejecutar manualmente (credenciales temporales de AWS Academy)
-  # push: # ⚠️ Desactivado - AWS Academy usa credenciales temporales que expiran
-  #   branches:
-  #     - main
+  push: # ✅ Activado temporalmente para probar
+    branches:
+      - main
+  workflow_dispatch: # También permite ejecución manual
 
 jobs:
   # Job para desplegar funciones Lambda/Serverless
