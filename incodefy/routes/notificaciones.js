@@ -1,30 +1,30 @@
 // routes/notificaciones.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const db = require("../db");
-const checkPermission = require("../middleware/checkPermission");
+const db = require('../db');
+const checkPermission = require('../middleware/checkPermission');
 
 // Página de historial
-router.get("/historial-notificaciones", checkPermission('notificaciones.historial'), (req, res) => {
-  res.render("historial_notificaciones", {
+router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), (req, res) => {
+  res.render('historial_notificaciones', {
     currentPath: req.path,
     personalization: req.session.user?.personalization || {}
   });
 });
 
 // API de notificaciones
-router.get("/notificaciones-usuario", async (req, res) => {
+router.get('/notificaciones-usuario', async (req, res) => {
   try {
     // 1. Obtener todos los médicos y boxes para mapeo eficiente
-    const [medicos] = await db.query("SELECT idmedico, nombre FROM medico");
-    const [boxes] = await db.query("SELECT idbox, nombre FROM box");
+    const [medicos] = await db.query('SELECT idmedico, nombre FROM medico');
+    const [boxes] = await db.query('SELECT idbox, nombre FROM box');
 
     const medicosMap = new Map(medicos.map(m => [m.idmedico, m.nombre]));
     const boxesMap = new Map(boxes.map(b => [b.idbox, b.nombre]));
 
     // 2. Obtener las notificaciones
     const [rows] = await db.query(
-      "SELECT fecha, mensaje, detalle FROM notificacion ORDER BY fecha DESC LIMIT 50"
+      'SELECT fecha, mensaje, detalle FROM notificacion ORDER BY fecha DESC LIMIT 50'
     );
 
     // 3. Procesar y enriquecer cada notificación
@@ -67,7 +67,7 @@ router.get("/notificaciones-usuario", async (req, res) => {
       }
 
       return {
-        fecha: n.fecha ? n.fecha.toISOString().slice(0, 19).replace("T", " ") : "",
+        fecha: n.fecha ? n.fecha.toISOString().slice(0, 19).replace('T', ' ') : '',
         mensaje: mensajeTraducido,
         detalle: detalleProcesado
       };
@@ -87,8 +87,8 @@ router.get("/notificaciones-usuario", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Error al cargar notificaciones:", err);
-    res.status(500).json({ error: "Error al cargar notificaciones" });
+    console.error('Error al cargar notificaciones:', err);
+    res.status(500).json({ error: 'Error al cargar notificaciones' });
   }
 });
 

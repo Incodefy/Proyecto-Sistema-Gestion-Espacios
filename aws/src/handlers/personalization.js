@@ -1,58 +1,58 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 // Parámetros disponibles para personalización
 const PERSONALIZATION_PARAMETERS = {
-  "theme.mode": { 
-    type: "select", 
-    options: ["light", "dark"], 
-    default: "light",
-    name: "Modo de tema"
+  'theme.mode': { 
+    type: 'select', 
+    options: ['light', 'dark'], 
+    default: 'light',
+    name: 'Modo de tema'
   },
-  "theme.primary_color": { 
-    type: "color", 
-    options: ["#1a3c7c", "#d53232ff", "#059669", "#7c3aed", "#ea580c"], 
-    default: "#1a3c7c",
-    name: "Color principal"
+  'theme.primary_color': { 
+    type: 'color', 
+    options: ['#1a3c7c', '#d53232ff', '#059669', '#7c3aed', '#ea580c'], 
+    default: '#1a3c7c',
+    name: 'Color principal'
   },
-  "locale.language": { 
-    type: "select", 
-    options: ["es", "en"], 
-    default: "es",
-    name: "Idioma"
+  'locale.language': { 
+    type: 'select', 
+    options: ['es', 'en'], 
+    default: 'es',
+    name: 'Idioma'
   },
-  "font.scale": {
-    type: "select",
-    options: ["pequeno", "mediano", "grande"],
-    default: "mediano",
-    name: "Escala de fuente"
+  'font.scale': {
+    type: 'select',
+    options: ['pequeno', 'mediano', 'grande'],
+    default: 'mediano',
+    name: 'Escala de fuente'
   }
 };
 
 // Parámetros globales (configuración por defecto de la organización)
 const getGlobalParameters = () => ({
-  "theme.mode": "light",
-  "theme.primary_color": "#1a3c7c", 
-  "locale.language": "es",
-  "font.scale": "mediano"
+  'theme.mode': 'light',
+  'theme.primary_color': '#1a3c7c', 
+  'locale.language': 'es',
+  'font.scale': 'mediano'
 });
 
 // Función para generar colores derivados del color principal
 const generateColorVariants = (primaryColor) => {
   const colorVariants = {
-    "#1a3c7c": { light: "#375ca1", dark: "#142c59" },
-    "#d53232ff": { light: "#e76464ff", dark: "#ad2424ff" },
-    "#059669": { light: "#1ec78fff", dark: "#068d67ff" },
-    "#7c3aed": { light: "#946cf2ff", dark: "#6028bbff" },
-    "#ea580c": { light: "#f3893dff", dark: "#c25125ff" }
+    '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
+    '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
+    '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
+    '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
+    '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
   };
 
   return colorVariants[primaryColor] || {
-    light: primaryColor + "cc",
-    dark: primaryColor + "dd"
+    light: primaryColor + 'cc',
+    dark: primaryColor + 'dd'
   };
 };
 
@@ -66,13 +66,13 @@ module.exports.getPersonalization = async (event) => {
     const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
     
     if (!userSub) {
-      return response(401, { ok: false, error: "Usuario no autenticado" });
+      return response(401, { ok: false, error: 'Usuario no autenticado' });
     }
 
     const result = await docClient.send(new QueryCommand({
       TableName: process.env.PARAMETERS_TABLE,
-      KeyConditionExpression: "user_sub = :userSub",
-      ExpressionAttributeValues: { ":userSub": userSub }
+      KeyConditionExpression: 'user_sub = :userSub',
+      ExpressionAttributeValues: { ':userSub': userSub }
     }));
 
     const userParameters = {};
@@ -104,8 +104,8 @@ module.exports.getPersonalization = async (event) => {
     });
 
   } catch (err) {
-    console.error("Error getting personalization:", err);
-    return response(500, { ok: false, error: "Error interno del servidor" });
+    console.error('Error getting personalization:', err);
+    return response(500, { ok: false, error: 'Error interno del servidor' });
   }
 };
 
@@ -119,13 +119,13 @@ module.exports.setPersonalization = async (event) => {
     const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
     
     if (!userSub) {
-      return response(401, { ok: false, error: "Usuario no autenticado" });
+      return response(401, { ok: false, error: 'Usuario no autenticado' });
     }
 
-    const { parameters } = JSON.parse(event.body || "{}");
+    const { parameters } = JSON.parse(event.body || '{}');
 
     if (!parameters || typeof parameters !== 'object') {
-      return response(400, { ok: false, error: "parameters es obligatorio y debe ser un objeto" });
+      return response(400, { ok: false, error: 'parameters es obligatorio y debe ser un objeto' });
     }
 
     const validParameters = {};
@@ -170,16 +170,16 @@ module.exports.setPersonalization = async (event) => {
 
     return response(200, {
       ok: true,
-      message: "Parámetros de personalización actualizados",
+      message: 'Parámetros de personalización actualizados',
       saved_parameters: savedParameters,
       final_parameters: finalParameters
     });
 
   } catch (err) {
-    console.error("❌ Error en setPersonalization:", err);
+    console.error('❌ Error en setPersonalization:', err);
     return response(500, { 
       ok: false, 
-      error: "Error interno del servidor",
+      error: 'Error interno del servidor',
       details: err.message
     });
   }
@@ -196,9 +196,10 @@ function validateParameter(key, value) {
     case 'select':
     case 'color':
       return config.options.includes(value);
-    case 'number':
+    case 'number': {
       const num = Number(value);
       return !isNaN(num) && num >= config.min && num <= config.max;
+    }
     default:
       return true;
   }
@@ -208,10 +209,10 @@ function response(statusCode, body) {
   return {
     statusCode,
     headers: {
-      "content-type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type,Authorization",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+      'content-type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
     },
     body: JSON.stringify(body)
   };

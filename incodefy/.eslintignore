@@ -1,0 +1,7 @@
+# Ignorar archivos del frontend (se ejecutan en el navegador)
+public/
+
+# Ignorar node_modules y otros directorios
+node_modules/
+views/
+locales/

@@ -1,13 +1,15 @@
 name: "CodeQL Security Scan"
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-  schedule:
-    # Escaneo semanal los lunes a las 6 AM
-    - cron: '0 6 * * 1'
+  # Deshabilitado temporalmente - requiere Advanced Security
+  workflow_dispatch:  # Solo manual
+  # push:
+  #   branches: [main, develop]
+  # pull_request:
+  #   branches: [main, develop]
+  # schedule:
+  #   # Escaneo semanal los lunes a las 6 AM
+  #   - cron: '0 6 * * 1'
 
 jobs:
   analyze:

@@ -1,7 +1,7 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const db = require("../db");
-const checkPermission = require("../middleware/checkPermission");
+const db = require('../db');
+const checkPermission = require('../middleware/checkPermission');
 
 const ESTADO_REALIZADA_ID = 1;
 const ESTADO_PENDIENTE_ID = 2;
@@ -9,21 +9,21 @@ const ESTADO_PENDIENTE_ID = 2;
 function nowLocal() {
   const now = new Date();
   return {
-    hoy: now.toISOString().split("T")[0],
+    hoy: now.toISOString().split('T')[0],
     ahora: now.toTimeString().slice(0, 5),
     full: now,
   };
 }
 
-router.get("/en-curso", checkPermission('box.write'), (req, res) => {
-  res.render("consultas_en_curso", { 
+router.get('/en-curso', checkPermission('box.write'), (req, res) => {
+  res.render('consultas_en_curso', { 
     currentPath: req.path,
     personalization: req.session.user?.personalization || {}
   });
 });
 
 // 2. API: obtener consultas en curso
-router.get("/consultas/en-curso/api", async (req, res) => {
+router.get('/consultas/en-curso/api', async (req, res) => {
   try {
     const { ahora, full } = nowLocal();
 
@@ -61,13 +61,13 @@ router.get("/consultas/en-curso/api", async (req, res) => {
       return {
         idagenda: a.idagenda,
         fecha: a.fecha
-          ? new Date(a.fecha).toISOString().split("T")[0]
+          ? new Date(a.fecha).toISOString().split('T')[0]
           : null,
-        horainicio: a.horainicio || "",
-        horafin: a.horafin || "",
-        box: a.box || "-",
-        medico: a.medico || "-",
-        tipoconsulta: a.tipoconsulta || "—",
+        horainicio: a.horainicio || '',
+        horafin: a.horafin || '',
+        box: a.box || '-',
+        medico: a.medico || '-',
+        tipoconsulta: a.tipoconsulta || '—',
         estado_id: a.estado_id,
         estado: req.t(`common.${estadoKey}`)
       };
@@ -83,12 +83,12 @@ router.get("/consultas/en-curso/api", async (req, res) => {
       slot,
     });
   } catch (err) {
-    console.error("Error SQL:", err);
-    res.status(500).json({ error: "Error al cargar consultas" });
+    console.error('Error SQL:', err);
+    res.status(500).json({ error: 'Error al cargar consultas' });
   }
 });
 
-router.post("/consultas/en-curso/toggle", async (req, res) => {
+router.post('/consultas/en-curso/toggle', async (req, res) => {
   try {
     const { idagenda, to_estado } = req.body;
 
@@ -96,20 +96,20 @@ router.post("/consultas/en-curso/toggle", async (req, res) => {
     const to = Number(to_estado);
 
     if (!id || ![ESTADO_REALIZADA_ID, ESTADO_PENDIENTE_ID].includes(to)) {
-      return res.status(400).json({ error: "Parámetros inválidos" });
+      return res.status(400).json({ error: 'Parámetros inválidos' });
     }
 
-    const sql = "UPDATE agenda SET idEstado = ? WHERE idAgenda = ?";
+    const sql = 'UPDATE agenda SET idEstado = ? WHERE idAgenda = ?';
     const [result] = await db.query(sql, [to, id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Agenda no encontrada" });
+      return res.status(404).json({ error: 'Agenda no encontrada' });
     }
 
     res.json({ ok: true, idagenda: id, nuevo_estado_id: to });
   } catch (err) {
-    console.error("Error SQL:", err);
-    res.status(500).json({ error: "No se pudo actualizar" });
+    console.error('Error SQL:', err);
+    res.status(500).json({ error: 'No se pudo actualizar' });
   }
 });
 

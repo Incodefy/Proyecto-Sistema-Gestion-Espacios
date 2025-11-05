@@ -1,10 +1,17 @@
 name: CD Pipeline - Deploy to AWS EC2
 
 on:
-  push: # ✅ Activado temporalmente para probar
-    branches:
-      - main
-  workflow_dispatch: # También permite ejecución manual
+  # Ejecución manual únicamente (AWS Academy usa credenciales temporales)
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno a desplegar'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   # Job para desplegar funciones Lambda/Serverless

@@ -1,8 +1,8 @@
 // routes/calendario.js
 const express = require('express');
 const router = express.Router();
-const db = require("../db");
-const checkPermission = require("../middleware/checkPermission");
+const db = require('../db');
+const checkPermission = require('../middleware/checkPermission');
 
 // Ruta principal del calendario
 router.get('/agenda/calendario/:tipo', async (req, res) => {
@@ -10,16 +10,16 @@ router.get('/agenda/calendario/:tipo', async (req, res) => {
     const { tipo } = req.params;
     
     if (!['box', 'medico'].includes(tipo)) {
-      return res.status(400).send("Tipo de vista no válido");
+      return res.status(400).send('Tipo de vista no válido');
     }
 
     const horas = [
-      "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
-      "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00",
-      "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "19:00 - 20:00",
-      "20:00 - 21:00", "21:00 - 22:00", "22:00 - 23:00", "23:00 - 00:00"
+      '08:00 - 09:00', '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
+      '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00', '15:00 - 16:00',
+      '16:00 - 17:00', '17:00 - 18:00', '18:00 - 19:00', '19:00 - 20:00',
+      '20:00 - 21:00', '21:00 - 22:00', '22:00 - 23:00', '23:00 - 00:00'
     ];
-    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
     // Obtener datos base
     const [pasillos, boxes, especialidades, medicos] = await Promise.all([
@@ -186,7 +186,7 @@ router.post('/agenda/guardar-agenda', async (req, res) => {
   try {
     const { medico_id, hora, fecha_inicio, box_id, tipo_usuario } = req.body;
     
-    const partes_hora = hora.split(" - ");
+    const partes_hora = hora.split(' - ');
     const hora_inicio = partes_hora[0];
     const hora_fin = partes_hora[1];
     
@@ -238,7 +238,7 @@ router.post('/agenda/eliminar-agenda-medico', async (req, res) => {
   try {
     const { medico_id, fecha, hora, box_id } = req.body;
     
-    const [hora_inicio, hora_fin] = hora.split(" - ");
+    const [hora_inicio, hora_fin] = hora.split(' - ');
     
     const result = await db.query(`
       DELETE FROM agenda 
@@ -262,7 +262,7 @@ router.post('/agenda/eliminar-agenda-box', async (req, res) => {
   try {
     const { medico_id, fecha, hora, box_id } = req.body;
     
-    const [hora_inicio, hora_fin] = hora.split(" - ");
+    const [hora_inicio, hora_fin] = hora.split(' - ');
     
     const result = await db.query(`
       DELETE FROM agenda 

@@ -1,4 +1,4 @@
-let fechaActual = new Date(new Date().toISOString().split("T")[0]); 
+let fechaActual = new Date(new Date().toISOString().split('T')[0]); 
 let graficoUso = null;
 let graficoCumplimiento = null;
 
@@ -64,32 +64,32 @@ function seleccionarFecha(valor) {
 function actualizarVista() {
     const boxId = document.body.dataset.boxId;
 
-    const fechaStr = fechaActual.toISOString().split("T")[0]; 
+    const fechaStr = fechaActual.toISOString().split('T')[0]; 
 
-    document.getElementById("selectorFecha").value = fechaStr;
+    document.getElementById('selectorFecha').value = fechaStr;
 
     fetch(`/api/box-info?box_id=${boxId}&fecha=${fechaStr}`)
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert("Error al cargar la información: " + data.error);
+                alert('Error al cargar la información: ' + data.error);
                 return;
             }
 
-            document.getElementById("fechaLabel").innerText = data.fecha;
+            document.getElementById('fechaLabel').innerText = data.fecha;
 
             // Tabla
-            const tabla = document.getElementById("tablaHorarios");
-            tabla.innerHTML = "";
+            const tabla = document.getElementById('tablaHorarios');
+            tabla.innerHTML = '';
             for (const hora in data.horarios) {
-                const fila = document.createElement("tr");
+                const fila = document.createElement('tr');
                 const bloque = data.horarios[hora];
                 fila.innerHTML = `
                     <td>${hora}</td>
-                    <td>${bloque.medico || "-"}</td>
-                    <td>${bloque.especialidad || "-"}</td>
-                    <td>${bloque.estado || "-"}</td>
-                    <td>${bloque.tipo_consulta || "-"}</td>
+                    <td>${bloque.medico || '-'}</td>
+                    <td>${bloque.especialidad || '-'}</td>
+                    <td>${bloque.estado || '-'}</td>
+                    <td>${bloque.tipo_consulta || '-'}</td>
                 `;
                 tabla.appendChild(fila);
             }
@@ -97,15 +97,15 @@ function actualizarVista() {
             actualizarMetricas(data);
             renderGraficos(data.uso_box, data.consultas_no_realizadas, data.total_consultas);
         })
-        .catch(err => console.error("Error:", err));
+        .catch(err => console.error('Error:', err));
 }
 
 // ========= Métricas =========
 function actualizarMetricas(data) {
-    document.getElementById("totalConsultas").innerText = data.total_consultas;
-    document.getElementById("noRealizadas").innerText = data.consultas_no_realizadas;
-    document.getElementById("usoBox").innerHTML = `${parseFloat(data.uso_box).toFixed(0)}<span style="font-size:1.5rem;">%</span>`;
-    document.getElementById("cumplimiento").innerHTML = `${parseFloat(data.cumplimiento).toFixed(0)}<span style="font-size:1.5rem;">%</span>`;
+    document.getElementById('totalConsultas').innerText = data.total_consultas;
+    document.getElementById('noRealizadas').innerText = data.consultas_no_realizadas;
+    document.getElementById('usoBox').innerHTML = `${parseFloat(data.uso_box).toFixed(0)}<span style="font-size:1.5rem;">%</span>`;
+    document.getElementById('cumplimiento').innerHTML = `${parseFloat(data.cumplimiento).toFixed(0)}<span style="font-size:1.5rem;">%</span>`;
 }
 
 // ========= Gráficos =========
@@ -114,18 +114,18 @@ function renderGraficos(uso, noRealizadas, total) {
     if (graficoUso) graficoUso.destroy();
     if (graficoCumplimiento) graficoCumplimiento.destroy();
 
-    const ctxUso = document.getElementById("graficoUso").getContext("2d");
+    const ctxUso = document.getElementById('graficoUso').getContext('2d');
     graficoUso = new Chart(ctxUso, {
-        type: "doughnut",
-        data: { labels: ["Usado", "Libre"], datasets: [{ data: [uso, 100 - uso], backgroundColor: ["#142c59", "#e8f2ff"], cutout: '70%' }] },
+        type: 'doughnut',
+        data: { labels: ['Usado', 'Libre'], datasets: [{ data: [uso, 100 - uso], backgroundColor: ['#142c59', '#e8f2ff'], cutout: '70%' }] },
         plugins: [ChartDataLabels],
         options: { plugins: { legend: { position: 'bottom' } } }
     });
 
-    const ctxCumplimiento = document.getElementById("graficoCumplimiento").getContext("2d");
+    const ctxCumplimiento = document.getElementById('graficoCumplimiento').getContext('2d');
     graficoCumplimiento = new Chart(ctxCumplimiento, {
-        type: "doughnut",
-        data: { labels: ["Realizadas", "No Realizadas"], datasets: [{ data: [realizadas, noRealizadas], backgroundColor: ["#1d428a", "#dc3545"], cutout: '70%' }] },
+        type: 'doughnut',
+        data: { labels: ['Realizadas', 'No Realizadas'], datasets: [{ data: [realizadas, noRealizadas], backgroundColor: ['#1d428a', '#dc3545'], cutout: '70%' }] },
         plugins: [ChartDataLabels],
         options: { plugins: { legend: { position: 'bottom' } } }
     });
@@ -145,7 +145,7 @@ function mostrarTab(tab) {
 }
 
 // ========= Init =========
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
     actualizarVista();
 
     const urlParams = new URLSearchParams(window.location.search);

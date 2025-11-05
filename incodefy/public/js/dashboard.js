@@ -183,7 +183,7 @@ function actualizarKPIs(kpis) {
         } else if (kpis.variacion_ocupacion < 0) {
             ocupacionElement.innerHTML += `<span class="dashboard-kpi-variation dashboard-kpi-down"><i class="fa-solid fa-arrow-down"></i>${kpis.variacion_ocupacion}%</span>`;
         } else {
-            ocupacionElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
+            ocupacionElement.innerHTML += '<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>';
         }
     ocupacionSubtext.textContent = kpis.ocupacion_subtext || (window.i18nDashboard?.ocupacionSubtext || '');
     } else {
@@ -201,7 +201,7 @@ function actualizarKPIs(kpis) {
     } else if (kpis.variacion_consultas < 0) {
         consultasElement.innerHTML += `<span class="dashboard-kpi-variation dashboard-kpi-down"><i class="fa-solid fa-arrow-down"></i>${kpis.variacion_consultas}</span>`;
     } else if (kpis.variacion_consultas === 0 && kpis.total_consultas > 0) {
-        consultasElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
+        consultasElement.innerHTML += '<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>';
     }
     consultasSubtext.textContent = kpis.consultas_subtext || (window.i18nDashboard?.periodSelected || '');
 
@@ -215,7 +215,7 @@ function actualizarKPIs(kpis) {
     } else if (kpis.variacion_promedio_diario < 0) {
         promedioElement.innerHTML += `<span class="dashboard-kpi-variation dashboard-kpi-down"><i class="fa-solid fa-arrow-down"></i>${kpis.variacion_promedio_diario}</span>`;
     } else if (kpis.variacion_promedio_diario === 0 && kpis.promedio_consultas_diario > 0) {
-        promedioElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
+        promedioElement.innerHTML += '<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>';
     }
     promedioSubtext.textContent = kpis.promedio_subtext || (window.i18nDashboard?.perDay || '');
 
@@ -226,11 +226,11 @@ function actualizarKPIs(kpis) {
     if (kpis.especialidad_mas_demandada) {
         especialidadElement.innerHTML = kpis.especialidad_mas_demandada;
         if (kpis.tendencia_especialidad === 'sube') {
-            especialidadElement.innerHTML += `<span class="dashboard-kpi-variation dashboard-kpi-up"><i class="fa-solid fa-arrow-up"></i></span>`;
+            especialidadElement.innerHTML += '<span class="dashboard-kpi-variation dashboard-kpi-up"><i class="fa-solid fa-arrow-up"></i></span>';
         } else if (kpis.tendencia_especialidad === 'baja') {
-            especialidadElement.innerHTML += `<span class="dashboard-kpi-variation dashboard-kpi-down"><i class="fa-solid fa-arrow-down"></i></span>`;
+            especialidadElement.innerHTML += '<span class="dashboard-kpi-variation dashboard-kpi-down"><i class="fa-solid fa-arrow-down"></i></span>';
         } else {
-            especialidadElement.innerHTML += `<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>`;
+            especialidadElement.innerHTML += '<span class="dashboard-kpi-variation"><i class="fa-solid fa-equals"></i></span>';
         }
         especialidadSubtext.textContent = kpis.especialidad_subtext || (window.i18nDashboard?.currentPeriod || '');
     } else {
@@ -300,7 +300,7 @@ const DASHBOARD_CHART_COLORS = {
     
     // Función para colores hover (ligeramente más brillantes)
     getHoverColor: function(value, maxValue) {
-        if (maxValue === 0) return `rgba(26, 53, 102, 0.9)`;
+        if (maxValue === 0) return 'rgba(26, 53, 102, 0.9)';
         
         const intensity = value / maxValue;
         

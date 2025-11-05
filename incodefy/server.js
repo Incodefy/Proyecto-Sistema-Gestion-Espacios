@@ -24,11 +24,11 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // === Configuración de Sesión ===
-const session = require("express-session");
-const flash = require("connect-flash");
+const session = require('express-session');
+const flash = require('connect-flash');
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || "clave-secreta",
+  secret: process.env.SESSION_SECRET || 'clave-secreta',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -62,8 +62,8 @@ app.use((req, res, next) => {
 app.use(flash());
 
 app.use((req, res, next) => {
-  res.locals.error_msg = req.flash("error");
-  res.locals.success_msg = req.flash("success");
+  res.locals.error_msg = req.flash('error');
+  res.locals.success_msg = req.flash('success');
   res.locals.user = req.session.user || null;
   next();
 });
@@ -83,8 +83,8 @@ app.use(setLanguage);
 // === RUTAS PÚBLICAS (sin autenticación) ===
 
 app.get('/', (req, res) => {
-  console.log("Acceso a ruta raíz");
-  console.log("Usuario autenticado:", req.session.user ? "SÍ" : "NO");
+  console.log('Acceso a ruta raíz');
+  console.log('Usuario autenticado:', req.session.user ? 'SÍ' : 'NO');
   
   if (req.session.user && req.session.user.idToken) {
     res.redirect('/dashboard');
@@ -94,8 +94,8 @@ app.get('/', (req, res) => {
 });
 
 // Auth routes (públicas)
-const authRoutes = require("./routes/auth");
-app.use("/", authRoutes);
+const authRoutes = require('./routes/auth');
+app.use('/', authRoutes);
 
 // === RUTA PARA CAMBIAR IDIOMA ===
 app.post('/perfil/idioma', requireAuth, async (req, res) => {
@@ -110,7 +110,7 @@ app.post('/perfil/idioma', requireAuth, async (req, res) => {
     res.cookie('i18next', lang, { maxAge: 900000, httpOnly: true });
     res.redirect('back');
   } catch (err) {
-    console.error("❌ Error actualizando idioma:", err);
+    console.error('❌ Error actualizando idioma:', err);
     res.redirect('back');
   }
 });
@@ -128,7 +128,7 @@ app.get('/agenda', requireAuth, checkPermission('agenda.read'), (req, res) => {
     canImport: userPermissions.includes('data.import') || userPermissions.includes('admin.users'),
     canExport: userPermissions.includes('data.export') || userPermissions.includes('admin.users'),
     personalization: req.session.user?.personalization || {},
-    idToken: req.session.user?.idToken || ""
+    idToken: req.session.user?.idToken || ''
   });
 });
 
@@ -159,24 +159,24 @@ app.get('/calendario/medico', requireAuth, checkPermission('agenda.read'), (req,
 });
 
 // Box routes
-const boxRoutes = require("./routes/box");
-app.use("/", requireAuth, boxRoutes);
+const boxRoutes = require('./routes/box');
+app.use('/', requireAuth, boxRoutes);
 
 // Detalle de box
-const detalleBoxRoutes = require("./routes/detalle_box");
-app.use("/", requireAuth, detalleBoxRoutes);
+const detalleBoxRoutes = require('./routes/detalle_box');
+app.use('/', requireAuth, detalleBoxRoutes);
 
 // Consultas en curso
-const consultasRoutes = require("./routes/consultas");
-app.use("/", requireAuth, consultasRoutes);
+const consultasRoutes = require('./routes/consultas');
+app.use('/', requireAuth, consultasRoutes);
 
 // Dashboard
-const dashboardRoutes = require("./routes/dashboard");
-app.use("/", requireAuth, dashboardRoutes);
+const dashboardRoutes = require('./routes/dashboard');
+app.use('/', requireAuth, dashboardRoutes);
 
 // Historial notificaciones
-const notificacionesRoutes = require("./routes/notificaciones");
-app.use("/", requireAuth, notificacionesRoutes);
+const notificacionesRoutes = require('./routes/notificaciones');
+app.use('/', requireAuth, notificacionesRoutes);
 
 // Calendario agenda
 const calendarioRouter = require('./routes/calendario');
@@ -235,7 +235,11 @@ app.post('/api/personalization', requireAuth, async (req, res) => {
           req.session.language = newLang;
           // Cambiar idioma activo en esta petición
           if (req.i18n?.language !== newLang) {
-            try { req.i18n.changeLanguage(newLang); } catch {}
+            try { 
+              req.i18n.changeLanguage(newLang); 
+            } catch (err) {
+              console.error('Error changing language:', err);
+            }
           }
           // Cookie de i18next para el detector
           res.cookie('i18next', newLang, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
@@ -273,11 +277,11 @@ app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
     if (success) {
       req.session.save((err) => {
         if (err) {
-          console.log("Error guardando sesión:", err);
+          console.log('Error guardando sesión:', err);
           return res.status(500).json({ ok: false, error: 'Error guardando sesión' });
         }
         
-        console.log("✅ Sesión actualizada correctamente");
+        console.log('✅ Sesión actualizada correctamente');
         res.json({ 
           ok: true, 
           personalization: req.session.user.personalization,
@@ -288,7 +292,7 @@ app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
       res.status(500).json({ ok: false, error: 'No se pudo actualizar la personalización' });
     }
   } catch (error) {
-    console.error("Error en refresh-personalization:", error);
+    console.error('Error en refresh-personalization:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
@@ -297,7 +301,7 @@ app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
 
 app.get('/test', (req, res) => {
   res.json({ 
-    message: "Servidor funcionando correctamente",
+    message: 'Servidor funcionando correctamente',
     authenticated: req.session.user ? true : false,
     user: req.session.user ? {
       email: req.session.user.email,

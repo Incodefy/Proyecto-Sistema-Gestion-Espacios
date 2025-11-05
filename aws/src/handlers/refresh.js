@@ -1,7 +1,7 @@
 const {
   CognitoIdentityProviderClient,
   InitiateAuthCommand
-} = require("@aws-sdk/client-cognito-identity-provider");
+} = require('@aws-sdk/client-cognito-identity-provider');
 
 const client = new CognitoIdentityProviderClient({});
 
@@ -12,14 +12,14 @@ const client = new CognitoIdentityProviderClient({});
  */
 module.exports.refresh = async (event) => {
   try {
-    const { refreshToken } = JSON.parse(event.body || "{}");
+    const { refreshToken } = JSON.parse(event.body || '{}');
 
     if (!refreshToken) {
-      return response(400, { ok: false, error: "refreshToken es obligatorio" });
+      return response(400, { ok: false, error: 'refreshToken es obligatorio' });
     }
 
     const cmd = new InitiateAuthCommand({
-      AuthFlow: "REFRESH_TOKEN_AUTH",
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
       ClientId: process.env.USER_POOL_CLIENT_ID,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken
@@ -37,7 +37,7 @@ module.exports.refresh = async (event) => {
     });
   } catch (err) {
     console.error(err);
-    return response(400, { ok: false, error: "No se pudo refrescar el token" });
+    return response(400, { ok: false, error: 'No se pudo refrescar el token' });
   }
 };
 
@@ -45,7 +45,7 @@ function response(statusCode, body) {
   return {
     statusCode,
     headers: {
-      "content-type": "application/json"
+      'content-type': 'application/json'
     },
     body: JSON.stringify(body)
   };

@@ -2,7 +2,7 @@
 const {
   CognitoIdentityProviderClient,
   InitiateAuthCommand
-} = require("@aws-sdk/client-cognito-identity-provider");
+} = require('@aws-sdk/client-cognito-identity-provider');
 
 const cognitoClient = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION
@@ -31,7 +31,7 @@ const checkAndRefreshTokens = async (req, res, next) => {
     const tokenPayload = decodeJWT(req.session.user.idToken);
     
     if (!tokenPayload) {
-      console.log("Token inválido, cerrando sesión");
+      console.log('Token inválido, cerrando sesión');
       req.session.destroy();
       return res.redirect('/login');
     }
@@ -42,10 +42,10 @@ const checkAndRefreshTokens = async (req, res, next) => {
     // Si el token expira en menos de 5 minutos, renovarlo
     const fiveMinutes = 5 * 60;
     if (tokenExp - now < fiveMinutes) {
-      console.log("Token próximo a expirar, renovando...");
+      console.log('Token próximo a expirar, renovando...');
       
       const refreshCommand = new InitiateAuthCommand({
-        AuthFlow: "REFRESH_TOKEN_AUTH",
+        AuthFlow: 'REFRESH_TOKEN_AUTH',
         ClientId: process.env.USER_POOL_CLIENT_ID,
         AuthParameters: {
           REFRESH_TOKEN: req.session.user.refreshToken
@@ -59,12 +59,12 @@ const checkAndRefreshTokens = async (req, res, next) => {
       req.session.user.idToken = newTokens.IdToken;
       req.session.user.accessToken = newTokens.AccessToken;
       
-      console.log("Tokens renovados exitosamente");
+      console.log('Tokens renovados exitosamente');
     }
     
     next();
   } catch (err) {
-    console.error("Error al renovar tokens:", err);
+    console.error('Error al renovar tokens:', err);
     // Si no se pueden renovar, cerrar sesión
     req.session.destroy();
     res.redirect('/login');

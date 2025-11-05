@@ -9,13 +9,13 @@ module.exports.me = async (event) => {
   // Ejemplo de respuesta con campos útiles
   return {
     statusCode: 200,
-    headers: { "content-type": "application/json" },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       ok: true,
       sub: claims.sub,
       email: claims.email,
-      username: claims["cognito:username"],
-      groups: claims["cognito:groups"] || [],
+      username: claims['cognito:username'],
+      groups: claims['cognito:groups'] || [],
       claims
     })
   };

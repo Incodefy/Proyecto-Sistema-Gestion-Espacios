@@ -1,8 +1,8 @@
 // routes/dashboard.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const db = require("../db"); // tu conexión a la BD (MySQL, Postgres, etc.)
-const checkPermission = require("../middleware/checkPermission");
+const db = require('../db'); // tu conexión a la BD (MySQL, Postgres, etc.)
+const checkPermission = require('../middleware/checkPermission');
 
 // --- Helpers ---
 
@@ -10,8 +10,8 @@ const checkPermission = require("../middleware/checkPermission");
 const toKey = (str) => {
   if (!str) return '';
   return str.toLowerCase()
-    .normalize("NFD") // Descomponer tildes y caracteres especiales
-    .replace(/[\u0300-\u036f]/g, "") // Eliminar tildes
+    .normalize('NFD') // Descomponer tildes y caracteres especiales
+    .replace(/[\u0300-\u036f]/g, '') // Eliminar tildes
     .replace(/\s+/g, '_'); // Reemplazar espacios con guiones bajos
 };
 
@@ -30,8 +30,8 @@ function obtenerSemanaActual() {
   domingo.setHours(23, 59, 59, 999);
 
   return {
-    inicio: lunes.toISOString().split("T")[0],
-    fin: domingo.toISOString().split("T")[0],
+    inicio: lunes.toISOString().split('T')[0],
+    fin: domingo.toISOString().split('T')[0],
   };
 }
 
@@ -50,8 +50,8 @@ function calcularPeriodoAnterior(fechaInicio, fechaFin) {
     fechaFinAnterior.setDate(fechaInicioDate.getDate() - 1);
     
     return {
-      inicio: fechaInicioAnterior.toISOString().split("T")[0],
-      fin: fechaFinAnterior.toISOString().split("T")[0]
+      inicio: fechaInicioAnterior.toISOString().split('T')[0],
+      fin: fechaFinAnterior.toISOString().split('T')[0]
     };
   } catch (error) {
     return null;
@@ -60,7 +60,7 @@ function calcularPeriodoAnterior(fechaInicio, fechaFin) {
 
 // **NUEVA FUNCIÓN: Aplicar filtros base**
 function construirFiltrosSQL(especialidades, boxes, fechaInicio, fechaFin) {
-  let filtros = "WHERE fecha BETWEEN ? AND ?";
+  let filtros = 'WHERE fecha BETWEEN ? AND ?';
   const params = [fechaInicio, fechaFin];
 
   if (especialidades && especialidades.length > 0) {
@@ -82,8 +82,8 @@ function construirFiltrosSQL(especialidades, boxes, fechaInicio, fechaFin) {
 // ==========================
 // 1. Render del dashboard
 // ==========================
-router.get("/dashboard",checkPermission('dashboard.read'), async (req, res) => {
-  res.render("dashboard", { 
+router.get('/dashboard',checkPermission('dashboard.read'), async (req, res) => {
+  res.render('dashboard', { 
     currentPath: req.path,
     personalization: req.session.user?.personalization || {}
   });
@@ -92,14 +92,14 @@ router.get("/dashboard",checkPermission('dashboard.read'), async (req, res) => {
 // ==========================
 // 2. Filtros iniciales
 // ==========================
-router.get("/dashboard/filtros-iniciales", async (req, res) => {
+router.get('/dashboard/filtros-iniciales', async (req, res) => {
   try {
     // Consultar especialidades con nombres de columnas correctos según los modelos Django
     const [especialidades] = await db.query(
-      "SELECT idespecialidad AS id, nombre FROM especialidad"
+      'SELECT idespecialidad AS id, nombre FROM especialidad'
     );
     // Consultar boxes con nombres de columnas correctos según los modelos Django
-    const [boxes] = await db.query("SELECT idbox AS id, nombre FROM box");
+    const [boxes] = await db.query('SELECT idbox AS id, nombre FROM box');
 
     // Formatear datos consistentemente y TRADUCIRLOS
     const especialidadesFormatted = especialidades.map(esp => ({
@@ -118,7 +118,7 @@ router.get("/dashboard/filtros-iniciales", async (req, res) => {
       boxes: boxesFormatted,
     });
   } catch (err) {
-    console.error("Error en filtros-iniciales:", err);
+    console.error('Error en filtros-iniciales:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -126,7 +126,7 @@ router.get("/dashboard/filtros-iniciales", async (req, res) => {
 // ==========================
 // 3. Datos del dashboard
 // ==========================
-router.post("/dashboard/datos", async (req, res) => {
+router.post('/dashboard/datos', async (req, res) => {
   try {
     let { especialidades = [], boxes = [], fecha_inicio, fecha_fin } = req.body;
 
@@ -140,7 +140,7 @@ router.post("/dashboard/datos", async (req, res) => {
     especialidades = especialidades.filter(id => id && !isNaN(parseInt(id))).map(id => parseInt(id));
     boxes = boxes.filter(id => id && !isNaN(parseInt(id))).map(id => parseInt(id));
 
-    console.log(`Procesando dashboard con filtros:`, { especialidades, boxes, fecha_inicio, fecha_fin });
+    console.log('Procesando dashboard con filtros:', { especialidades, boxes, fecha_inicio, fecha_fin });
 
     // Pasar req para acceder a la función de traducción t()
     const kpis = await calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin);
@@ -148,7 +148,7 @@ router.post("/dashboard/datos", async (req, res) => {
 
     res.json({ success: true, kpis, graficos });
   } catch (err) {
-    console.error("Error en dashboard/datos:", err);
+    console.error('Error en dashboard/datos:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -194,7 +194,7 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   }
 
   // **MEJORADO: Total boxes con filtro**
-  let queryBoxes = "SELECT COUNT(*) AS total_boxes FROM box";
+  let queryBoxes = 'SELECT COUNT(*) AS total_boxes FROM box';
   let paramsBoxes = [];
   
   if (boxes.length > 0) {
@@ -240,7 +240,7 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   );
   const especialidadTop = especialidadTopRows[0];
 
-  let tendenciaEspecialidad = "igual";
+  let tendenciaEspecialidad = 'igual';
   if (especialidadTop && periodoAnterior) {
     const { filtros: filtrosAnt, params: paramsAnt } = construirFiltrosSQL(
       especialidades, boxes, periodoAnterior.inicio, periodoAnterior.fin
@@ -259,9 +259,9 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
     if (especialidadAnt && especialidadAnt.length > 0) {
       const consultasAnteriores = especialidadAnt[0].consultas;
       if (especialidadTop.consultas > consultasAnteriores) {
-        tendenciaEspecialidad = "sube";
+        tendenciaEspecialidad = 'sube';
       } else if (especialidadTop.consultas < consultasAnteriores) {
-        tendenciaEspecialidad = "baja";
+        tendenciaEspecialidad = 'baja';
       }
     }
   }
@@ -286,12 +286,12 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
     especialidad_mas_demandada: especialidadTop ? req.t(`specialties.${toKey(especialidadTop.nombre)}`, especialidadTop.nombre) : null,
     consultas_especialidad_top: especialidadTop?.consultas || 0,
     tendencia_especialidad: tendenciaEspecialidad,
-    especialidad_subtext: especialidadTop ? req.t('dashboard.kpi.appointments_count', { count: especialidadTop.consultas }) : "",
+    especialidad_subtext: especialidadTop ? req.t('dashboard.kpi.appointments_count', { count: especialidadTop.consultas }) : '',
 
     // **NUEVOS: Información adicional**
     total_boxes_disponibles: total_boxes,
     dias_periodo: diasPeriodo,
-    horas_pico: "No disponible", // DateField sin hora
+    horas_pico: 'No disponible', // DateField sin hora
 
     // **NUEVO: Métricas de comparación**
     periodo_anterior: {

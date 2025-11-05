@@ -1,7 +1,7 @@
 const {
   CognitoIdentityProviderClient,
   InitiateAuthCommand
-} = require("@aws-sdk/client-cognito-identity-provider");
+} = require('@aws-sdk/client-cognito-identity-provider');
 
 const client = new CognitoIdentityProviderClient({});
 
@@ -12,14 +12,14 @@ const client = new CognitoIdentityProviderClient({});
  */
 module.exports.login = async (event) => {
   try {
-    const { username, password } = JSON.parse(event.body || "{}");
+    const { username, password } = JSON.parse(event.body || '{}');
 
     if (!username || !password) {
-      return response(400, { ok: false, error: "username y password son obligatorios" });
+      return response(400, { ok: false, error: 'username y password son obligatorios' });
     }
 
     const cmd = new InitiateAuthCommand({
-      AuthFlow: "USER_PASSWORD_AUTH",
+      AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: process.env.USER_POOL_CLIENT_ID,
       AuthParameters: {
         USERNAME: username,
@@ -44,7 +44,7 @@ module.exports.login = async (event) => {
     });
   } catch (err) {
     console.error(err);
-    return response(401, { ok: false, error: "Credenciales inválidas o usuario no confirmado" });
+    return response(401, { ok: false, error: 'Credenciales inválidas o usuario no confirmado' });
   }
 };
 
@@ -52,7 +52,7 @@ function response(statusCode, body) {
   return {
     statusCode,
     headers: {
-      "content-type": "application/json"
+      'content-type': 'application/json'
     },
     body: JSON.stringify(body)
   };

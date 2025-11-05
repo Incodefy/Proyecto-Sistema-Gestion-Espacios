@@ -1,19 +1,19 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const db = require("../db");
-const checkPermission = require("../middleware/checkPermission");
+const db = require('../db');
+const checkPermission = require('../middleware/checkPermission');
 
-router.get("/box", checkPermission('box.read'), async (req, res) => {
+router.get('/box', checkPermission('box.read'), async (req, res) => {
   try {
     const filtroPasillo = expandirRangos(req.query.pasillo);
     const filtroBox = expandirRangos(req.query.box);
     const filtroEstado = req.query.estado;
 
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
 
-    const sqlPasillos = "SELECT idPasillo, nombre FROM pasillo ORDER BY idPasillo";
-    const sqlBoxes = "SELECT idBox, nombre, estado, idPasillo FROM box";
+    const sqlPasillos = 'SELECT idPasillo, nombre FROM pasillo ORDER BY idPasillo';
+    const sqlBoxes = 'SELECT idBox, nombre, estado, idPasillo FROM box';
     const sqlAgendas = `
       SELECT 
           a.idAgenda   AS idAgenda,
@@ -49,7 +49,7 @@ router.get("/box", checkPermission('box.read'), async (req, res) => {
 
     const userPermissions = req.session.user?.permissions || [];
 
-    res.render("box", { 
+    res.render('box', { 
       pasillo_box_map, 
       personalization: req.session.user?.personalization || {},
       currentPath: req.path,
@@ -58,8 +58,8 @@ router.get("/box", checkPermission('box.read'), async (req, res) => {
       canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')
     });
   } catch (err) {
-    console.error("Error en /box:", err);
-    res.status(500).send("Error cargando datos de boxes");
+    console.error('Error en /box:', err);
+    res.status(500).send('Error cargando datos de boxes');
   }
 });
 
@@ -94,12 +94,12 @@ function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, f
     boxesFiltrados.forEach(box => {
       if (filtroBox && !filtroBox.includes(box.idBox)) return;
 
-      let estadoKey = box.estado === 0 ? "disabled" : "free";
+      let estadoKey = box.estado === 0 ? 'disabled' : 'free';
       let estado = req.t(`common.state_${estadoKey}`);
 
       if (box.estado !== 0) {
         const consultas = agendas.filter(a => {
-          const fechaAgenda = new Date(a.fecha).toISOString().split("T")[0];
+          const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
           const horaInicio = a.horaInicio.slice(0,5);
           return (
             a.idBox === box.idBox &&
@@ -125,14 +125,14 @@ function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, f
           const ahora = new Date(`${hoy}T${horaActual}`);
 
           if (ahora >= inicio && ahora < fin) {
-            estadoKey = "in_use";
+            estadoKey = 'in_use';
             estado = req.t(`common.state_${estadoKey}`);
             break;
           }
         }
       }
 
-      if (filtroEstado && estado.replace(" ", "-").toLowerCase() !== filtroEstado) return;
+      if (filtroEstado && estado.replace(' ', '-').toLowerCase() !== filtroEstado) return;
 
       boxesProcesados.push({
         id: box.idBox,
@@ -149,13 +149,13 @@ function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, f
   return resultado;
 }
 
-router.get("/estado-boxes", async (req, res) => {
+router.get('/estado-boxes', async (req, res) => {
   try {
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
     const contexto = new ContextoEstado();
 
-    const sqlBoxes = "SELECT idBox, nombre, estado, idPasillo FROM box";
+    const sqlBoxes = 'SELECT idBox, nombre, estado, idPasillo FROM box';
     const sqlAgendas = `
       SELECT 
           a.idAgenda   AS idAgenda,
@@ -199,8 +199,8 @@ router.get("/estado-boxes", async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error("Error en /estado-boxes:", err);
-    res.status(500).json({ error: "Error cargando estado de boxes" });
+    console.error('Error en /estado-boxes:', err);
+    res.status(500).json({ error: 'Error cargando estado de boxes' });
   }
 });
 
@@ -224,12 +224,14 @@ class EstadoInhabilitado {
 class EstadoConConsulta {
   calcularEstado(req, box, fecha, horaActual, agendas) {
     const consultas = agendas.filter(a => {
-        const fechaAgenda = new Date(a.fecha).toISOString().split("T")[0];
+        const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
         const fechaHoy = fecha;
         const horaInicio = a.horaInicio.slice(0,5);
         const matchFecha = fechaAgenda === fechaHoy;
         const matchHora = horaInicio <= horaActual;
+        // Debug log para depuración
         if (a.boxId === box.idBox) {
+          // console.log('Match:', matchFecha, matchHora);
         }
 
         return a.boxId === box.idBox && matchFecha && matchHora;
@@ -279,13 +281,15 @@ class EstadoConConsulta {
 class EstadoLibre {
   calcularEstado(req, box, fecha, horaActual, agendas) {
     const proximas = agendas.filter(a => {
-        const fechaAgenda = new Date(a.fecha).toISOString().split("T")[0];
+        const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
         const fechaHoy = fecha;
         const horaInicio = a.horaInicio.slice(0,5);
         const matchFecha = fechaAgenda === fechaHoy;
         const matchHora = horaInicio > horaActual;
 
+        // Debug log para depuración
         if (a.boxId === box.idBox) {
+          // console.log('Match próxima:', matchFecha, matchHora);
         }
 
         return a.boxId === box.idBox && matchFecha && matchHora;

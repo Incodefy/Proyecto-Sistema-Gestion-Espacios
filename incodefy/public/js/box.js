@@ -1,5 +1,5 @@
-let detallesVisibles = localStorage.getItem("detallesVisibles");
-        detallesVisibles = detallesVisibles === null ? false : detallesVisibles === "true";
+let detallesVisibles = localStorage.getItem('detallesVisibles');
+        detallesVisibles = detallesVisibles === null ? false : detallesVisibles === 'true';
         let filtroTimeout;
 
         function parseRangos(texto) {
@@ -49,42 +49,42 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
                 aplicarEstadoVisual();
             })
             .catch(error => {
-                console.error("Error al obtener estados:", error);
+                console.error('Error al obtener estados:', error);
             });
         }
 
-        document.addEventListener("click", function (e) {
-            if (e.target.closest(".btn-confirmar")) {
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.btn-confirmar')) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                const btn = e.target.closest(".btn-confirmar");
-                const agendaId = btn.getAttribute("data-agenda-id");
+                const btn = e.target.closest('.btn-confirmar');
+                const agendaId = btn.getAttribute('data-agenda-id');
 
                 fetch(`/actualizar-estado/${agendaId}/`, {
-                    method: "POST",
-                    headers: { "X-CSRFToken": getCookie("csrftoken") }
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
                 })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        console.log("Estado actualizado correctamente");
+                        console.log('Estado actualizado correctamente');
                         actualizarBoxes();
                     } else {
-                        console.error("Error:", data.error);
+                        console.error('Error:', data.error);
                     }
                 })
-                .catch(err => console.error("Error:", err));
+                .catch(err => console.error('Error:', err));
             }
         });
 
         function getCookie(name) {
             let cookieValue = null;
-            if (document.cookie && document.cookie !== "") {
-                const cookies = document.cookie.split(";");
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
                 for (let i = 0; i < cookies.length; i++) {
                     const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
                         cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                         break;
                     }
@@ -95,7 +95,7 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
 
         function actualizarBoxesBatch(boxIds) {
             if (!Array.isArray(boxIds) || boxIds.length === 0) {
-                console.warn("⚠️ actualizarBoxesBatch: lista de boxIds vacía");
+                console.warn('⚠️ actualizarBoxesBatch: lista de boxIds vacía');
                 return;
             }
 
@@ -125,14 +125,14 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
                 aplicarEstadoVisual();
             })
             .catch(error => {
-                console.error("Error al obtener estados batch:", error);
+                console.error('Error al obtener estados batch:', error);
             });
         }
 
         function aplicarFiltrosLocales() {
-            const filtroPasillo = document.getElementById("filtroPasillo").value.trim().toLowerCase();
-            const filtroBox = document.getElementById("filtroBox").value.trim().toLowerCase();
-            const filtroEstado = document.getElementById("filtroEstado").value.trim();
+            const filtroPasillo = document.getElementById('filtroPasillo').value.trim().toLowerCase();
+            const filtroBox = document.getElementById('filtroBox').value.trim().toLowerCase();
+            const filtroEstado = document.getElementById('filtroEstado').value.trim();
 
             const rangosPasillo = filtroPasillo ? parseRangos(filtroPasillo) : [];
             const rangosBox = filtroBox ? parseRangos(filtroBox) : [];
@@ -218,9 +218,9 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
         }
 
         function reiniciarFiltros() {
-            document.getElementById("filtroPasillo").value = "";
-            document.getElementById("filtroBox").value = "";
-            document.getElementById("filtroEstado").value = "";
+            document.getElementById('filtroPasillo').value = '';
+            document.getElementById('filtroBox').value = '';
+            document.getElementById('filtroEstado').value = '';
             
             document.querySelectorAll('.pasillo-bloque').forEach(el => el.classList.remove('filtrado-oculto'));
             document.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(el => el.classList.remove('filtrado-oculto'));
@@ -230,11 +230,11 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
         }
 
         function aplicarEstadoVisual() {
-            document.querySelectorAll(".contenido-box").forEach(el => {
+            document.querySelectorAll('.contenido-box').forEach(el => {
                 if (detallesVisibles) {
-                    el.classList.remove("oculto");
+                    el.classList.remove('oculto');
                 } else {
-                    el.classList.add("oculto");
+                    el.classList.add('oculto');
                 }
             });
         }
@@ -261,29 +261,29 @@ let detallesVisibles = localStorage.getItem("detallesVisibles");
             document.getElementById('count-inhabilitado').textContent = estados['inhabilitado'];
         }
 
-        document.addEventListener("DOMContentLoaded", function () {
-            const botonToggle = document.getElementById("toggle-detalles");
+        document.addEventListener('DOMContentLoaded', function () {
+            const botonToggle = document.getElementById('toggle-detalles');
 
-            detallesVisibles = localStorage.getItem("detallesVisibles");
-            detallesVisibles = detallesVisibles === null ? false : detallesVisibles === "true";
+            detallesVisibles = localStorage.getItem('detallesVisibles');
+            detallesVisibles = detallesVisibles === null ? false : detallesVisibles === 'true';
 
             botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
 
-            botonToggle.addEventListener("click", function () {
+            botonToggle.addEventListener('click', function () {
                 detallesVisibles = !detallesVisibles;
-                localStorage.setItem("detallesVisibles", detallesVisibles);
+                localStorage.setItem('detallesVisibles', detallesVisibles);
                 botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
                 aplicarEstadoVisual();
             });
 
-            document.getElementById("filtroPasillo").addEventListener("input", aplicarFiltrosConRetraso);
-            document.getElementById("filtroBox").addEventListener("input", aplicarFiltrosConRetraso);
-            document.getElementById("filtroEstado").addEventListener("change", aplicarFiltrosLocales);
+            document.getElementById('filtroPasillo').addEventListener('input', aplicarFiltrosConRetraso);
+            document.getElementById('filtroBox').addEventListener('input', aplicarFiltrosConRetraso);
+            document.getElementById('filtroEstado').addEventListener('change', aplicarFiltrosLocales);
 
             const params = new URLSearchParams(window.location.search);
-            document.getElementById("filtroPasillo").value = params.get("pasillo") || '';
-            document.getElementById("filtroBox").value = params.get("box") || '';
-            document.getElementById("filtroEstado").value = params.get("estado") || '';
+            document.getElementById('filtroPasillo').value = params.get('pasillo') || '';
+            document.getElementById('filtroBox').value = params.get('box') || '';
+            document.getElementById('filtroEstado').value = params.get('estado') || '';
 
             aplicarEstadoVisual();
             actualizarBoxes();

@@ -114,13 +114,13 @@ function showInfoToast(message, duration = 4000) {
 }
 
 // ====== VARIABLES GLOBALES Y CONFIGURACIÓN ======
-const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 function ajustarAInicioDeSemana(fechaInput) {
     let f;
 
-    if (typeof fechaInput === "string") {
-        const partes = fechaInput.split("-");
+    if (typeof fechaInput === 'string') {
+        const partes = fechaInput.split('-');
         const anio = parseInt(partes[0], 10);
         const mes = parseInt(partes[1], 10) - 1;
         const dia = parseInt(partes[2], 10);
@@ -128,7 +128,7 @@ function ajustarAInicioDeSemana(fechaInput) {
     } else if (fechaInput instanceof Date) {
         f = new Date(fechaInput.getFullYear(), fechaInput.getMonth(), fechaInput.getDate());
     } else {
-        throw new Error("Formato de fecha no válido");
+        throw new Error('Formato de fecha no válido');
     }
 
     f.setHours(0, 0, 0, 0);
@@ -147,16 +147,16 @@ let fechaInicioActual = ajustarAInicioDeSemana(new Date());
 
 function actualizarURL() {
     const url = new URL(window.location);
-    const startActual = fechaInicioActual.toISOString().split("T")[0];
-    const entidadValue = document.getElementById("selectEntidad").value;
+    const startActual = fechaInicioActual.toISOString().split('T')[0];
+    const entidadValue = document.getElementById('selectEntidad').value;
 
-    url.searchParams.set("start", startActual);
+    url.searchParams.set('start', startActual);
     url.searchParams.set(CONFIG.entidadParam, entidadValue);
     
-    const otrosParams = TIPO_CALENDARIO === "box" ? ["medico"] : ["box"];
+    const otrosParams = TIPO_CALENDARIO === 'box' ? ['medico'] : ['box'];
     otrosParams.forEach(param => url.searchParams.delete(param));
 
-    window.history.pushState({}, "", url);
+    window.history.pushState({}, '', url);
 }
 
 function cambiarSemana(direccion) {
@@ -175,7 +175,7 @@ function actualizarRangoFechas() {
     const inicioStr = inicio.toLocaleDateString('es-CL', opciones);
     const finStr = fin.toLocaleDateString('es-CL', opciones);
 
-    document.getElementById("rangoFechas").innerText = `${inicioStr} - ${finStr}`;
+    document.getElementById('rangoFechas').innerText = `${inicioStr} - ${finStr}`;
 }
 
 function obtenerIndiceDiaSemana(fechaStr) {
@@ -189,22 +189,22 @@ function normalizarHora(str) {
 }
 
 function limpiarCalendario() {
-    document.querySelectorAll("tbody td").forEach(td => {
-        if (!td.classList.contains("hora-col")) {
-            td.innerHTML = "";
+    document.querySelectorAll('tbody td').forEach(td => {
+        if (!td.classList.contains('hora-col')) {
+            td.innerHTML = '';
         }
     });
 }
 
 function cambiarEntidad() {
-    const label = document.getElementById("label");
-    const entidadValue = document.getElementById("selectEntidad").value;
+    const label = document.getElementById('label');
+    const entidadValue = document.getElementById('selectEntidad').value;
     
     label.innerText = entidadValue ? `${CONFIG.labelPrefix} ${entidadValue}` : CONFIG.labelPrefix;
 
     const url = new URL(window.location);
     url.searchParams.set(CONFIG.entidadParam, entidadValue);
-    window.history.pushState({}, "", url);
+    window.history.pushState({}, '', url);
 
     cargarAgendamientos();
 }
@@ -225,15 +225,15 @@ let agendaCache = [];
 function fetchAgenda(itemId) {
     let tipoParam, entidadIdParam;
 
-    if (CONFIG.entidadId === "box_id") {
-        tipoParam = "medico";
-        entidadIdParam = "medico_id";
+    if (CONFIG.entidadId === 'box_id') {
+        tipoParam = 'medico';
+        entidadIdParam = 'medico_id';
     } else {
-        tipoParam = "box";
-        entidadIdParam = "box_id";
+        tipoParam = 'box';
+        entidadIdParam = 'box_id';
     }
 
-    const fechaInicioValue = fechaInicioActual.toISOString().split("T")[0];
+    const fechaInicioValue = fechaInicioActual.toISOString().split('T')[0];
     const url = `/agenda/obtener-agendamientos?tipo=${tipoParam}&${entidadIdParam}=${itemId}&fecha_inicio=${fechaInicioValue}`;
     
     return fetch(url)
@@ -245,25 +245,25 @@ function fetchAgenda(itemId) {
 
 function drag(ev) {
     const draggedId = ev.target.id;
-    ev.dataTransfer.setData("text", draggedId);
+    ev.dataTransfer.setData('text', draggedId);
 
-    const itemId = draggedId.replace(CONFIG.itemIdPrefix, "");
+    const itemId = draggedId.replace(CONFIG.itemIdPrefix, '');
 
-    const entidad_id = document.getElementById("selectEntidad").value;
+    const entidad_id = document.getElementById('selectEntidad').value;
 
     if (!entidad_id) {
         // Si no hay entidad → todas las celdas en rojo
-        document.querySelectorAll(".dropzone").forEach(celda => {
-            celda.classList.remove("dropzone-ok");
-            celda.classList.add("dropzone-no");
+        document.querySelectorAll('.dropzone').forEach(celda => {
+            celda.classList.remove('dropzone-ok');
+            celda.classList.add('dropzone-no');
         });
         return; // salir sin seguir
     }
 
     fetchAgenda(itemId).then(() => {
         // Primero, limpiamos cualquier rastro previo
-        document.querySelectorAll(".dropzone").forEach(celda => {
-            celda.classList.remove("dropzone-ok", "dropzone-no");
+        document.querySelectorAll('.dropzone').forEach(celda => {
+            celda.classList.remove('dropzone-ok', 'dropzone-no');
         });
 
         agendaCache.forEach(agenda => {
@@ -271,26 +271,26 @@ function drag(ev) {
             const horaCompleta = `${agenda.horainicio} - ${agenda.horafin}`;
 
             // misma lógica que cargarAgendamientos
-            document.querySelectorAll("tbody tr").forEach(fila => {
-                const horaTexto = fila.querySelector("td.hora-col").innerText.trim();
+            document.querySelectorAll('tbody tr').forEach(fila => {
+                const horaTexto = fila.querySelector('td.hora-col').innerText.trim();
 
                 if (normalizarHora(horaTexto) === normalizarHora(horaCompleta)) {
-                    const columnas = fila.querySelectorAll("td");
+                    const columnas = fila.querySelectorAll('td');
                     const celda = columnas[diaIndex + 1]; // +1 por columna de hora
                     if (celda) {
-                        celda.classList.add("dropzone-no");
+                        celda.classList.add('dropzone-no');
                     }
                 }
             });
         });
 
         // Y marcamos el resto como válidas si están vacías y no fueron bloqueadas
-        document.querySelectorAll(".dropzone").forEach(celda => {
+        document.querySelectorAll('.dropzone').forEach(celda => {
             const celdaOcupada = celda.children.length > 0;
             if (celdaOcupada) {
-                celda.classList.add("dropzone-no");
-            } else if (!celda.classList.contains("dropzone-no")) {
-                celda.classList.add("dropzone-ok");
+                celda.classList.add('dropzone-no');
+            } else if (!celda.classList.contains('dropzone-no')) {
+                celda.classList.add('dropzone-ok');
             }
         });
     });
@@ -306,23 +306,23 @@ function drop(ev) {
     ev.preventDefault();
 
     let celda = ev.target;
-    while (!celda.classList.contains("dropzone")) {
+    while (!celda.classList.contains('dropzone')) {
         celda = celda.parentElement;
         if (!celda) {
-            showErrorToast("No se pudo identificar la celda destino.")
+            showErrorToast('No se pudo identificar la celda destino.');
             return;
         }
     }
 
-    const data = ev.dataTransfer.getData("text");
+    const data = ev.dataTransfer.getData('text');
     const box = document.getElementById(data).cloneNode(true);
 
-    const item_id = data.replace(CONFIG.itemIdPrefix, "");
-    const diaIndex = parseInt(celda.getAttribute("data-dia-index"));
+    const item_id = data.replace(CONFIG.itemIdPrefix, '');
+    const diaIndex = parseInt(celda.getAttribute('data-dia-index'));
 
     const fila = celda.parentElement;
-    const hora = fila.querySelector("td.hora-col").innerText;
-    const entidad_id = document.getElementById("selectEntidad").value;
+    const hora = fila.querySelector('td.hora-col').innerText;
+    const entidad_id = document.getElementById('selectEntidad').value;
 
     if (!entidad_id) {
         showInfoToast(`Debes seleccionar primero un ${TIPO_CALENDARIO} antes de agendar.`);
@@ -347,10 +347,10 @@ function drop(ev) {
     payload[CONFIG.entidadId] = entidad_id;
     payload[CONFIG.itemIdField] = item_id;
 
-    fetch("/agenda/guardar-agenda", {
-        method: "POST",
+    fetch('/agenda/guardar-agenda', {
+        method: 'POST',
         headers: {
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
     })
@@ -365,27 +365,27 @@ function drop(ev) {
         }
     })
     .catch(error => {
-        console.error("Error al guardar agenda:", error);
-        showErrorToast("Ocurrió un error al intentar guardar la agenda.");
+        console.error('Error al guardar agenda:', error);
+        showErrorToast('Ocurrió un error al intentar guardar la agenda.');
     });
 }
 
 function moverAlBasurero(ev) {
     ev.preventDefault();
     
-    const dataId = ev.dataTransfer.getData("text");
+    const dataId = ev.dataTransfer.getData('text');
     const reservaElement = document.getElementById(dataId);
 
     if (!reservaElement) return;
 
     const celda = reservaElement.parentElement;
-    if (!celda.classList.contains("dropzone")) return;
+    if (!celda.classList.contains('dropzone')) return;
 
     const itemId = reservaElement.dataset.nombreId;
     const fecha = reservaElement.dataset.fecha;
     const horaInicio = reservaElement.dataset.horaInicio;
     const horaFin = reservaElement.dataset.horaFin;
-    const entidad_id = document.getElementById("selectEntidad").value;
+    const entidad_id = document.getElementById('selectEntidad').value;
 
     if (!entidad_id) {
         showWarningToast(`Por favor selecciona un ${CONFIG.labelPrefix.toLowerCase()} antes de eliminar una agendación.`);
@@ -400,9 +400,9 @@ function moverAlBasurero(ev) {
     payload[CONFIG.itemIdField] = itemId;
 
     fetch(CONFIG.eliminarEndpoint, {
-        method: "POST",
+        method: 'POST',
         headers: {
-            "Content-Type": "application/json"
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
     })
@@ -412,7 +412,7 @@ function moverAlBasurero(ev) {
             reservaElement.classList.add('fade-out');
 
             reservaElement.addEventListener('animationend', () => {
-                celda.innerHTML = "";
+                celda.innerHTML = '';
                 cargarAgendamientos();
             });
 
@@ -421,8 +421,8 @@ function moverAlBasurero(ev) {
         }
     })
     .catch(error => {
-        console.error("Error al eliminar reserva:", error);
-        showErrorToast("Ocurrió un error al intentar eliminar la reserva.");
+        console.error('Error al eliminar reserva:', error);
+        showErrorToast('Ocurrió un error al intentar eliminar la reserva.');
     });
 }
 
@@ -450,8 +450,8 @@ function filtrarItems() {
 }
 
 function cargarAgendamientos() {
-    const entidad_id = document.getElementById("selectEntidad").value;
-    const fechaInicio = fechaInicioActual.toISOString().split("T")[0];
+    const entidad_id = document.getElementById('selectEntidad').value;
+    const fechaInicio = fechaInicioActual.toISOString().split('T')[0];
 
     console.log('=== DEBUG cargarAgendamientos ===');
     console.log('TIPO_CALENDARIO:', TIPO_CALENDARIO);
@@ -473,7 +473,7 @@ function cargarAgendamientos() {
     fetch(url)
         .then(response => {
             console.log('Response status:', response.status);
-            if (!response.ok) throw new Error("Error al obtener los agendamientos");
+            if (!response.ok) throw new Error('Error al obtener los agendamientos');
             return response.json();
         })
         .then(data => {
@@ -485,23 +485,23 @@ function cargarAgendamientos() {
                 const diaIndex = obtenerIndiceDiaSemana(agenda.fecha);
                 const horaCompleta = `${agenda.horainicio} - ${agenda.horafin}`;
 
-                document.querySelectorAll("tbody tr").forEach(fila => {
-                    const horaTexto = fila.querySelector("td.hora-col").innerText.trim();
+                document.querySelectorAll('tbody tr').forEach(fila => {
+                    const horaTexto = fila.querySelector('td.hora-col').innerText.trim();
                     if (normalizarHora(horaTexto) === normalizarHora(horaCompleta)) {
-                        const columnas = fila.querySelectorAll("td");
+                        const columnas = fila.querySelectorAll('td');
                         const celda = columnas[diaIndex + 1];
                         if (celda) {
-                            const reservaDiv = document.createElement("div");
-                            reservaDiv.classList.add("reserva");
-                            reservaDiv.setAttribute("draggable", "true");
-                            reservaDiv.setAttribute("ondragstart", "drag(event)");
+                            const reservaDiv = document.createElement('div');
+                            reservaDiv.classList.add('reserva');
+                            reservaDiv.setAttribute('draggable', 'true');
+                            reservaDiv.setAttribute('ondragstart', 'drag(event)');
 
                             // Adaptado para Node.js - usar campos correctos
                             const nombreId = TIPO_CALENDARIO === 'box' ? agenda.idmedico : agenda.idbox;
                             const nombre = TIPO_CALENDARIO === 'box' ? agenda.medico_nombre : agenda.box_nombre;
                             const detalle = TIPO_CALENDARIO === 'box' ? agenda.estado_nombre : agenda.tipoconsulta;
 
-                            reservaDiv.setAttribute("id", `reserva-${nombreId}-${agenda.fecha}-${agenda.horainicio}`);
+                            reservaDiv.setAttribute('id', `reserva-${nombreId}-${agenda.fecha}-${agenda.horainicio}`);
 
                             reservaDiv.dataset.nombreId = nombreId;
                             reservaDiv.dataset.nombre = nombre;
@@ -516,7 +516,7 @@ function cargarAgendamientos() {
                                 </div>
                             `;
 
-                            celda.innerHTML = "";
+                            celda.innerHTML = '';
                             reservaDiv.innerHTML = contenido;
                             celda.appendChild(reservaDiv);
                         }
@@ -525,68 +525,68 @@ function cargarAgendamientos() {
             });
         })
         .catch(error => {
-            console.error("Error al cargar agendamientos:", error);
-            console.error("URL que falló:", url);
+            console.error('Error al cargar agendamientos:', error);
+            console.error('URL que falló:', url);
         });
 }
 
 function filtrarSubentidades() {
-    const parentId = document.getElementById("selectParent").value;
-    const selectEntidad = document.getElementById("selectEntidad");
+    const parentId = document.getElementById('selectParent').value;
+    const selectEntidad = document.getElementById('selectEntidad');
 
     Array.from(selectEntidad.options).forEach(option => {
-        if (option.value === "") {
-            option.style.display = "block";
+        if (option.value === '') {
+            option.style.display = 'block';
         } else {
-            const parentValue = option.getAttribute("data-parent");
-            option.style.display = (parentValue === parentId) ? "block" : "none";
+            const parentValue = option.getAttribute('data-parent');
+            option.style.display = (parentValue === parentId) ? 'block' : 'none';
         }
     });
 
-    selectEntidad.value = "";
+    selectEntidad.value = '';
 }
 
 // ====== MODAL FUNCTIONS ======
 function filtrarBoxes() {
-    const parentId = document.getElementById("selectPasillo").value;
-    const selectEntidad = document.getElementById("selectBox");
+    const parentId = document.getElementById('selectPasillo').value;
+    const selectEntidad = document.getElementById('selectBox');
 
     Array.from(selectEntidad.options).forEach(option => {
-        if (option.value === "") {
-            option.style.display = "block";
+        if (option.value === '') {
+            option.style.display = 'block';
         } else {
-            const parentValue = option.getAttribute("data-parent");
-            option.style.display = (parentValue === parentId) ? "block" : "none";
+            const parentValue = option.getAttribute('data-parent');
+            option.style.display = (parentValue === parentId) ? 'block' : 'none';
         }
     });
 
-    selectEntidad.value = "";
+    selectEntidad.value = '';
 }
 
 function filtrarMedicos() {
-    const parentId = document.getElementById("selectEspecialidad").value;
-    const selectEntidad = document.getElementById("selectMedico");
+    const parentId = document.getElementById('selectEspecialidad').value;
+    const selectEntidad = document.getElementById('selectMedico');
 
     Array.from(selectEntidad.options).forEach(option => {
-        if (option.value === "") {
-            option.style.display = "block";
+        if (option.value === '') {
+            option.style.display = 'block';
         } else {
-            const parentValue = option.getAttribute("data-parent");
-            option.style.display = (parentValue === parentId) ? "block" : "none";
+            const parentValue = option.getAttribute('data-parent');
+            option.style.display = (parentValue === parentId) ? 'block' : 'none';
         }
     });
 
-    selectEntidad.value = "";
+    selectEntidad.value = '';
 }
 
 // Función para llenar las horas disponibles
 function llenarHorasDisponibles() {
-    const horaSelect = document.getElementById("hora");
+    const horaSelect = document.getElementById('hora');
     const horas = [
-        "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
-        "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00",
-        "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "19:00 - 20:00",
-        "20:00 - 21:00", "21:00 - 22:00", "22:00 - 23:00", "23:00 - 00:00"
+        '08:00 - 09:00', '09:00 - 10:00', '10:00 - 11:00', '11:00 - 12:00',
+        '12:00 - 13:00', '13:00 - 14:00', '14:00 - 15:00', '15:00 - 16:00',
+        '16:00 - 17:00', '17:00 - 18:00', '18:00 - 19:00', '19:00 - 20:00',
+        '20:00 - 21:00', '21:00 - 22:00', '22:00 - 23:00', '23:00 - 00:00'
     ];
 
     // Limpiar las opciones existentes
@@ -594,7 +594,7 @@ function llenarHorasDisponibles() {
 
     // Llenar el selector de horas
     horas.forEach(hora => {
-        const option = document.createElement("option");
+        const option = document.createElement('option');
         option.value = hora;
         option.textContent = hora;
         horaSelect.appendChild(option);
@@ -602,40 +602,40 @@ function llenarHorasDisponibles() {
 }
 
 // ====== EVENT LISTENERS ======
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
     // Modal functionality
-    const modal = document.getElementById("modalAgendar");
-    const btn = document.getElementById("btnAgendar");
-    const span = document.getElementById("closeModal");
+    const modal = document.getElementById('modalAgendar');
+    const btn = document.getElementById('btnAgendar');
+    const span = document.getElementById('closeModal');
 
     // Abrir el modal al hacer clic en el botón
     btn.onclick = function() {
-        modal.style.display = "block";
+        modal.style.display = 'block';
         llenarHorasDisponibles(); // Llenar horas al abrir el modal
-    }
+    };
 
     // Cerrar el modal al hacer clic en la "x"
     span.onclick = function() {
-        modal.style.display = "none";
-    }
+        modal.style.display = 'none';
+    };
 
     // Cerrar el modal al hacer clic fuera del contenido del modal
     window.onclick = function(event) {
         if (event.target == modal) {
-            modal.style.display = "none";
+            modal.style.display = 'none';
         }
-    }
+    };
 
     // Manejo del envío del formulario
-    document.getElementById("formAgendar").onsubmit = function(event) {
+    document.getElementById('formAgendar').onsubmit = function(event) {
         event.preventDefault(); // Prevenir el envío del formulario por defecto
 
         // Obtener los valores del formulario
         const box = document.querySelector("select[name='box']").value;
         const medico = document.querySelector("select[name='medico']").value;
-        const fecha = document.getElementById("fecha").value;
-        const hora = document.getElementById("hora").value;
-        const tipoConsulta = document.getElementById("tipoConsulta").value;
+        const fecha = document.getElementById('fecha').value;
+        const hora = document.getElementById('hora').value;
+        const tipoConsulta = document.getElementById('tipoConsulta').value;
 
         // Crear el objeto de datos a enviar
         const data = {
@@ -646,65 +646,65 @@ document.addEventListener("DOMContentLoaded", () => {
             tipo_usuario: tipoConsulta
         };
 
-        console.log("Datos: ", data); // Para depuración
+        console.log('Datos: ', data); // Para depuración
 
         // Enviar los datos al backend
-        fetch("/agenda/guardar-agenda", {
-            method: "POST",
+        fetch('/agenda/guardar-agenda', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json"
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'ok') {
-                showSuccessToast("Agendamiento realizado con éxito.");
-                modal.style.display = "none";
-                document.getElementById("formAgendar").reset();
+                showSuccessToast('Agendamiento realizado con éxito.');
+                modal.style.display = 'none';
+                document.getElementById('formAgendar').reset();
                 cargarAgendamientos();
             } else if (data.status === 'error') {
                 showErrorToast(data.mensaje);
             }
         })
         .catch(error => {
-            console.error("Error al guardar agenda:", error);
-            showErrorToast("Ocurrió un error al intentar guardar la agenda.");
+            console.error('Error al guardar agenda:', error);
+            showErrorToast('Ocurrió un error al intentar guardar la agenda.');
         });
-    }
+    };
 
     // Drag and Drop setup
-    const basurero = document.getElementById("basurero");
-    basurero.addEventListener("dragover", allowDrop);
-    basurero.addEventListener("drop", moverAlBasurero);
+    const basurero = document.getElementById('basurero');
+    basurero.addEventListener('dragover', allowDrop);
+    basurero.addEventListener('drop', moverAlBasurero);
 
-    const listaItems = document.getElementById("listaItems");
+    const listaItems = document.getElementById('listaItems');
     if (listaItems) {
-        listaItems.addEventListener("dragover", allowDrop);
-        listaItems.addEventListener("drop", moverAlBasurero);
+        listaItems.addEventListener('dragover', allowDrop);
+        listaItems.addEventListener('drop', moverAlBasurero);
     }
 
-    document.querySelectorAll("tbody tr").forEach(fila => {
-        const celdas = fila.querySelectorAll("td.dropzone");
+    document.querySelectorAll('tbody tr').forEach(fila => {
+        const celdas = fila.querySelectorAll('td.dropzone');
         celdas.forEach((celda, index) => {
-            celda.setAttribute("data-dia-index", index);
+            celda.setAttribute('data-dia-index', index);
         });
     });
 
     // URL parameters handling
     const urlParams = new URLSearchParams(window.location.search);
-    const fechaStart = urlParams.get("start");
+    const fechaStart = urlParams.get('start');
     const entidadId = urlParams.get(CONFIG.entidadParam);
 
     if (fechaStart) {
         const fechaAjustada = ajustarAInicioDeSemana(fechaStart);
         fechaInicioActual = fechaAjustada;
 
-        const startAjustado = fechaAjustada.toISOString().split("T")[0];
+        const startAjustado = fechaAjustada.toISOString().split('T')[0];
         if (startAjustado !== fechaStart) {
             const url = new URL(window.location);
-            url.searchParams.set("start", startAjustado);
-            window.history.pushState({}, "", url);
+            url.searchParams.set('start', startAjustado);
+            window.history.pushState({}, '', url);
         }
     } else {
         fechaInicioActual = ajustarAInicioDeSemana(new Date());
@@ -712,8 +712,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (entidadId) {
-        document.getElementById("selectEntidad").value = entidadId;
-        document.getElementById("label").innerText = `${CONFIG.labelPrefix} ${entidadId}`;
+        document.getElementById('selectEntidad').value = entidadId;
+        document.getElementById('label').innerText = `${CONFIG.labelPrefix} ${entidadId}`;
     }
 
     actualizarRangoFechas();
@@ -723,8 +723,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Función de prueba para toasts
 function testNewToasts() {
-    showSuccessToast("¡Toast de éxito funcionando!");
-    setTimeout(() => showErrorToast("Toast de error funcionando"), 500);
-    setTimeout(() => showWarningToast("Toast de advertencia funcionando"), 1000);
-    setTimeout(() => showInfoToast("Toast de información funcionando"), 1500);
+    showSuccessToast('¡Toast de éxito funcionando!');
+    setTimeout(() => showErrorToast('Toast de error funcionando'), 500);
+    setTimeout(() => showWarningToast('Toast de advertencia funcionando'), 1000);
+    setTimeout(() => showInfoToast('Toast de información funcionando'), 1500);
 }
