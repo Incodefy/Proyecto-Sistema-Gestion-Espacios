@@ -1,10 +1,10 @@
 name: CD Pipeline - Deploy to AWS EC2
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # Permite ejecutar manualmente desde GitHub
+  workflow_dispatch: # Solo ejecutar manualmente (credenciales temporales de AWS Academy)
+  # push: # ⚠️ Desactivado - AWS Academy usa credenciales temporales que expiran
+  #   branches:
+  #     - main
 
 jobs:
   # Job para desplegar funciones Lambda/Serverless
@@ -25,6 +25,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
       - name: Install dependencies (aws)
