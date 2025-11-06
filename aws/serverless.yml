@@ -726,39 +726,46 @@ resources:
       Description: URL of the HTTP API
       Value:
         Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+    
     UserPoolId:
       Description: Cognito User Pool ID
       Value:
         Ref: CognitoUserPool
+    
     UserPoolClientId:
       Description: Cognito User Pool Client ID
       Value:
         Ref: CognitoUserPoolClient
+    
     Stage:
       Description: Deployment stage
       Value: ${sls:stage}
+    
     Region:
       Description: AWS Region
       Value: ${self:provider.region}
     
-    UserPoolClientId:
-      Value: { Ref: CognitoUserPoolClient }
-    
     PersonalizationTopicArn:
-      Value: { Ref: PersonalizationTopic }
+      Description: ARN of Personalization Topic
+      Value:
+        Ref: PersonalizationTopic
     
     SystemNotificationsTopicArn:
-      Value: { Ref: SystemNotificationsTopic }
+      Description: ARN of System Notifications Topic
+      Value:
+        Ref: SystemNotificationsTopic
     
     ActivityLogsTableName:
-      Value: { Ref: ActivityLogsTable }
-    
-    ApiEndpoint:
+      Description: Name of Activity Logs Table
       Value:
-        Fn::Sub: 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+        Ref: ActivityLogsTable
     
     PersonalizationQueueUrl:
-      Value: { Ref: PersonalizationQueue }
+      Description: URL of Personalization Queue
+      Value:
+        Ref: PersonalizationQueue
 
     SystemNotificationsQueueUrl:
-      Value: { Ref: SystemNotificationsQueue }
+      Description: URL of System Notifications Queue
+      Value:
+        Ref: SystemNotificationsQueue
