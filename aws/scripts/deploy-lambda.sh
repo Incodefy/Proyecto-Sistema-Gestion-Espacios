@@ -12,18 +12,34 @@ SERVICE_NAME="hospital-backend"
 
 echo "🚀 Deploying Lambda functions to $REGION (stage: $STAGE)"
 
-# Crear zip con todas las dependencias
+# Crear zip con solo las dependencias de producción
 echo "📦 Creating deployment package..."
 cd "$(dirname "$0")/.."
-rm -rf dist
+rm -rf dist function.zip 2>/dev/null || true
 mkdir -p dist
+
+# Copiar código fuente
 cp -r src dist/
-cp -r node_modules dist/
+cp package.json dist/
+
+# Instalar solo dependencias de producción
 cd dist
-zip -r ../function.zip . -x "*.git*" "*.DS_Store"
+npm install --production --no-optional 2>/dev/null || npm install --omit=dev --no-optional
 cd ..
 
-echo "✅ Package created: $(du -h function.zip | cut -f1)"
+# Crear zip excluyendo archivos innecesarios
+cd dist
+zip -r -q ../function.zip . -x "*.git*" "*.DS_Store" "*.md" "*test*" "*spec*"
+cd ..
+
+SIZE=$(du -h function.zip | cut -f1)
+SIZE_BYTES=$(du -b function.zip | cut -f1)
+echo "✅ Package created: $SIZE ($SIZE_BYTES bytes)"
+
+# Verificar tamaño (Lambda tiene límite de ~50MB comprimido)
+if [ "$SIZE_BYTES" -gt 52428800 ]; then
+    echo "⚠️  Warning: Package is larger than 50MB, may fail to upload"
+fi
 
 # Array de funciones a desplegar
 declare -A FUNCTIONS=(

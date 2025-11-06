@@ -23,11 +23,16 @@ mkdir -p dist
 
 # Copiar archivos necesarios
 cp -r src dist/
-cp -r node_modules dist/ 2>/dev/null || echo "⚠️  node_modules not found, Lambda may fail"
 cp package.json dist/
 
+# Instalar solo dependencias de producción (sin devDependencies)
+echo "   Installing production dependencies only..."
 cd dist
-zip -r -q ../function.zip .
+npm install --production --no-optional 2>/dev/null || npm install --omit=dev --no-optional
+cd ..
+
+cd dist
+zip -r -q ../function.zip . -x "*.git*" "*.DS_Store" "*.md"
 cd ..
 
 SIZE=$(du -h function.zip | cut -f1)
