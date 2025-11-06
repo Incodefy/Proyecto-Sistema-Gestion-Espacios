@@ -1,4 +1,4 @@
-service: aws-cognito-jwt-login
+service: hospital-backend
 frameworkVersion: '3'
 
 provider:
@@ -326,8 +326,9 @@ functions:
   insertarAgenda:
     handler: src/handlers/db/insertarAgenda.handler
 
-plugins:
-  - serverless-offline
+# Plugins comentados - no necesarios para deployment
+# plugins:
+#   - serverless-offline
 
 package:
   individually: true

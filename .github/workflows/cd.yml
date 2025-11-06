@@ -44,7 +44,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./aws
-        run: npm ci --production
+        run: npm ci
 
       - name: Deploy to AWS
         working-directory: ./aws
