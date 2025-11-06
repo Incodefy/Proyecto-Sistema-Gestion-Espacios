@@ -1,4 +1,4 @@
-service: aws-cognito-jwt-login
+service: hospital-backend
 frameworkVersion: '3'
 
 provider:
