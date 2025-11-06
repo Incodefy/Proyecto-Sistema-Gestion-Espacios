@@ -77,97 +77,20 @@ jobs:
           echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"
           echo "🔍 Check AWS CloudWatch Logs for Lambda execution"
 
-  # Job para desplegar aplicación Node.js en EC2 (Frontend)
-  deploy-frontend:
-    name: Deploy Frontend to EC2
-    runs-on: ubuntu-latest
-    needs: deploy-serverless
-    if: github.event.inputs.environment != 'dev'
-    environment:
-      name: ${{ github.event.inputs.environment || 'staging' }}
-      url: http://${{ secrets.EC2_HOST_STAGING }}:3000
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies (incodefy)
-        working-directory: ./incodefy
-        run: npm ci --production
-
-      - name: Create .env file
-        working-directory: ./incodefy
-        env:
-          STAGE: ${{ github.event.inputs.environment || 'staging' }}
-        run: |
-          cat > .env << EOF
-          NODE_ENV=production
-          PORT=3000
-          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-          AWS_REGION=us-east-1
-          USER_POOL_ID=${{ secrets.USER_POOL_ID }}
-          USER_POOL_CLIENT_ID=${{ secrets.USER_POOL_CLIENT_ID }}
-          API_BASE_URL=${{ secrets.API_BASE_URL }}
-          EOF
-
-      - name: Deploy to EC2 via SSH
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_STAGING }}
-          REMOTE_HOST: ${{ secrets.EC2_HOST_STAGING }}
-          REMOTE_USER: ${{ secrets.EC2_USER }}
-          TARGET: /home/ubuntu/hospital-app
-          EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
-
-      - name: Install dependencies and restart on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST_STAGING }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY_STAGING }}
-          script: |
-            cd /home/ubuntu/hospital-app/incodefy
-            npm ci --production
-            pm2 restart hospital-app || pm2 start server.js --name hospital-app --env production
-            pm2 save
-            pm2 list
-
-      - name: Health check
-        run: |
-          echo "⏳ Waiting for application to start..."
-          sleep 10
-          echo "✅ Frontend application deployed!"
-          echo "🌐 URL: http://${{ secrets.EC2_HOST_STAGING }}:3000"
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-          REMOTE_HOST: ${{ secrets.EC2_HOST_PRODUCTION }}
-          REMOTE_USER: ${{ secrets.EC2_USER }}
-          TARGET: /home/ubuntu/hospital-app
-          EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
-
-      - name: Install dependencies and restart on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST_PRODUCTION }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-          script: |
-            cd /home/ubuntu/hospital-app/incodefy
-            npm ci --production
-            pm2 restart hospital-production || pm2 start server.js --name hospital-production --env production
-            pm2 save
-            pm2 list
-
-      - name: Create deployment notification
-        run: |
-          echo "✅ Deployment to Production completed successfully!"
-          echo "🏥 Hospital Padre Hurtado - Production"
-          echo "URL: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000"
-          echo "Time: $(date)"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Deployed by: ${{ github.actor }}"
+  # Job para desplegar aplicación Node.js en EC2 (Frontend) - DESHABILITADO
+  # Habilitar cuando tengas EC2 configurado y secrets: EC2_HOST_STAGING, EC2_USER, EC2_SSH_KEY_STAGING
+  # deploy-frontend:
+  #   name: Deploy Frontend to EC2
+  #   runs-on: ubuntu-latest
+  #   needs: deploy-serverless
+  #   if: github.event.inputs.environment != 'dev'
+  #   environment:
+  #     name: ${{ github.event.inputs.environment || 'staging' }}
+  #     url: http://${{ secrets.EC2_HOST_STAGING }}:3000
+  #     name: ${{ github.event.inputs.environment || 'staging' }}
+  #     url: http://${{ secrets.EC2_HOST_STAGING }}:3000
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     # ... resto del deployment a EC2 deshabilitado
+  #     # Habilitar cuando tengas EC2 configurado
