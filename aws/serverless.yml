@@ -272,18 +272,14 @@ resources:
       Description: URL of the HTTP API
       Value:
         Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
-      Export:
-        Name: ${self:service}-${sls:stage}-api-url
     UserPoolId:
       Description: Cognito User Pool ID
-      Value: { Ref: CognitoUserPool }
-      Export:
-        Name: ${self:service}-${sls:stage}-user-pool-id
+      Value:
+        Ref: CognitoUserPool
     UserPoolClientId:
       Description: Cognito User Pool Client ID
-      Value: { Ref: CognitoUserPoolClient }
-      Export:
-        Name: ${self:service}-${sls:stage}-user-pool-client-id
+      Value:
+        Ref: CognitoUserPoolClient
     Stage:
       Description: Deployment stage
       Value: ${sls:stage}
