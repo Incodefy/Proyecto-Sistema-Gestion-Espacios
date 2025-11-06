@@ -39,37 +39,66 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Install Serverless Framework
-        run: npm install -g serverless@3
-
       - name: Install dependencies
         working-directory: ./aws
         run: npm ci
 
-      - name: Deploy to AWS
+      - name: Install jq (for JSON parsing)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Make scripts executable
+        working-directory: ./aws
+        run: chmod +x scripts/*.sh
+
+      - name: Deploy Infrastructure (DynamoDB + Cognito + Lambda)
         working-directory: ./aws
         env:
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
+          AWS_REGION: us-east-1
         run: |
           echo "🚀 Deploying to stage: $STAGE"
-          serverless deploy --stage $STAGE --region us-east-1 --verbose
+          bash scripts/deploy-all.sh
 
       - name: Get deployment info
         working-directory: ./aws
         env:
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
-        run: serverless info --stage $STAGE --region us-east-1
+        run: |
+          echo "📋 Deployment Information:"
+          echo ""
+          echo "DynamoDB Tables:"
+          aws dynamodb list-tables --region us-east-1 | jq -r '.TableNames[] | select(contains("hospital-backend-'$STAGE'"))'
+          echo ""
+          echo "Lambda Functions:"
+          aws lambda list-functions --region us-east-1 | jq -r '.Functions[] | select(.FunctionName | contains("hospital-backend-'$STAGE'")) | .FunctionName'
+          echo ""
+          if [ -f .aws-output/cognito-ids.json ]; then
+            echo "Cognito Configuration:"
+            cat .aws-output/cognito-ids.json | jq .
+          fi
 
-      - name: Health Check
+      - name: Test Lambda Health Check
         working-directory: ./aws
         env:
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
         run: |
-          echo "⏳ Waiting for API to be ready..."
-          sleep 15
-          API_URL=$(serverless info --stage $STAGE | grep "HttpApiUrl" | awk '{print $2}')
-          echo "Testing API at: $API_URL/health"
-          curl -f "$API_URL/health" || echo "⚠️ Health endpoint not responding yet"
+          echo "🏥 Testing health check function..."
+          aws lambda invoke \
+            --function-name hospital-backend-health-$STAGE \
+            --region us-east-1 \
+            --log-type Tail \
+            response.json
+          
+          echo ""
+          echo "Response:"
+          cat response.json | jq .
+          
+          STATUS_CODE=$(cat response.json | jq -r '.statusCode // "error"')
+          if [ "$STATUS_CODE" = "200" ]; then
+            echo "✅ Health check passed!"
+          else
+            echo "⚠️ Health check returned status: $STATUS_CODE"
+          fi
 
       - name: Notify Success
         if: success()

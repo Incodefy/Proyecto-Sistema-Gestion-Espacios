@@ -37,6 +37,8 @@ coverage/
 
 # AWS
 .aws-sam/
+.aws-output/
+function.zip
 
 # Temporal
 tmp/
