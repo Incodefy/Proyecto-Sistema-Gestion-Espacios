@@ -1,91 +1,179 @@
-name: CD Pipeline - Deploy to AWS
+name: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWS
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Entorno a desplegar'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - staging
-          - production
 
-jobs:
-  # Job para desplegar funciones Lambda/Serverless
-  deploy-serverless:
-    name: Deploy AWS Lambda & API Gateway
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.environment || 'dev' }}
-    steps:
-      - name: Checkout code
+
+on:on:
+
+  push:  push:
+
+    branches: [main]    branches: [main]
+
+  workflow_dispatch:  workflow_dispatch:
+
+    inputs:    inputs:
+
+      environment:      environment:
+
+        description: 'Entorno a desplegar'        description: 'Entorno a desplegar'
+
+        required: true        required: true
+
+        default: 'dev'        default: 'dev'
+
+        type: choice        type: choice
+
+        options:        options:
+
+          - dev          - dev
+
+          - staging          - staging
+
+          - production          - production
+
+
+
+jobs:jobs:
+
+  deploy-serverless:  # Job para desplegar funciones Lambda/Serverless
+
+    name: Deploy AWS Lambda & API Gateway  deploy-serverless:
+
+    runs-on: ubuntu-latest    name: Deploy AWS Lambda & API Gateway
+
+    environment:    runs-on: ubuntu-latest
+
+      name: ${{ github.event.inputs.environment || 'dev' }}    environment:
+
+    steps:      name: ${{ github.event.inputs.environment || 'dev' }}
+
+      - name: Checkout code    steps:
+
+        uses: actions/checkout@v4      - name: Checkout code
+
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
+
+        uses: actions/setup-node@v4      - name: Setup Node.js
+
+        with:        uses: actions/setup-node@v4
+
+          node-version: '20'        with:
+
           node-version: '20'
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+        uses: aws-actions/configure-aws-credentials@v4      - name: Configure AWS credentials
+
+        with:        uses: aws-actions/configure-aws-credentials@v4
+
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        with:
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: us-east-1          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
           aws-region: us-east-1
 
       - name: Install dependencies
-        working-directory: ./aws
+
+        working-directory: ./aws      - name: Install dependencies
+
+        run: npm ci        working-directory: ./aws
+
         run: npm ci
 
-      - name: Install jq (for JSON parsing)
+      - name: Install Serverless Framework
+
+        run: npm install -g serverless@3      - name: Install jq (for JSON parsing)
+
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Make scripts executable
-        working-directory: ./aws
-        run: chmod +x scripts/*.sh
+      - name: Deploy with Serverless Framework
 
-      - name: List existing AWS resources
-        run: |
-          echo "� Checking existing AWS resources..."
-          echo ""
-          echo "DynamoDB Tables:"
-          aws dynamodb list-tables --region us-east-1 2>&1 || echo "⚠️  Cannot list tables"
-          echo ""
-          echo "Lambda Functions:"
-          aws lambda list-functions --region us-east-1 --query 'Functions[*].FunctionName' 2>&1 || echo "⚠️  Cannot list functions"
-          echo ""
-          echo "Cognito User Pools:"
-          aws cognito-idp list-user-pools --max-results 60 --region us-east-1 --query 'UserPools[*].Name' 2>&1 || echo "⚠️  Cannot list pools"
+        working-directory: ./aws      - name: Make scripts executable
 
-      - name: Deploy Infrastructure
-        working-directory: ./aws
-        env:
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+        env:        working-directory: ./aws
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}        run: chmod +x scripts/*.sh
+
           AWS_REGION: us-east-1
-        run: |
-          echo "🚀 Starting deployment to stage: $STAGE"
-          echo ""
-          
-          # Intentar deployment completo, pero continuar si hay errores parciales
-          bash scripts/deploy-all.sh
-          EXIT_CODE=$?
-          
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️  Full deployment had some issues, trying Lambda-only deployment..."
-            bash scripts/deploy-lambda.sh || exit 1
-          fi
-          
-          echo "✅ Deployment process completed"
 
-      - name: Get deployment info
-        working-directory: ./aws
+          AWS_ROLE: arn:aws:iam::851725349092:role/LabRole      - name: List existing AWS resources
+
+        run: |        run: |
+
+          echo "🚀 Deploying with Serverless Framework"          echo "� Checking existing AWS resources..."
+
+          echo "   Stage: $STAGE"          echo ""
+
+          echo "   Region: $AWS_REGION"          echo "DynamoDB Tables:"
+
+          echo ""          aws dynamodb list-tables --region us-east-1 2>&1 || echo "⚠️  Cannot list tables"
+
+          serverless deploy --stage $STAGE --region $AWS_REGION --verbose          echo ""
+
+          echo "Lambda Functions:"
+
+      - name: Get deployment info          aws lambda list-functions --region us-east-1 --query 'Functions[*].FunctionName' 2>&1 || echo "⚠️  Cannot list functions"
+
+        working-directory: ./aws          echo ""
+
+        env:          echo "Cognito User Pools:"
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}          aws cognito-idp list-user-pools --max-results 60 --region us-east-1 --query 'UserPools[*].Name' 2>&1 || echo "⚠️  Cannot list pools"
+
+        run: |
+
+          echo "📋 Deployment Information:"      - name: Deploy Infrastructure
+
+          serverless info --stage $STAGE --region us-east-1        working-directory: ./aws
+
         env:
+
+      - name: Test Health Endpoint          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+
+        working-directory: ./aws          AWS_REGION: us-east-1
+
+        env:        run: |
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}          echo "🚀 Starting deployment to stage: $STAGE"
+
+        run: |          echo ""
+
+          echo "🏥 Testing health endpoint..."          
+
+          API_URL=$(serverless info --stage $STAGE --region us-east-1 | grep "HttpApiUrl" | awk '{print $2}')          # Intentar deployment completo, pero continuar si hay errores parciales
+
+          if [ ! -z "$API_URL" ]; then          bash scripts/deploy-all.sh
+
+            echo "API URL: $API_URL"          EXIT_CODE=$?
+
+            sleep 10          
+
+            curl -f "$API_URL/health" || echo "⚠️ Health check not responding yet"          if [ $EXIT_CODE -ne 0 ]; then
+
+          else            echo "⚠️  Full deployment had some issues, trying Lambda-only deployment..."
+
+            echo "⚠️ Could not extract API URL"            bash scripts/deploy-lambda.sh || exit 1
+
+          fi          fi
+
+          
+
+      - name: Notify Success          echo "✅ Deployment process completed"
+
+        if: success()
+
+        run: |      - name: Get deployment info
+
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"        working-directory: ./aws
+
+          echo "🔍 Check AWS Console for deployed resources"        env:
+
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
         run: |
           echo "📋 Deployment Information:"
