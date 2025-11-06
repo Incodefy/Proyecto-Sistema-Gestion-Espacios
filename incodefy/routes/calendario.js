@@ -1,7 +1,11 @@
 // routes/calendario.js
 const express = require('express');
 const router = express.Router();
-const db = require("../db");
+const { 
+  obtenerPasillos, obtenerBoxes, obtenerMedicos, obtenerEspecialidades, 
+  obtenerAgendaPorMedico, obtenerAgendaPorBox, obtenerEstadoNoAtendido,
+  verificarConflictoMedico, verificarConflictoBox, insertarAgenda
+} = require("../db");
 const checkPermission = require("../middleware/checkPermission");
 
 // Ruta principal del calendario
@@ -23,15 +27,10 @@ router.get('/agenda/calendario/:tipo', async (req, res) => {
 
     // Obtener datos base
     const [pasillos, boxes, especialidades, medicos] = await Promise.all([
-      db.query('SELECT idpasillo, nombre FROM pasillo ORDER BY nombre'),
-      db.query('SELECT idbox, nombre, idpasillo FROM box ORDER BY nombre'),
-      db.query('SELECT idespecialidad, nombre FROM especialidad ORDER BY nombre'),
-      db.query(`
-        SELECT m.idmedico, m.nombre, m.idespecialidad, e.nombre as especialidad_nombre
-        FROM medico m
-        LEFT JOIN especialidad e ON m.idespecialidad = e.idespecialidad
-        ORDER BY m.nombre
-      `)
+      obtenerPasillos(),
+      obtenerBoxes(),
+      obtenerEspecialidades(),
+      obtenerMedicos() 
     ]);
 
     let config;
@@ -125,55 +124,27 @@ router.get('/agenda/obtener-agendamientos', async (req, res) => {
     console.log('tipo:', req.query.tipo);
     console.log('box_id:', req.query.box_id);
     console.log('medico_id:', req.query.medico_id);
-    
-    const { tipo, box_id, medico_id } = req.query;
 
-    let query;
-    let params;
+    const { tipo, box_id, medico_id } = req.query;
+    
+    let agendas = [];
+
 
     if (tipo === 'box' && box_id) {
       console.log('Consultando por BOX, box_id:', box_id);
-      query = `
-        SELECT 
-          a.*,
-          m.nombre as medico_nombre,
-          b.nombre as box_nombre,
-          e.nombre as estado_nombre
-        FROM agenda a
-        LEFT JOIN medico m ON a.idmedico = m.idmedico
-        LEFT JOIN box b ON a.idbox = b.idbox
-        LEFT JOIN estado e ON a.idestado = e.idestado
-        WHERE a.idbox = ?
-        ORDER BY a.fecha, a.horainicio
-      `;
-      params = [box_id];
+
+      agendas = await obtenerAgendaPorBox(box_id);
     } else if (tipo === 'medico' && medico_id) {
       console.log('Consultando por MEDICO, medico_id:', medico_id);
-      query = `
-        SELECT 
-          a.*,
-          m.nombre as medico_nombre,
-          b.nombre as box_nombre,
-          e.nombre as estado_nombre
-        FROM agenda a
-        LEFT JOIN medico m ON a.idmedico = m.idmedico
-        LEFT JOIN box b ON a.idbox = b.idbox
-        LEFT JOIN estado e ON a.idestado = e.idestado
-        WHERE a.idmedico = ?
-        ORDER BY a.fecha, a.horainicio
-      `;
-      params = [medico_id];
+
+      agendas = await obtenerAgendaPorMedico(medico_id);
     } else {
       console.log('Parámetros inválidos - tipo:', tipo, 'box_id:', box_id, 'medico_id:', medico_id);
       return res.status(400).json({ error: 'Parámetros inválidos' });
     }
 
-    console.log('Query a ejecutar:', query);
-    console.log('Parámetros:', params);
-
-    const agendamientos = await db.query(query, params);
-    console.log('Agendamientos encontrados:', agendamientos.length);
-    res.json({ agendamientos });
+    console.log('Agendamientos encontrados:', agendas.length);
+    res.json({ agendamientos: agendas });
 
   } catch (error) {
     console.error('Error al obtener agendamientos:', error);
@@ -190,42 +161,33 @@ router.post('/agenda/guardar-agenda', async (req, res) => {
     const hora_inicio = partes_hora[0];
     const hora_fin = partes_hora[1];
     
-    // Verificar conflictos de box
-    const conflictoBox = await db.query(`
-      SELECT COUNT(*) as count FROM agenda 
-      WHERE idbox = ? AND fecha = ? 
-      AND ((horainicio < ? AND horafin > ?) OR (horainicio < ? AND horafin > ?))
-    `, [box_id, fecha_inicio, hora_fin, hora_inicio, hora_inicio, hora_fin]);
-
-    if (conflictoBox[0].count > 0) {
-      return res.json({ status: 'error', mensaje: 'Ese horario ya está ocupado.' });
+    const conflictoBox = await verificarConflictoBox(box_id, fecha_inicio, hora_inicio, hora_fin);
+    if (conflictoBox) {
+      return res.json({ status: 'error', mensaje: 'Ese horario ya está ocupado en el box.' });
     }
 
-    // Verificar conflictos de médico
-    const conflictoMedico = await db.query(`
-      SELECT COUNT(*) as count FROM agenda 
-      WHERE idmedico = ? AND fecha = ? 
-      AND ((horainicio < ? AND horafin > ?) OR (horainicio < ? AND horafin > ?))
-    `, [medico_id, fecha_inicio, hora_fin, hora_inicio, hora_inicio, hora_fin]);
-
-    if (conflictoMedico[0].count > 0) {
+    const conflictoMedico = await verificarConflictoMedico(medico_id, fecha_inicio, hora_inicio, hora_fin);
+    if (conflictoMedico) {
       return res.json({ status: 'error', mensaje: 'El médico ya está asignado en ese horario.' });
     }
 
-    // Obtener estado "no atendido"
-    const estado = await db.query(`
-      SELECT idestado FROM estado WHERE nombre LIKE '%no atendido%' LIMIT 1
-    `);
+    const estadoId = await obtenerEstadoNoAtendido();
 
-    const estadoId = estado.length > 0 ? estado[0].idestado : null;
+    const nuevaAgenda = {
+      PK: `BOX#${box_id}#DATE#${fecha_inicio}`,
+      SK: hora_inicio,
+      idMedico: medico_id,
+      idBox: box_id,
+      idEstado: estadoId,
+      horaInicio: hora_inicio,
+      horaFin: hora_fin,
+      fecha: fecha_inicio,
+      tipoConsulta: tipo_usuario
+    };
 
-    // Crear nueva agenda
-    const result = await db.query(`
-      INSERT INTO agenda (idmedico, idbox, idestado, horainicio, horafin, fecha, tipoconsulta)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [medico_id, box_id, estadoId, hora_inicio, hora_fin, fecha_inicio, tipo_usuario]);
+    await insertarAgenda(nuevaAgenda);
 
-    res.json({ status: 'ok', idAgenda: result.insertId });
+    res.json({ status: 'ok', mensaje: 'Agenda guardada correctamente' });
 
   } catch (error) {
     console.error('Error al guardar agenda:', error);

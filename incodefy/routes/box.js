@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const { obtenerPasillos, obtenerBoxes, obtenerAgendaPorFecha } = require("../db");
 const checkPermission = require("../middleware/checkPermission");
 
 router.get("/box", checkPermission('box.read'), async (req, res) => {
@@ -12,31 +12,17 @@ router.get("/box", checkPermission('box.read'), async (req, res) => {
     const hoy = new Date().toISOString().split("T")[0];
     const ahora = new Date().toTimeString().slice(0, 5);
 
-    const sqlPasillos = "SELECT idPasillo, nombre FROM pasillo ORDER BY idPasillo";
-    const sqlBoxes = "SELECT idBox, nombre, estado, idPasillo FROM box";
-    const sqlAgendas = `
-      SELECT 
-          a.idAgenda   AS idAgenda,
-          a.idBox      AS boxId,
-          a.horaInicio AS horaInicio,
-          a.horaFin    AS horaFin,
-          a.fecha      AS fecha,
-          m.nombre     AS medico,
-          e.nombre     AS especialidad,
-          es.nombre    AS estado
-      FROM agenda a
-      LEFT JOIN medico m ON a.idMedico = m.idMedico
-      LEFT JOIN especialidad e ON m.idEspecialidad = e.idEspecialidad
-      LEFT JOIN estado es ON a.idEstado = es.idEstado
-      WHERE a.fecha = CURDATE();
-    `;
+    console.log(hoy, ahora)
 
-    const [pasillos] = await db.query(sqlPasillos);
-    const [boxes] = await db.query(sqlBoxes);
-    const [agendas] = await db.query(sqlAgendas);
+    const pasillos = await obtenerPasillos();
+    console.log(pasillos)
+    const boxes = await obtenerBoxes();
+    console.log(boxes)
+    const agendas = await obtenerAgendaPorFecha(hoy)
+    console.log(agendas)
 
     const pasillo_box_map = generarPasillosConBoxes(
-      req, // Pasar req para acceder a t()
+      req,
       pasillos,
       boxes,
       agendas,
@@ -155,26 +141,9 @@ router.get("/estado-boxes", async (req, res) => {
     const ahora = new Date().toTimeString().slice(0, 5);
     const contexto = new ContextoEstado();
 
-    const sqlBoxes = "SELECT idBox, nombre, estado, idPasillo FROM box";
-    const sqlAgendas = `
-      SELECT 
-          a.idAgenda   AS idAgenda,
-          a.idBox      AS boxId,
-          a.horaInicio AS horaInicio,
-          a.horaFin    AS horaFin,
-          a.fecha      AS fecha,
-          m.nombre     AS medico,
-          e.nombre     AS especialidad,
-          es.nombre    AS estado
-      FROM agenda a
-      LEFT JOIN medico m ON a.idMedico = m.idMedico
-      LEFT JOIN especialidad e ON m.idEspecialidad = e.idEspecialidad
-      LEFT JOIN estado es ON a.idEstado = es.idEstado
-      WHERE a.fecha = CURDATE();
-    `;
+    const boxes = await obtenerBoxes();
 
-    const [boxes] = await db.query(sqlBoxes);
-    let [agendas] = await db.query(sqlAgendas);
+    const agendas = await obtenerAgendaPorFecha(hoy)
 
     agendas = agendas.map(a => ({
       ...a,

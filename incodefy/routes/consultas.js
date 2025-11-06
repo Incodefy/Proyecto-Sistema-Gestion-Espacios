@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const { obtenerConsultasEnCurso, actualizarEstadoAgenda } = require("../db");
 const checkPermission = require("../middleware/checkPermission");
 
 const ESTADO_REALIZADA_ID = 1;
@@ -26,56 +26,29 @@ router.get("/en-curso", checkPermission('box.write'), (req, res) => {
 router.get("/consultas/en-curso/api", async (req, res) => {
   try {
     const { ahora, full } = nowLocal();
+    
+    const hora_actual = ahora; 
 
-    const sql = `
-      SELECT 
-        a.idAgenda     AS idagenda,
-        a.fecha        AS fecha,
-        TIME_FORMAT(a.horaInicio, '%H:%i') AS horainicio,
-        TIME_FORMAT(a.horaFin, '%H:%i')    AS horafin,
-        b.nombre       AS box,
-        m.nombre       AS medico,
-        a.tipoConsulta AS tipoconsulta,
-        a.idEstado     AS estado_id,
-        es.nombre      AS estado
-      FROM agenda a
-      LEFT JOIN box b ON a.idBox = b.idBox
-      LEFT JOIN medico m ON a.idMedico = m.idMedico
-      LEFT JOIN estado es ON a.idEstado = es.idEstado
-      WHERE a.fecha = CURDATE()
-        AND a.idEstado IN (?, ?)
-        AND a.horaInicio <= ?
-        AND a.horaFin > ?
-      ORDER BY a.horaInicio, b.nombre, m.nombre
-    `;
+    const estadosPermitidos = [ESTADO_PENDIENTE_ID, ESTADO_REALIZADA_ID];
 
-    const [results] = await db.query(sql, [
-      ESTADO_PENDIENTE_ID,
-      ESTADO_REALIZADA_ID,
-      ahora,
-      ahora,
-    ]);
+    const consultas = await obtenerConsultasEnCurso(hora_actual, estadosPermitidos);
 
-    const data = results.map((a) => {
+    const data = consultas.map((a) => {
       const estadoKey = a.estado_id === ESTADO_REALIZADA_ID ? 'confirmed' : 'pending';
       return {
-        idagenda: a.idagenda,
-        fecha: a.fecha
-          ? new Date(a.fecha).toISOString().split("T")[0]
-          : null,
-        horainicio: a.horainicio || "",
-        horafin: a.horafin || "",
+        idagenda: a.idAgenda,
+        fecha: a.fecha ? new Date(a.fecha).toISOString().split("T")[0] : null,
+        horainicio: a.horaInicio || "",
+        horafin: a.horaFin || "",
         box: a.box || "-",
         medico: a.medico || "-",
-        tipoconsulta: a.tipoconsulta || "—",
+        tipoconsulta: a.tipoConsulta || "—",
         estado_id: a.estado_id,
         estado: req.t(`common.${estadoKey}`)
       };
     });
 
-    const slot = data.length
-      ? `${data[0].horainicio} – ${data[0].horafin}`
-      : null;
+    const slot = data.length ? `${data[0].horainicio} – ${data[0].horafin}` : null;
 
     res.json({
       consultas: data,
@@ -83,7 +56,7 @@ router.get("/consultas/en-curso/api", async (req, res) => {
       slot,
     });
   } catch (err) {
-    console.error("Error SQL:", err);
+    console.error("Error al cargar consultas:", err);
     res.status(500).json({ error: "Error al cargar consultas" });
   }
 });
@@ -99,17 +72,17 @@ router.post("/consultas/en-curso/toggle", async (req, res) => {
       return res.status(400).json({ error: "Parámetros inválidos" });
     }
 
-    const sql = "UPDATE agenda SET idEstado = ? WHERE idAgenda = ?";
-    const [result] = await db.query(sql, [to, id]);
+    const result = await actualizarEstadoAgenda(id, to);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Agenda no encontrada" });
+    if (result.success) {
+      res.json({ ok: true, idagenda: id, nuevo_estado_id: to });
+    } else {
+      return res.status(404).json({ error: result.error || "Agenda no encontrada" });
     }
 
-    res.json({ ok: true, idagenda: id, nuevo_estado_id: to });
   } catch (err) {
-    console.error("Error SQL:", err);
-    res.status(500).json({ error: "No se pudo actualizar" });
+    console.error("Error al cambiar el estado de la consulta:", err);
+    res.status(500).json({ error: "No se pudo actualizar el estado" });
   }
 });
 

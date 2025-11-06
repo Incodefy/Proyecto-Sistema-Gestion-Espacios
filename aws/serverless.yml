@@ -20,6 +20,7 @@ provider:
     SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
     PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
     SERVICE_NAME: ${self:service}
+    DB_CATALOGO: ${self:service}-catalogo
     STAGE: ${sls:stage}
     
   logs:
@@ -250,6 +251,47 @@ functions:
           path: /admin/activity-stats
           authorizer:
             name: cognitoJwt
+  
+  # === FUNCIONES DB ===
+  dbProxy:
+    handler: src/handlers/dbProxy.handler
+    events:
+      - http:
+          path: db/{proxy+}
+          method: any
+  
+  obtenerPasillos:
+    handler: src/handlers/db/obtenerPasillos.handler
+
+  obtenerBoxes:
+    handler: src/handlers/db/obtenerBoxes.handler
+
+  obtenerAgendaPorFecha:
+    handler: src/handlers/db/obtenerAgendaPorFecha.handler
+
+  obtenerEspecialidades:
+    handler: src/handlers/db/obtenerEspecialidades.handler
+
+  obtenerMedicos:
+    handler: src/handlers/db/obtenerMedicos.handler
+
+  obtenerAgendaPorBox:
+    handler: src/handlers/db/obtenerAgendaPorBox.handler
+  
+  obtenerAgendaPorMedico:
+    handler: src/handlers/db/obtenerAgendaPorMedico.handler
+
+  verificarConflictoBox:
+    handler: src/handlers/db/verificarConflictoBox.handler
+  
+  verificarConflictoMedico:
+    handler: src/handlers/db/verificarConflictoMedico.handler
+    
+  obtenerEstadoNoAtendido:
+    handler: src/handlers/db/obtenerEstadoNoAtendido.handler
+  
+  insertarAgenda:
+    handler: src/handlers/db/insertarAgenda.handler
 
 plugins:
   - serverless-offline
