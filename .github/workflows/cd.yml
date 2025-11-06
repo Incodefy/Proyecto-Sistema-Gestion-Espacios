@@ -112,67 +112,67 @@ jobs:
           echo "🏥 Application deployed to staging!"
           echo "URL: http://${{ secrets.EC2_HOST_STAGING }}:3000"
 
-  # Job para desplegar a Producción
-  deploy-production:
-    name: Deploy to EC2 Production
-    runs-on: ubuntu-latest
-    needs: deploy-staging
-    environment:
-      name: production
-      url: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install dependencies (incodefy)
-        working-directory: ./incodefy
-        run: npm ci --production
-
-      - name: Create .env file for production
-        working-directory: ./incodefy
-        run: |
-          cat > .env << EOF
-          NODE_ENV=production
-          PORT=3000
-          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-          AWS_REGION=us-east-1
-          USER_POOL_ID=${{ secrets.USER_POOL_ID }}
-          USER_POOL_CLIENT_ID=${{ secrets.USER_POOL_CLIENT_ID }}
-          aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          API_BASE_URL=${{ secrets.API_BASE_URL }}
-          EOF
-
-      - name: Deploy to EC2 via SSH
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-          REMOTE_HOST: ${{ secrets.EC2_HOST_PRODUCTION }}
-          REMOTE_USER: ${{ secrets.EC2_USER }}
-          TARGET: /home/ubuntu/hospital-app
-          EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
-
-      - name: Install dependencies and restart on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST_PRODUCTION }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-          script: |
-            cd /home/ubuntu/hospital-app/incodefy
-            npm ci --production
-            pm2 restart hospital-production || pm2 start server.js --name hospital-production --env production
-            pm2 save
-            pm2 list
-
-      - name: Create deployment notification
-        run: |
-          echo "✅ Deployment to Production completed successfully!"
+  # Job para desplegar a Producción (DESHABILITADO - instancia no creada)
+  # deploy-production:
+  #   name: Deploy to EC2 Production
+  #   runs-on: ubuntu-latest
+  #   needs: deploy-staging
+  #   environment:
+  #     name: production
+  #     url: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  # 
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '18'
+  # 
+  #     - name: Install dependencies (incodefy)
+  #       working-directory: ./incodefy
+  #       run: npm ci --production
+  # 
+  #     - name: Create .env file for production
+  #       working-directory: ./incodefy
+  #       run: |
+  #         cat > .env << EOF
+  #         NODE_ENV=production
+  #         PORT=3000
+  #         SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+  #         AWS_REGION=us-east-1
+  #         USER_POOL_ID=${{ secrets.USER_POOL_ID }}
+  #         USER_POOL_CLIENT_ID=${{ secrets.USER_POOL_CLIENT_ID }}
+  #         aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         API_BASE_URL=${{ secrets.API_BASE_URL }}
+  #         EOF
+  # 
+  #     - name: Deploy to EC2 via SSH
+  #       uses: easingthemes/ssh-deploy@main
+  #       env:
+  #         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
+  #         REMOTE_HOST: ${{ secrets.EC2_HOST_PRODUCTION }}
+  #         REMOTE_USER: ${{ secrets.EC2_USER }}
+  #         TARGET: /home/ubuntu/hospital-app
+  #         EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
+  # 
+  #     - name: Install dependencies and restart on EC2
+  #       uses: appleboy/ssh-action@master
+  #       with:
+  #         host: ${{ secrets.EC2_HOST_PRODUCTION }}
+  #         username: ${{ secrets.EC2_USER }}
+  #         key: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
+  #         script: |
+  #           cd /home/ubuntu/hospital-app/incodefy
+  #           npm ci --production
+  #           pm2 restart hospital-production || pm2 start server.js --name hospital-production --env production
+  #           pm2 save
+  #           pm2 list
+  # 
+  #     - name: Create deployment notification
+  #       run: |
+  #         echo "✅ Deployment to Production completed successfully!"
           echo "🏥 Hospital Padre Hurtado - Production"
           echo "URL: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000"
           echo "Time: $(date)"
