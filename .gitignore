@@ -14,8 +14,8 @@ logs
 npm-debug.log*
 yarn-debug.log*
 
-# Lock files
-package-lock.json
+# Lock files (comentado para CI/CD - necesitamos package-lock.json)
+# package-lock.json
 yarn.lock
 
 # Sistema operativo
