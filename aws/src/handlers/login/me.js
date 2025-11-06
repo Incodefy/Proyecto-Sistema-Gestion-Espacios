@@ -1,3 +1,4 @@
+// src/handlers/me.js
 /**
  * GET /me
  * Requiere Authorization: Bearer <ID_TOKEN o ACCESS_TOKEN>

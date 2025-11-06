@@ -477,8 +477,14 @@ function actualizarGraficoEspecialidades(data) {
 function actualizarGraficoPorDia(data) {
     const canvas = document.getElementById('consultasPorDiaChart');
     const placeholder = document.getElementById('consultasPorDiaPlaceholder');
+
+    const tieneDatos = (
+        data && 
+        Array.isArray(data.labels) && data.labels.length > 0 &&
+        Array.isArray(data.data) && data.data.some(v => v > 0)
+    );
     
-    if (data && data.labels && data.labels.length > 0) {
+    if (tieneDatos) {
         canvas.style.display = 'block';
         placeholder.style.display = 'none';
         

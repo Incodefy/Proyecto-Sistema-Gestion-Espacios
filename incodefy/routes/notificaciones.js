@@ -1,8 +1,8 @@
 // routes/notificaciones.js
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const checkPermission = require('../middleware/checkPermission');
+const { obtenerNotificaciones, obtenerMedicoNombre, obtenerBoxNombre } = require("../db");
+const checkPermission = require("../middleware/checkPermission");
 
 // Página de historial
 router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), (req, res) => {
@@ -15,26 +15,17 @@ router.get('/historial-notificaciones', checkPermission('notificaciones.historia
 // API de notificaciones
 router.get('/notificaciones-usuario', async (req, res) => {
   try {
-    // 1. Obtener todos los médicos y boxes para mapeo eficiente
-    const [medicos] = await db.query('SELECT idmedico, nombre FROM medico');
-    const [boxes] = await db.query('SELECT idbox, nombre FROM box');
+    // 1. Obtener todas las notificaciones desde DynamoDB
+    const notificaciones = await obtenerNotificaciones();
 
-    const medicosMap = new Map(medicos.map(m => [m.idmedico, m.nombre]));
-    const boxesMap = new Map(boxes.map(b => [b.idbox, b.nombre]));
-
-    // 2. Obtener las notificaciones
-    const [rows] = await db.query(
-      'SELECT fecha, mensaje, detalle FROM notificacion ORDER BY fecha DESC LIMIT 50'
-    );
-
-    // 3. Procesar y enriquecer cada notificación
-    const data = rows.map(n => {
+    // 2. Obtener todos los médicos y boxes para mapeo eficiente (realizamos una consulta para cada uno cuando los necesitemos)
+    const data = await Promise.all(notificaciones.map(async (n) => {
       let detalleProcesado = [];
-      let mensajeTraducido = n.mensaje; // Usar mensaje original por defecto
+      let mensajeTraducido = n.descripcion; // Usar mensaje original por defecto
 
       try {
         // Intentar traducir el mensaje principal
-        const match = n.mensaje.match(/(\d+)/);
+        const match = n.descripcion.match(/(\d+)/);
         const count = match ? parseInt(match[1], 10) : 0;
         if (count > 0) {
           mensajeTraducido = req.t('notifications.import_success', { count });
@@ -42,14 +33,14 @@ router.get('/notificaciones-usuario', async (req, res) => {
 
         const detalleOriginal = JSON.parse(n.detalle);
         if (Array.isArray(detalleOriginal)) {
-          detalleProcesado = detalleOriginal.map(consulta => {
-            const medicoNombre = medicosMap.get(consulta.idmedico) || req.t('common.unknown_doctor');
-            const boxNombre = boxesMap.get(consulta.idbox) || req.t('common.unknown_box');
+          detalleProcesado = await Promise.all(detalleOriginal.map(async (consulta) => {
+            const medicoNombre = await obtenerMedicoNombre(consulta.medico) || req.t('common.unknown_doctor');
+            const boxNombre = await obtenerBoxNombre(consulta.box) || req.t('common.unknown_box');
             
             let estadoTraducido = req.t('common.pending'); // Por defecto
             if (consulta.estado) {
-                const estadoKey = consulta.estado.toLowerCase().replace(/\s+/g, '_');
-                estadoTraducido = req.t(`notifications.${estadoKey}`, req.t('common.pending'));
+              const estadoKey = consulta.estado.toLowerCase().replace(/\s+/g, '_');
+              estadoTraducido = req.t(`notifications.${estadoKey}`, req.t('common.pending'));
             }
 
             return {
@@ -59,7 +50,7 @@ router.get('/notificaciones-usuario', async (req, res) => {
               estado: estadoTraducido,
               tipoconsulta: req.t(`common.${(consulta.tipoconsulta || 'medical').toLowerCase()}`)
             };
-          });
+          }));
         }
       } catch (e) {
         // Si hay un error, mantener los valores originales
@@ -71,7 +62,7 @@ router.get('/notificaciones-usuario', async (req, res) => {
         mensaje: mensajeTraducido,
         detalle: detalleProcesado
       };
-    });
+    }));
 
     res.json({ 
       notificaciones: data,

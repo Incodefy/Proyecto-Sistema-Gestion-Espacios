@@ -4,10 +4,10 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs20.x
-  region: ${opt:region, 'us-east-1'}
+  region: ${env:AWS_REGION, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   
-  role: arn:aws:iam::211125294486:role/LabRole
+  role: ${env:AWS_ROLE, 'arn:aws:iam::851725349092:role/LabRole'}
   
   # Tags para mejor gestión de recursos
   tags:
@@ -17,20 +17,36 @@ provider:
     Version: 1.0.0
   
   environment:
-    # Variables para las funciones
     USER_POOL_ID: { Ref: CognitoUserPool }
     USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
     USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
     PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
+    ACTIVITY_LOGS_TABLE: ${self:service}-${sls:stage}-activity-logs
+    PERSONALIZATION_TOPIC_ARN: { Ref: PersonalizationTopic }
+    SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
+    PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
+    SERVICE_NAME: ${self:service}
+    DB_CATALOGO: ${self:service}-catalogo
     STAGE: ${sls:stage}
-    VERSION: 1.0.0
     
   logs:
     httpApi: true
     
   httpApi:
-    cors: true
+    cors:
+        allowedOrigins:
+          - '*'
+        allowedHeaders:
+          - Content-Type
+          - Authorization
+        allowedMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        allowCredentials: false
     authorizers:
       cognitoJwt:
         type: jwt
@@ -41,6 +57,70 @@ provider:
             - { UserPoolId: { Ref: CognitoUserPool } }
         audience:
           - { Ref: CognitoUserPoolClient }
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sns:Publish
+      Resource:
+        - { Ref: PersonalizationTopic }
+        - { Ref: SystemNotificationsTopic }
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - { Fn::GetAtt: [ActivityLogsTable, Arn] }
+        - Fn::Sub: '${ActivityLogsTable.Arn}/index/*'
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:UpdateItem
+      Resource:
+        - { Fn::GetAtt: [ParametersTable, Arn] }
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - { Fn::GetAtt: [UserRolesTable, Arn] }
+        - Fn::Sub: '${UserRolesTable.Arn}/index/*'
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - { Fn::GetAtt: [PermissionsTable, Arn] }
+
+    - Effect: Allow
+      Action:
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+        - sqs:ChangeMessageVisibility
+      Resource:
+        - { Fn::GetAtt: [PersonalizationQueue, Arn] }
+        - { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+      Resource:
+        - { Fn::GetAtt: [ProcessedMessagesTable, Arn] }
 
 functions:
   # === HEALTH CHECK ===
@@ -55,7 +135,7 @@ functions:
 
   # === FUNCIONES DE AUTENTICACIÓN ===
   login:
-    handler: src/handlers/login.login
+    handler: src/handlers/login/login.login
     events:
       - httpApi:
           method: POST
@@ -64,7 +144,7 @@ functions:
     description: User authentication endpoint
 
   refresh:
-    handler: src/handlers/refresh.refresh
+    handler: src/handlers/login/refresh.refresh
     events:
       - httpApi:
           method: POST
@@ -73,7 +153,7 @@ functions:
     description: Token refresh endpoint
 
   me:
-    handler: src/handlers/me.me
+    handler: src/handlers/login/me.me
     events:
       - httpApi:
           method: GET
@@ -85,7 +165,7 @@ functions:
 
   # === FUNCIONES DE PERMISOS ===
   getMyPermissions:
-    handler: src/handlers/permissions.getMyPermissions
+    handler: src/handlers/permissions/permissions.getMyPermissions
     events:
       - httpApi:
           method: GET
@@ -96,7 +176,7 @@ functions:
     description: Get user permissions
 
   checkPermission:
-    handler: src/handlers/permissions.checkPermission
+    handler: src/handlers/permissions/permissions.checkPermission
     events:
       - httpApi:
           method: POST
@@ -107,7 +187,7 @@ functions:
     description: Check specific permission
 
   assignRole:
-    handler: src/handlers/permissions.assignRole
+    handler: src/handlers/permissions/permissions.assignRole
     events:
       - httpApi:
           method: POST
@@ -117,8 +197,17 @@ functions:
     timeout: 15
     description: Assign role to user (admin only)
 
+  removeRole:
+    handler: src/handlers/permissions/permissions.removeRole
+    events:
+      - httpApi:
+          method: DELETE
+          path: /admin/remove-role
+          authorizer:
+            name: cognitoJwt
+
   listAvailablePermissions:
-    handler: src/handlers/permissions.listAvailablePermissions
+    handler: src/handlers/permissions/permissions.listAvailablePermissions
     events:
       - httpApi:
           method: GET
@@ -128,9 +217,18 @@ functions:
     timeout: 10
     description: List all available permissions
 
+  listUsersWithRoles:
+    handler: src/handlers/permissions/permissions.listUsersWithRoles
+    events:
+      - httpApi:
+          method: GET
+          path: /admin/users-with-roles
+          authorizer:
+            name: cognitoJwt
+
   # === FUNCIONES DE PERSONALIZACIÓN ===
   getPersonalization:
-    handler: src/handlers/personalization.getPersonalization
+    handler: src/handlers/personalization/personalization.getPersonalization
     events:
       - httpApi:
           method: GET
@@ -141,15 +239,92 @@ functions:
     description: Get user personalization settings
 
   setPersonalization:
-    handler: src/handlers/personalization.setPersonalization
+    handler: src/handlers/personalization/personalization.setPersonalization
     events:
       - httpApi:
           method: POST
           path: /personalization
           authorizer:
             name: cognitoJwt
-    timeout: 15
-    description: Update user personalization settings
+  
+  # === FUNCIONES DE COMUNICACIÓN DESACOPLADA ===
+  handlePersonalizationEvents:
+    handler: src/handlers/events.handlePersonalizationEvents
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [PersonalizationQueue, Arn]
+          batchSize: 5
+          maximumBatchingWindow: 10
+
+  handleSystemNotifications:
+    handler: src/handlers/events.handleSystemNotifications
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [SystemNotificationsQueue, Arn]
+          batchSize: 5
+          maximumBatchingWindow: 10
+
+  # === FUNCIONES DE LOGS ===
+  getActivityLogs:
+    handler: src/handlers/logs.getActivityLogs
+    events:
+      - httpApi:
+          method: GET
+          path: /admin/activity-logs
+          authorizer:
+            name: cognitoJwt
+
+  getActivityStats:
+    handler: src/handlers/logs.getActivityStats
+    events:
+      - httpApi:
+          method: GET
+          path: /admin/activity-stats
+          authorizer:
+            name: cognitoJwt
+  
+  # === FUNCIONES DB ===
+  dbProxy:
+    handler: src/handlers/dbProxy.handler
+    events:
+      - http:
+          path: db/{proxy+}
+          method: any
+  
+  obtenerPasillos:
+    handler: src/handlers/db/obtenerPasillos.handler
+
+  obtenerBoxes:
+    handler: src/handlers/db/obtenerBoxes.handler
+
+  obtenerAgendaPorFecha:
+    handler: src/handlers/db/obtenerAgendaPorFecha.handler
+
+  obtenerEspecialidades:
+    handler: src/handlers/db/obtenerEspecialidades.handler
+
+  obtenerMedicos:
+    handler: src/handlers/db/obtenerMedicos.handler
+
+  obtenerAgendaPorBox:
+    handler: src/handlers/db/obtenerAgendaPorBox.handler
+  
+  obtenerAgendaPorMedico:
+    handler: src/handlers/db/obtenerAgendaPorMedico.handler
+
+  verificarConflictoBox:
+    handler: src/handlers/db/verificarConflictoBox.handler
+  
+  verificarConflictoMedico:
+    handler: src/handlers/db/verificarConflictoMedico.handler
+    
+  obtenerEstadoNoAtendido:
+    handler: src/handlers/db/obtenerEstadoNoAtendido.handler
+  
+  insertarAgenda:
+    handler: src/handlers/db/insertarAgenda.handler
 
 plugins:
   - serverless-offline
@@ -167,7 +342,7 @@ package:
 
 resources:
   Resources:
-    # === TABLAS DYNAMODB ===
+    # === DYNAMODB ===
     UserRolesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -175,6 +350,8 @@ resources:
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: user_email
+            AttributeType: S
+          - AttributeName: role
             AttributeType: S
         KeySchema:
           - AttributeName: user_email
@@ -186,6 +363,13 @@ resources:
             Value: ${sls:stage}
           - Key: Project
             Value: HospitalPadreHurtado
+        GlobalSecondaryIndexes:
+          - IndexName: RoleIndex
+            KeySchema:
+              - AttributeName: role
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
 
     PermissionsTable:
       Type: AWS::DynamoDB::Table
@@ -229,6 +413,262 @@ resources:
           - Key: Project
             Value: HospitalPadreHurtado
 
+    ActivityLogsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-activity-logs
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: user_sub
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserActivityIndex
+            KeySchema:
+              - AttributeName: user_sub
+                KeyType: HASH
+              - AttributeName: timestamp
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+    
+    # === TABLA DE AGENDA ===
+    AgendaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-agenda
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI2PK
+            AttributeType: S
+          - AttributeName: GSI2SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: MedicoFechaIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: FechaIndex
+            KeySchema:
+              - AttributeName: GSI2PK
+                KeyType: HASH
+              - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # === TABLA DE CATÁLOGOS ===
+    CatalogoTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-catalogo
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: TipoEntidadIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # === TABLA DE RELACIONES BOX-INSTRUMENTO ===
+    BoxInstrumentoTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-box-instrumento
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: InstrumentoBoxIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # === TABLA DE NOTIFICACIONES ===
+    NotificacionTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-notificacion
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: TipoFechaIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+    
+    # === TABLA DE IDEMPOTENCIA ===
+    ProcessedMessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-processed-messages
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: message_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: message_id
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+    # === SQS PARA PERSONALIZACIÓN ===
+    PersonalizationDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-personalization-dlq
+        MessageRetentionPeriod: 1209600 # 14 días
+
+    PersonalizationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-personalization-queue
+        VisibilityTimeout: 60
+        RedrivePolicy:
+          deadLetterTargetArn: { Fn::GetAtt: [PersonalizationDLQ, Arn] }
+          maxReceiveCount: 3
+
+    # Permitir que SNS publique en la cola
+    PersonalizationQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - { Ref: PersonalizationQueue }
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: sqs:SendMessage
+              Resource: { Fn::GetAtt: [PersonalizationQueue, Arn] }
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: { Ref: PersonalizationTopic }
+
+    # Suscripción SNS -> SQS
+    PersonalizationSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: sqs
+        TopicArn: { Ref: PersonalizationTopic }
+        Endpoint: { Fn::GetAtt: [PersonalizationQueue, Arn] }
+
+    # === SQS PARA NOTIFICACIONES DEL SISTEMA ===
+    SystemNotificationsDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-system-notifications-dlq
+        MessageRetentionPeriod: 1209600
+
+    SystemNotificationsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-system-notifications-queue
+        VisibilityTimeout: 60
+        RedrivePolicy:
+          deadLetterTargetArn: { Fn::GetAtt: [SystemNotificationsDLQ, Arn] }
+          maxReceiveCount: 3
+
+    SystemNotificationsQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - { Ref: SystemNotificationsQueue }
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: sqs:SendMessage
+              Resource: { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: { Ref: SystemNotificationsTopic }
+
+    SystemNotificationsSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: sqs
+        TopicArn: { Ref: SystemNotificationsTopic }
+        Endpoint: { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+
     # === COGNITO ===
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
@@ -259,13 +699,26 @@ resources:
         ExplicitAuthFlows:
           - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
-        AccessTokenValidity: 60
-        IdTokenValidity: 60
+        AccessTokenValidity: 5
+        IdTokenValidity: 5
         RefreshTokenValidity: 30
         TokenValidityUnits:
           AccessToken: minutes
           IdToken: minutes
           RefreshToken: days
+    
+    # === SNS ===
+    PersonalizationTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:service}-${sls:stage}-personalization
+        DisplayName: "Eventos de personalización de usuarios"
+
+    SystemNotificationsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:service}-${sls:stage}-notifications
+        DisplayName: "Notificaciones del sistema"
 
   Outputs:
     HttpApiUrl:
@@ -286,3 +739,25 @@ resources:
     Region:
       Description: AWS Region
       Value: ${self:provider.region}
+    
+    UserPoolClientId:
+      Value: { Ref: CognitoUserPoolClient }
+    
+    PersonalizationTopicArn:
+      Value: { Ref: PersonalizationTopic }
+    
+    SystemNotificationsTopicArn:
+      Value: { Ref: SystemNotificationsTopic }
+    
+    ActivityLogsTableName:
+      Value: { Ref: ActivityLogsTable }
+    
+    ApiEndpoint:
+      Value:
+        Fn::Sub: 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+    
+    PersonalizationQueueUrl:
+      Value: { Ref: PersonalizationQueue }
+
+    SystemNotificationsQueueUrl:
+      Value: { Ref: SystemNotificationsQueue }

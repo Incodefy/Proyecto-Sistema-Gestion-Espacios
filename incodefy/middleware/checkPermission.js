@@ -11,13 +11,7 @@ const checkPermission = (requiredPermission) => {
 
     console.log('Permisos: ', userPermissions);
     
-    // Si es admin, puede acceder a todo
-    if (userPermissions.includes('admin.users')) {
-      return next();
-    }
-
-    // Verificar permiso específico
-    if (userPermissions.includes(requiredPermission)) {
+    if (userPermissions.includes('admin.users') || userPermissions.includes(requiredPermission)) {
       return next();
     }
 
