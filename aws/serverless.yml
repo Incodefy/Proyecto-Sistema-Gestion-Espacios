@@ -151,8 +151,9 @@ functions:
     timeout: 15
     description: Update user personalization settings
 
-plugins:
-  - serverless-offline
+# Plugins comentados - no necesarios para deployment
+# plugins:
+#   - serverless-offline
 
 package:
   individually: true
