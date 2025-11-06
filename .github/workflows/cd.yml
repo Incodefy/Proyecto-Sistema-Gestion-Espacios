@@ -1,90 +1,178 @@
-name: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWS
+name: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWS
 
 
 
-on:on:
+on:
 
-  push:  push:
+  push:
 
-    branches: [main]    branches: [main]
+    branches: [main]on:on:
 
-  workflow_dispatch:  workflow_dispatch:
+  workflow_dispatch:
 
-    inputs:    inputs:
+    inputs:  push:  push:
 
-      environment:      environment:
+      environment:
+
+        description: 'Entorno a desplegar'    branches: [main]    branches: [main]
+
+        required: true
+
+        default: 'dev'  workflow_dispatch:  workflow_dispatch:
+
+        type: choice
+
+        options:    inputs:    inputs:
+
+          - dev
+
+          - staging      environment:      environment:
+
+          - production
 
         description: 'Entorno a desplegar'        description: 'Entorno a desplegar'
 
-        required: true        required: true
+jobs:
 
-        default: 'dev'        default: 'dev'
+  deploy-serverless:        required: true        required: true
 
-        type: choice        type: choice
+    name: Deploy AWS Lambda & API Gateway
 
-        options:        options:
+    runs-on: ubuntu-latest        default: 'dev'        default: 'dev'
 
-          - dev          - dev
+    environment:
 
-          - staging          - staging
+      name: ${{ github.event.inputs.environment || 'dev' }}        type: choice        type: choice
 
-          - production          - production
+    steps:
 
-
-
-jobs:jobs:
-
-  deploy-serverless:  # Job para desplegar funciones Lambda/Serverless
-
-    name: Deploy AWS Lambda & API Gateway  deploy-serverless:
-
-    runs-on: ubuntu-latest    name: Deploy AWS Lambda & API Gateway
-
-    environment:    runs-on: ubuntu-latest
-
-      name: ${{ github.event.inputs.environment || 'dev' }}    environment:
-
-    steps:      name: ${{ github.event.inputs.environment || 'dev' }}
-
-      - name: Checkout code    steps:
-
-        uses: actions/checkout@v4      - name: Checkout code
+      - name: Checkout code        options:        options:
 
         uses: actions/checkout@v4
 
+          - dev          - dev
+
       - name: Setup Node.js
 
-        uses: actions/setup-node@v4      - name: Setup Node.js
+        uses: actions/setup-node@v4          - staging          - staging
 
-        with:        uses: actions/setup-node@v4
+        with:
 
-          node-version: '20'        with:
+          node-version: '20'          - production          - production
 
-          node-version: '20'
+
 
       - name: Configure AWS credentials
 
-        uses: aws-actions/configure-aws-credentials@v4      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
 
-        with:        uses: aws-actions/configure-aws-credentials@v4
+        with:jobs:jobs:
 
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
 
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  deploy-serverless:  # Job para desplegar funciones Lambda/Serverless
 
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
-          aws-region: us-east-1          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1    name: Deploy AWS Lambda & API Gateway  deploy-serverless:
 
-          aws-region: us-east-1
 
-      - name: Install dependencies
+
+      - name: Install dependencies    runs-on: ubuntu-latest    name: Deploy AWS Lambda & API Gateway
+
+        working-directory: ./aws
+
+        run: npm ci    environment:    runs-on: ubuntu-latest
+
+
+
+      - name: Install Serverless Framework      name: ${{ github.event.inputs.environment || 'dev' }}    environment:
+
+        run: npm install -g serverless@3
+
+    steps:      name: ${{ github.event.inputs.environment || 'dev' }}
+
+      - name: Deploy with Serverless Framework
+
+        working-directory: ./aws      - name: Checkout code    steps:
+
+        env:
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}        uses: actions/checkout@v4      - name: Checkout code
+
+          AWS_REGION: us-east-1
+
+          AWS_ROLE: arn:aws:iam::851725349092:role/LabRole        uses: actions/checkout@v4
+
+        run: |
+
+          echo "🚀 Deploying with Serverless Framework"      - name: Setup Node.js
+
+          echo "   Stage: $STAGE"
+
+          echo "   Region: $AWS_REGION"        uses: actions/setup-node@v4      - name: Setup Node.js
+
+          echo ""
+
+          serverless deploy --stage $STAGE --region $AWS_REGION --verbose        with:        uses: actions/setup-node@v4
+
+
+
+      - name: Get deployment info          node-version: '20'        with:
+
+        working-directory: ./aws
+
+        env:          node-version: '20'
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+
+        run: |      - name: Configure AWS credentials
+
+          echo "📋 Deployment Information:"
+
+          serverless info --stage $STAGE --region us-east-1        uses: aws-actions/configure-aws-credentials@v4      - name: Configure AWS credentials
+
+
+
+      - name: Test Health Endpoint        with:        uses: aws-actions/configure-aws-credentials@v4
+
+        working-directory: ./aws
+
+        env:          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        with:
+
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+
+        run: |          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          echo "🏥 Testing health endpoint..."
+
+          API_URL=$(serverless info --stage $STAGE --region us-east-1 | grep "HttpApiUrl" | awk '{print $2}')          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          if [ ! -z "$API_URL" ]; then
+
+            echo "API URL: $API_URL"          aws-region: us-east-1          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+            sleep 10
+
+            curl -f "$API_URL/health" || echo "⚠️ Health check not responding yet"          aws-region: us-east-1
+
+          else
+
+            echo "⚠️ Could not extract API URL"      - name: Install dependencies
+
+          fi
 
         working-directory: ./aws      - name: Install dependencies
 
-        run: npm ci        working-directory: ./aws
+      - name: Notify Success
 
-        run: npm ci
+        if: success()        run: npm ci        working-directory: ./aws
+
+        run: |
+
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"        run: npm ci
+
+          echo "🔍 Check AWS Console for deployed resources"
 
       - name: Install Serverless Framework
 
