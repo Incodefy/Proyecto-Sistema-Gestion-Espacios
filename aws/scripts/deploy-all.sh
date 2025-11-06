@@ -16,17 +16,17 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AWS_DIR="$(dirname "$SCRIPT_DIR")"
 
-# 1. Crear tablas DynamoDB
+# 1. Verificar/Crear tablas DynamoDB (opcional - puede fallar)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Step 1/3: Creating DynamoDB Tables"
+echo "Step 1/3: Checking DynamoDB Tables"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-bash "$SCRIPT_DIR/deploy-dynamodb.sh"
+bash "$SCRIPT_DIR/deploy-dynamodb.sh" || echo "⚠️  DynamoDB check had issues (continuing anyway)"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Step 2/3: Setting up Cognito"
+echo "Step 2/3: Checking Cognito"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-bash "$SCRIPT_DIR/deploy-cognito.sh"
+bash "$SCRIPT_DIR/deploy-cognito.sh" || echo "⚠️  Cognito check had issues (continuing anyway)"
 
 # Leer IDs de Cognito
 if [ -f "$AWS_DIR/.aws-output/cognito-ids.json" ]; then

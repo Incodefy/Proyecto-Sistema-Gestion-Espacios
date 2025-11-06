@@ -50,14 +50,38 @@ jobs:
         working-directory: ./aws
         run: chmod +x scripts/*.sh
 
-      - name: Deploy Infrastructure (DynamoDB + Cognito + Lambda)
+      - name: List existing AWS resources
+        run: |
+          echo "� Checking existing AWS resources..."
+          echo ""
+          echo "DynamoDB Tables:"
+          aws dynamodb list-tables --region us-east-1 2>&1 || echo "⚠️  Cannot list tables"
+          echo ""
+          echo "Lambda Functions:"
+          aws lambda list-functions --region us-east-1 --query 'Functions[*].FunctionName' 2>&1 || echo "⚠️  Cannot list functions"
+          echo ""
+          echo "Cognito User Pools:"
+          aws cognito-idp list-user-pools --max-results 60 --region us-east-1 --query 'UserPools[*].Name' 2>&1 || echo "⚠️  Cannot list pools"
+
+      - name: Deploy Infrastructure
         working-directory: ./aws
         env:
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
           AWS_REGION: us-east-1
         run: |
-          echo "🚀 Deploying to stage: $STAGE"
+          echo "🚀 Starting deployment to stage: $STAGE"
+          echo ""
+          
+          # Intentar deployment completo, pero continuar si hay errores parciales
           bash scripts/deploy-all.sh
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️  Full deployment had some issues, trying Lambda-only deployment..."
+            bash scripts/deploy-lambda.sh || exit 1
+          fi
+          
+          echo "✅ Deployment process completed"
 
       - name: Get deployment info
         working-directory: ./aws

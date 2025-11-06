@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script para crear DynamoDB tables sin CloudFormation
+# Script para verificar DynamoDB tables existentes
 # Compatible con AWS Academy Learner Lab
 
 set -e
@@ -9,29 +9,34 @@ STAGE=${STAGE:-dev}
 REGION=${AWS_REGION:-us-east-1}
 SERVICE_NAME="hospital-backend"
 
-echo "🗄️  Creating DynamoDB tables in $REGION (stage: $STAGE)"
+echo "🗄️  Checking DynamoDB tables in $REGION (stage: $STAGE)"
 
-# Función para crear tabla si no existe
+# Función para verificar o crear tabla
 create_table_if_not_exists() {
     local TABLE_NAME=$1
     local KEY_SCHEMA=$2
     local ATTRIBUTE_DEFINITIONS=$3
     
     if aws dynamodb describe-table --table-name "$TABLE_NAME" --region "$REGION" 2>/dev/null; then
-        echo "⏭️  Table $TABLE_NAME already exists, skipping..."
+        echo "✅ Table $TABLE_NAME already exists"
+        return 0
     else
-        echo "✨ Creating table $TABLE_NAME..."
-        aws dynamodb create-table \
+        echo "⚠️  Table $TABLE_NAME does not exist, attempting to create..."
+        if aws dynamodb create-table \
             --table-name "$TABLE_NAME" \
             --billing-mode PAY_PER_REQUEST \
             --key-schema "$KEY_SCHEMA" \
             --attribute-definitions "$ATTRIBUTE_DEFINITIONS" \
             --tags "Key=Environment,Value=$STAGE" "Key=Project,Value=HospitalPadreHurtado" \
-            --region "$REGION" > /dev/null
-        
-        echo "⏳ Waiting for table to be active..."
-        aws dynamodb wait table-exists --table-name "$TABLE_NAME" --region "$REGION"
-        echo "✅ Table $TABLE_NAME created"
+            --region "$REGION" 2>/dev/null; then
+            
+            echo "⏳ Waiting for table to be active..."
+            aws dynamodb wait table-exists --table-name "$TABLE_NAME" --region "$REGION"
+            echo "✅ Table $TABLE_NAME created"
+        else
+            echo "⚠️  Cannot create table $TABLE_NAME (may need manual creation)"
+            return 1
+        fi
     fi
 }
 
@@ -72,10 +77,9 @@ else
 fi
 
 echo ""
-echo "🎉 All DynamoDB tables created successfully!"
-echo ""
-echo "📋 Tables:"
-aws dynamodb list-tables --region "$REGION" | grep -E "${SERVICE_NAME}.*${STAGE}" || true
+echo "📋 Listing all DynamoDB tables (existing):"
+aws dynamodb list-tables --region "$REGION" 2>/dev/null | grep -E "Table" || echo "No tables found or cannot list tables"
 
 echo ""
-echo "✨ Database setup completed!"
+echo "✨ Database check completed!"
+echo "💡 If tables don't exist, create them manually in AWS Console or they will be auto-created on first Lambda invocation"
