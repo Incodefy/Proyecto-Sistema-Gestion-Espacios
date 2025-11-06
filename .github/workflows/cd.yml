@@ -1,325 +1,88 @@
-name: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWSname: CD Pipeline - Deploy to AWS
-
-
+name: CD Pipeline - Deploy to AWS
 
 on:
-
   push:
-
-    branches: [main]on:on:
-
+    branches: [main]
   workflow_dispatch:
-
-    inputs:  push:  push:
-
+    inputs:
       environment:
-
-        description: 'Entorno a desplegar'    branches: [main]    branches: [main]
-
+        description: 'Entorno a desplegar'
         required: true
-
-        default: 'dev'  workflow_dispatch:  workflow_dispatch:
-
+        default: 'dev'
         type: choice
-
-        options:    inputs:    inputs:
-
+        options:
           - dev
-
-          - staging      environment:      environment:
-
+          - staging
           - production
 
-        description: 'Entorno a desplegar'        description: 'Entorno a desplegar'
-
 jobs:
-
-  deploy-serverless:        required: true        required: true
-
+  deploy-serverless:
     name: Deploy AWS Lambda & API Gateway
-
-    runs-on: ubuntu-latest        default: 'dev'        default: 'dev'
-
+    runs-on: ubuntu-latest
     environment:
-
-      name: ${{ github.event.inputs.environment || 'dev' }}        type: choice        type: choice
-
+      name: ${{ github.event.inputs.environment || 'dev' }}
     steps:
-
-      - name: Checkout code        options:        options:
-
+      - name: Checkout code
         uses: actions/checkout@v4
 
-          - dev          - dev
-
       - name: Setup Node.js
-
-        uses: actions/setup-node@v4          - staging          - staging
-
+        uses: actions/setup-node@v4
         with:
-
-          node-version: '20'          - production          - production
-
-
+          node-version: '20'
 
       - name: Configure AWS credentials
-
         uses: aws-actions/configure-aws-credentials@v4
-
-        with:jobs:jobs:
-
+        with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  deploy-serverless:  # Job para desplegar funciones Lambda/Serverless
-
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
 
-          aws-region: us-east-1    name: Deploy AWS Lambda & API Gateway  deploy-serverless:
-
-
-
-      - name: Install dependencies    runs-on: ubuntu-latest    name: Deploy AWS Lambda & API Gateway
-
+      - name: Install dependencies
         working-directory: ./aws
-
-        run: npm ci    environment:    runs-on: ubuntu-latest
-
-
-
-      - name: Install Serverless Framework      name: ${{ github.event.inputs.environment || 'dev' }}    environment:
-
-        run: npm install -g serverless@3
-
-    steps:      name: ${{ github.event.inputs.environment || 'dev' }}
-
-      - name: Deploy with Serverless Framework
-
-        working-directory: ./aws      - name: Checkout code    steps:
-
-        env:
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}        uses: actions/checkout@v4      - name: Checkout code
-
-          AWS_REGION: us-east-1
-
-          AWS_ROLE: arn:aws:iam::851725349092:role/LabRole        uses: actions/checkout@v4
-
-        run: |
-
-          echo "🚀 Deploying with Serverless Framework"      - name: Setup Node.js
-
-          echo "   Stage: $STAGE"
-
-          echo "   Region: $AWS_REGION"        uses: actions/setup-node@v4      - name: Setup Node.js
-
-          echo ""
-
-          serverless deploy --stage $STAGE --region $AWS_REGION --verbose        with:        uses: actions/setup-node@v4
-
-
-
-      - name: Get deployment info          node-version: '20'        with:
-
-        working-directory: ./aws
-
-        env:          node-version: '20'
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}
-
-        run: |      - name: Configure AWS credentials
-
-          echo "📋 Deployment Information:"
-
-          serverless info --stage $STAGE --region us-east-1        uses: aws-actions/configure-aws-credentials@v4      - name: Configure AWS credentials
-
-
-
-      - name: Test Health Endpoint        with:        uses: aws-actions/configure-aws-credentials@v4
-
-        working-directory: ./aws
-
-        env:          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}        with:
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}
-
-        run: |          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-
-          echo "🏥 Testing health endpoint..."
-
-          API_URL=$(serverless info --stage $STAGE --region us-east-1 | grep "HttpApiUrl" | awk '{print $2}')          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-          if [ ! -z "$API_URL" ]; then
-
-            echo "API URL: $API_URL"          aws-region: us-east-1          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-
-            sleep 10
-
-            curl -f "$API_URL/health" || echo "⚠️ Health check not responding yet"          aws-region: us-east-1
-
-          else
-
-            echo "⚠️ Could not extract API URL"      - name: Install dependencies
-
-          fi
-
-        working-directory: ./aws      - name: Install dependencies
-
-      - name: Notify Success
-
-        if: success()        run: npm ci        working-directory: ./aws
-
-        run: |
-
-          echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"        run: npm ci
-
-          echo "🔍 Check AWS Console for deployed resources"
+        run: npm ci
 
       - name: Install Serverless Framework
-
-        run: npm install -g serverless@3      - name: Install jq (for JSON parsing)
-
-        run: sudo apt-get update && sudo apt-get install -y jq
+        run: npm install -g serverless@3
 
       - name: Deploy with Serverless Framework
-
-        working-directory: ./aws      - name: Make scripts executable
-
-        env:        working-directory: ./aws
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}        run: chmod +x scripts/*.sh
-
-          AWS_REGION: us-east-1
-
-          AWS_ROLE: arn:aws:iam::851725349092:role/LabRole      - name: List existing AWS resources
-
-        run: |        run: |
-
-          echo "🚀 Deploying with Serverless Framework"          echo "� Checking existing AWS resources..."
-
-          echo "   Stage: $STAGE"          echo ""
-
-          echo "   Region: $AWS_REGION"          echo "DynamoDB Tables:"
-
-          echo ""          aws dynamodb list-tables --region us-east-1 2>&1 || echo "⚠️  Cannot list tables"
-
-          serverless deploy --stage $STAGE --region $AWS_REGION --verbose          echo ""
-
-          echo "Lambda Functions:"
-
-      - name: Get deployment info          aws lambda list-functions --region us-east-1 --query 'Functions[*].FunctionName' 2>&1 || echo "⚠️  Cannot list functions"
-
-        working-directory: ./aws          echo ""
-
-        env:          echo "Cognito User Pools:"
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}          aws cognito-idp list-user-pools --max-results 60 --region us-east-1 --query 'UserPools[*].Name' 2>&1 || echo "⚠️  Cannot list pools"
-
-        run: |
-
-          echo "📋 Deployment Information:"      - name: Deploy Infrastructure
-
-          serverless info --stage $STAGE --region us-east-1        working-directory: ./aws
-
+        working-directory: ./aws
         env:
-
-      - name: Test Health Endpoint          STAGE: ${{ github.event.inputs.environment || 'dev' }}
-
-        working-directory: ./aws          AWS_REGION: us-east-1
-
-        env:        run: |
-
-          STAGE: ${{ github.event.inputs.environment || 'dev' }}          echo "🚀 Starting deployment to stage: $STAGE"
-
-        run: |          echo ""
-
-          echo "🏥 Testing health endpoint..."          
-
-          API_URL=$(serverless info --stage $STAGE --region us-east-1 | grep "HttpApiUrl" | awk '{print $2}')          # Intentar deployment completo, pero continuar si hay errores parciales
-
-          if [ ! -z "$API_URL" ]; then          bash scripts/deploy-all.sh
-
-            echo "API URL: $API_URL"          EXIT_CODE=$?
-
-            sleep 10          
-
-            curl -f "$API_URL/health" || echo "⚠️ Health check not responding yet"          if [ $EXIT_CODE -ne 0 ]; then
-
-          else            echo "⚠️  Full deployment had some issues, trying Lambda-only deployment..."
-
-            echo "⚠️ Could not extract API URL"            bash scripts/deploy-lambda.sh || exit 1
-
-          fi          fi
-
-          
-
-      - name: Notify Success          echo "✅ Deployment process completed"
-
-        if: success()
-
-        run: |      - name: Get deployment info
-
-          echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"        working-directory: ./aws
-
-          echo "🔍 Check AWS Console for deployed resources"        env:
-
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
+          AWS_REGION: us-east-1
+          AWS_ROLE: arn:aws:iam::851725349092:role/LabRole
         run: |
-          echo "📋 Deployment Information:"
+          echo "🚀 Deploying with Serverless Framework"
+          echo "   Stage: $STAGE"
+          echo "   Region: $AWS_REGION"
           echo ""
-          echo "DynamoDB Tables:"
-          aws dynamodb list-tables --region us-east-1 | jq -r '.TableNames[] | select(contains("hospital-backend-'$STAGE'"))'
-          echo ""
-          echo "Lambda Functions:"
-          aws lambda list-functions --region us-east-1 | jq -r '.Functions[] | select(.FunctionName | contains("hospital-backend-'$STAGE'")) | .FunctionName'
-          echo ""
-          if [ -f .aws-output/cognito-ids.json ]; then
-            echo "Cognito Configuration:"
-            cat .aws-output/cognito-ids.json | jq .
-          fi
+          serverless deploy --stage $STAGE --region $AWS_REGION --verbose
 
-      - name: Test Lambda Health Check
+      - name: Get deployment info
         working-directory: ./aws
         env:
           STAGE: ${{ github.event.inputs.environment || 'dev' }}
         run: |
-          echo "🏥 Testing health check function..."
-          aws lambda invoke \
-            --function-name hospital-backend-health-$STAGE \
-            --region us-east-1 \
-            --log-type Tail \
-            response.json
-          
-          echo ""
-          echo "Response:"
-          cat response.json | jq .
-          
-          STATUS_CODE=$(cat response.json | jq -r '.statusCode // "error"')
-          if [ "$STATUS_CODE" = "200" ]; then
-            echo "✅ Health check passed!"
+          echo "📋 Deployment Information:"
+          serverless info --stage $STAGE --region us-east-1
+
+      - name: Test Health Endpoint
+        working-directory: ./aws
+        env:
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+        run: |
+          echo "🏥 Testing health endpoint..."
+          API_URL=$(serverless info --stage $STAGE --region us-east-1 | grep "HttpApiUrl" | awk '{print $2}')
+          if [ ! -z "$API_URL" ]; then
+            echo "API URL: $API_URL"
+            sleep 10
+            curl -f "$API_URL/health" || echo "⚠️ Health check not responding yet"
           else
-            echo "⚠️ Health check returned status: $STATUS_CODE"
+            echo "⚠️ Could not extract API URL"
           fi
 
       - name: Notify Success
         if: success()
         run: |
           echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"
-          echo "🔍 Check AWS CloudWatch Logs for Lambda execution"
-
-  # Job para desplegar aplicación Node.js en EC2 (Frontend) - DESHABILITADO
-  # Habilitar cuando tengas EC2 configurado y secrets: EC2_HOST_STAGING, EC2_USER, EC2_SSH_KEY_STAGING
-  # deploy-frontend:
-  #   name: Deploy Frontend to EC2
-  #   runs-on: ubuntu-latest
-  #   needs: deploy-serverless
-  #   if: github.event.inputs.environment != 'dev'
-  #   environment:
-  #     name: ${{ github.event.inputs.environment || 'staging' }}
-  #     url: http://${{ secrets.EC2_HOST_STAGING }}:3000
-  #     name: ${{ github.event.inputs.environment || 'staging' }}
-  #     url: http://${{ secrets.EC2_HOST_STAGING }}:3000
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     # ... resto del deployment a EC2 deshabilitado
-  #     # Habilitar cuando tengas EC2 configurado
+          echo "🔍 Check AWS Console for deployed resources"
