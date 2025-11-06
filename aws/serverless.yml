@@ -9,6 +9,13 @@ provider:
   
   role: arn:aws:iam::211125294486:role/LabRole
   
+  # Tags para mejor gestión de recursos
+  tags:
+    Project: HospitalPadreHurtado
+    Environment: ${sls:stage}
+    ManagedBy: Serverless
+    Version: 1.0.0
+  
   environment:
     # Variables para las funciones
     USER_POOL_ID: { Ref: CognitoUserPool }
@@ -16,11 +23,14 @@ provider:
     USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
     PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
+    STAGE: ${sls:stage}
+    VERSION: 1.0.0
     
   logs:
     httpApi: true
     
   httpApi:
+    cors: true
     authorizers:
       cognitoJwt:
         type: jwt
@@ -33,6 +43,16 @@ provider:
           - { Ref: CognitoUserPoolClient }
 
 functions:
+  # === HEALTH CHECK ===
+  health:
+    handler: src/handlers/health.check
+    events:
+      - httpApi:
+          method: GET
+          path: /health
+    timeout: 10
+    description: Health check endpoint for monitoring
+
   # === FUNCIONES DE AUTENTICACIÓN ===
   login:
     handler: src/handlers/login.login
@@ -40,6 +60,8 @@ functions:
       - httpApi:
           method: POST
           path: /auth/login
+    timeout: 30
+    description: User authentication endpoint
 
   refresh:
     handler: src/handlers/refresh.refresh
@@ -47,6 +69,8 @@ functions:
       - httpApi:
           method: POST
           path: /auth/refresh
+    timeout: 30
+    description: Token refresh endpoint
 
   me:
     handler: src/handlers/me.me
@@ -56,6 +80,8 @@ functions:
           path: /me
           authorizer:
             name: cognitoJwt
+    timeout: 10
+    description: Get current user information
 
   # === FUNCIONES DE PERMISOS ===
   getMyPermissions:
@@ -66,6 +92,8 @@ functions:
           path: /my-permissions
           authorizer:
             name: cognitoJwt
+    timeout: 10
+    description: Get user permissions
 
   checkPermission:
     handler: src/handlers/permissions.checkPermission
@@ -75,6 +103,8 @@ functions:
           path: /check-permission
           authorizer:
             name: cognitoJwt
+    timeout: 10
+    description: Check specific permission
 
   assignRole:
     handler: src/handlers/permissions.assignRole
@@ -84,6 +114,8 @@ functions:
           path: /admin/assign-role
           authorizer:
             name: cognitoJwt
+    timeout: 15
+    description: Assign role to user (admin only)
 
   listAvailablePermissions:
     handler: src/handlers/permissions.listAvailablePermissions
@@ -93,6 +125,8 @@ functions:
           path: /admin/available-permissions
           authorizer:
             name: cognitoJwt
+    timeout: 10
+    description: List all available permissions
 
   # === FUNCIONES DE PERSONALIZACIÓN ===
   getPersonalization:
@@ -103,6 +137,8 @@ functions:
           path: /personalization
           authorizer:
             name: cognitoJwt
+    timeout: 10
+    description: Get user personalization settings
 
   setPersonalization:
     handler: src/handlers/personalization.setPersonalization
@@ -112,6 +148,8 @@ functions:
           path: /personalization
           authorizer:
             name: cognitoJwt
+    timeout: 15
+    description: Update user personalization settings
 
 plugins:
   - serverless-offline
@@ -122,6 +160,10 @@ package:
     - '!node_modules/**'
     - '!**/*.md'
     - '!**/*.test.*'
+    - '!.git/**'
+    - '!.github/**'
+    - '!coverage/**'
+    - '!.vscode/**'
 
 resources:
   Resources:
@@ -137,6 +179,13 @@ resources:
         KeySchema:
           - AttributeName: user_email
             KeyType: HASH
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
 
     PermissionsTable:
       Type: AWS::DynamoDB::Table
@@ -149,6 +198,13 @@ resources:
         KeySchema:
           - AttributeName: permission_id
             KeyType: HASH
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
     
     ParametersTable:
       Type: AWS::DynamoDB::Table
@@ -165,6 +221,13 @@ resources:
             KeyType: HASH
           - AttributeName: parameter_key
             KeyType: RANGE
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
 
     # === COGNITO ===
     CognitoUserPool:
@@ -182,6 +245,9 @@ resources:
             RequireNumbers: true
             RequireSymbols: false
             RequireUppercase: true
+        UserPoolTags:
+          Environment: ${sls:stage}
+          Project: HospitalPadreHurtado
 
     CognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
@@ -202,7 +268,25 @@ resources:
           RefreshToken: days
 
   Outputs:
+    HttpApiUrl:
+      Description: URL of the HTTP API
+      Value:
+        Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+      Export:
+        Name: ${self:service}-${sls:stage}-api-url
     UserPoolId:
+      Description: Cognito User Pool ID
       Value: { Ref: CognitoUserPool }
+      Export:
+        Name: ${self:service}-${sls:stage}-user-pool-id
     UserPoolClientId:
+      Description: Cognito User Pool Client ID
       Value: { Ref: CognitoUserPoolClient }
+      Export:
+        Name: ${self:service}-${sls:stage}-user-pool-client-id
+    Stage:
+      Description: Deployment stage
+      Value: ${sls:stage}
+    Region:
+      Description: AWS Region
+      Value: ${self:provider.region}

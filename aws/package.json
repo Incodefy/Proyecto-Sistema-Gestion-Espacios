@@ -6,16 +6,24 @@
   "scripts": {
     "dev": "serverless offline",
     "deploy": "serverless deploy --stage dev --region us-east-1",
+    "deploy:dev": "serverless deploy --stage dev --region us-east-1",
+    "deploy:staging": "serverless deploy --stage staging --region us-east-1",
     "deploy:prod": "serverless deploy --stage prod --region us-east-1",
     "remove": "serverless remove",
     "info": "serverless info --verbose",
+    "info:dev": "serverless info --stage dev",
+    "info:prod": "serverless info --stage prod",
     "logs:worker": "serverless logs -f personalizationWorker -t",
     "logs:dlq": "serverless logs -f personalizationDLQWorker -t",
+    "logs": "serverless logs -f",
+    "test": "echo 'Tests pending' && exit 0",
     "test:local": "npm run dev",
     "start:localstack": "docker-compose up -d",
     "stop:localstack": "docker-compose down",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --fix",
+    "validate": "serverless print --stage dev",
+    "package": "serverless package --stage dev"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

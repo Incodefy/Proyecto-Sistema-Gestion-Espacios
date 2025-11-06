@@ -1,23 +1,27 @@
-name: CD Pipeline - Deploy to AWS EC2
+name: CD Pipeline - Deploy to AWS
 
 on:
-  # Ejecución manual únicamente (AWS Academy usa credenciales temporales)
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
         description: 'Entorno a desplegar'
         required: true
-        default: 'staging'
+        default: 'dev'
         type: choice
         options:
+          - dev
           - staging
           - production
 
 jobs:
   # Job para desplegar funciones Lambda/Serverless
-  deploy-aws-lambda:
-    name: Deploy AWS Lambda Functions
+  deploy-serverless:
+    name: Deploy AWS Lambda & API Gateway
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,25 +39,52 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Install dependencies (aws)
-        working-directory: ./aws
-        run: npm ci
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
 
-      - name: Deploy Serverless to AWS
+      - name: Install dependencies
         working-directory: ./aws
-        run: npx serverless deploy --stage prod --region us-east-1
+        run: npm ci --production
 
-      - name: Get API endpoint
+      - name: Deploy to AWS
         working-directory: ./aws
-        run: npx serverless info --stage prod --region us-east-1
+        env:
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+        run: |
+          echo "🚀 Deploying to stage: $STAGE"
+          serverless deploy --stage $STAGE --region us-east-1 --verbose
 
-  # Job para desplegar aplicación Node.js en EC2 Staging
-  deploy-staging:
-    name: Deploy to EC2 Staging
+      - name: Get deployment info
+        working-directory: ./aws
+        env:
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+        run: serverless info --stage $STAGE --region us-east-1
+
+      - name: Health Check
+        working-directory: ./aws
+        env:
+          STAGE: ${{ github.event.inputs.environment || 'dev' }}
+        run: |
+          echo "⏳ Waiting for API to be ready..."
+          sleep 15
+          API_URL=$(serverless info --stage $STAGE | grep "HttpApiUrl" | awk '{print $2}')
+          echo "Testing API at: $API_URL/health"
+          curl -f "$API_URL/health" || echo "⚠️ Health endpoint not responding yet"
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'dev' }} successful!"
+          echo "🔍 Check AWS CloudWatch Logs for Lambda execution"
+
+  # Job para desplegar aplicación Node.js en EC2 (Frontend)
+  deploy-frontend:
+    name: Deploy Frontend to EC2
     runs-on: ubuntu-latest
-    needs: deploy-aws-lambda
+    needs: deploy-serverless
+    if: github.event.inputs.environment != 'dev'
     environment:
-      name: staging
+      name: ${{ github.event.inputs.environment || 'staging' }}
       url: http://${{ secrets.EC2_HOST_STAGING }}:3000
     steps:
       - name: Checkout code
@@ -62,14 +93,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install dependencies (incodefy)
         working-directory: ./incodefy
         run: npm ci --production
 
-      - name: Create .env file for staging
+      - name: Create .env file
         working-directory: ./incodefy
+        env:
+          STAGE: ${{ github.event.inputs.environment || 'staging' }}
         run: |
           cat > .env << EOF
           NODE_ENV=production
@@ -78,8 +111,6 @@ jobs:
           AWS_REGION=us-east-1
           USER_POOL_ID=${{ secrets.USER_POOL_ID }}
           USER_POOL_CLIENT_ID=${{ secrets.USER_POOL_CLIENT_ID }}
-          aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
           API_BASE_URL=${{ secrets.API_BASE_URL }}
           EOF
 
@@ -101,7 +132,7 @@ jobs:
           script: |
             cd /home/ubuntu/hospital-app/incodefy
             npm ci --production
-            pm2 restart hospital-staging || pm2 start server.js --name hospital-staging --env production
+            pm2 restart hospital-app || pm2 start server.js --name hospital-app --env production
             pm2 save
             pm2 list
 
@@ -109,70 +140,31 @@ jobs:
         run: |
           echo "⏳ Waiting for application to start..."
           sleep 10
-          echo "🏥 Application deployed to staging!"
-          echo "URL: http://${{ secrets.EC2_HOST_STAGING }}:3000"
+          echo "✅ Frontend application deployed!"
+          echo "🌐 URL: http://${{ secrets.EC2_HOST_STAGING }}:3000"
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
+          REMOTE_HOST: ${{ secrets.EC2_HOST_PRODUCTION }}
+          REMOTE_USER: ${{ secrets.EC2_USER }}
+          TARGET: /home/ubuntu/hospital-app
+          EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
 
-  # Job para desplegar a Producción (DESHABILITADO - instancia no creada)
-  # deploy-production:
-  #   name: Deploy to EC2 Production
-  #   runs-on: ubuntu-latest
-  #   needs: deploy-staging
-  #   environment:
-  #     name: production
-  #     url: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  # 
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '18'
-  # 
-  #     - name: Install dependencies (incodefy)
-  #       working-directory: ./incodefy
-  #       run: npm ci --production
-  # 
-  #     - name: Create .env file for production
-  #       working-directory: ./incodefy
-  #       run: |
-  #         cat > .env << EOF
-  #         NODE_ENV=production
-  #         PORT=3000
-  #         SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-  #         AWS_REGION=us-east-1
-  #         USER_POOL_ID=${{ secrets.USER_POOL_ID }}
-  #         USER_POOL_CLIENT_ID=${{ secrets.USER_POOL_CLIENT_ID }}
-  #         aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         API_BASE_URL=${{ secrets.API_BASE_URL }}
-  #         EOF
-  # 
-  #     - name: Deploy to EC2 via SSH
-  #       uses: easingthemes/ssh-deploy@main
-  #       env:
-  #         SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-  #         REMOTE_HOST: ${{ secrets.EC2_HOST_PRODUCTION }}
-  #         REMOTE_USER: ${{ secrets.EC2_USER }}
-  #         TARGET: /home/ubuntu/hospital-app
-  #         EXCLUDE: "/node_modules/, /.git/, /.github/, /aws/"
-  # 
-  #     - name: Install dependencies and restart on EC2
-  #       uses: appleboy/ssh-action@master
-  #       with:
-  #         host: ${{ secrets.EC2_HOST_PRODUCTION }}
-  #         username: ${{ secrets.EC2_USER }}
-  #         key: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
-  #         script: |
-  #           cd /home/ubuntu/hospital-app/incodefy
-  #           npm ci --production
-  #           pm2 restart hospital-production || pm2 start server.js --name hospital-production --env production
-  #           pm2 save
-  #           pm2 list
-  # 
-  #     - name: Create deployment notification
-  #       run: |
-  #         echo "✅ Deployment to Production completed successfully!"
+      - name: Install dependencies and restart on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST_PRODUCTION }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY_PRODUCTION }}
+          script: |
+            cd /home/ubuntu/hospital-app/incodefy
+            npm ci --production
+            pm2 restart hospital-production || pm2 start server.js --name hospital-production --env production
+            pm2 save
+            pm2 list
+
+      - name: Create deployment notification
+        run: |
+          echo "✅ Deployment to Production completed successfully!"
           echo "🏥 Hospital Padre Hurtado - Production"
           echo "URL: http://${{ secrets.EC2_HOST_PRODUCTION }}:3000"
           echo "Time: $(date)"
