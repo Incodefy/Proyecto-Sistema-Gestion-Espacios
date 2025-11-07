@@ -251,6 +251,29 @@ pm2 status
 # Monitorear recursos
 pm2 monit
 ```
+## ☁️ Integración con Terraform e Ingeniería del Caos
+
+El sistema del **Hospital Padre Hurtado** ahora incluye una capa de **infraestructura como código (IaC)** implementada con **Terraform**, la cual automatiza el despliegue de los servicios serverless en AWS.
+
+### 📦 Componentes gestionados por Terraform
+- **AWS Lambda — Chaos Engine:** función que simula errores, latencias y fallas de servicios para pruebas de resiliencia.  
+- **API Gateway:** expone los endpoints `/chaos` y `/chaos-latency` para los experimentos.  
+- **DynamoDB:** tablas de parámetros y roles creadas automáticamente.  
+- **CloudWatch:** monitoreo de logs y alarmas básicas.  
+
+### 🧪 Experimentos de Ingeniería del Caos
+Los experimentos implementados permiten evaluar la tolerancia a fallas del backend:
+
+| Experimento | Endpoint | Descripción |
+|--------------|-----------|--------------|
+| **1️⃣ Error interno aleatorio** | `/chaos?type=failure` | Simula fallas internas en funciones Lambda. |
+| **2️⃣ Falla de DynamoDB** | `/chaos?type=dynamodb` | Simula pérdida de conexión con DynamoDB. |
+| **3️⃣ Monitoreo de salud** | `/health` | Evalúa el uptime del sistema mediante un script de sondeo continuo. |
+| **4️⃣ Latencia aleatoria** | `/chaos-latency` | Introduce retardos controlados para medir la degradación del servicio. |
+
+📂 Los archivos Terraform se encuentran en la carpeta [`/terraform`](./terraform/README.md).  
+📂 El artefacto del Chaos Engine (`engine.zip`) se ubica en `aws/src/handlers/chaos/`.
+
 
 ## 🔐 Seguridad
 
