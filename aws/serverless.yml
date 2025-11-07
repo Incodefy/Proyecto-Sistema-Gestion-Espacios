@@ -142,6 +142,14 @@ functions:
     timeout: 10
     description: Chaos engineering endpoint to simulate failures
 
+  simulateLatency:
+    handler: src/handlers/chaos/latencyChaos.simulate
+    events:
+      - httpApi:
+          method: GET
+          path: /chaos-latency
+    description: Simula una respuesta con retardo aleatorio
+
   # === FUNCIONES DE AUTENTICACIÓN ===
   login:
     handler: src/handlers/login/login.login
