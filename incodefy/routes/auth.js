@@ -125,18 +125,7 @@ router.post('/login', async (req, res) => {
       userAttributes[attr.Name] = attr.Value;
     });
 
-    // Obtener idioma del usuario desde la base de datos
     let idioma = 'es';
-    let userDb = null;
-    try {
-      const [rows] = await db.query('SELECT * FROM auth_user WHERE email = ?', [userAttributes.email]);
-      userDb = rows[0];
-      if (userDb && userDb.idioma) {
-        idioma = userDb.idioma;
-      }
-    } catch (err) {
-      console.error('❌ Error obteniendo idioma de usuario:', err);
-    }
 
     req.session.user = {
       sub: userAttributes.sub,
@@ -232,24 +221,6 @@ router.post('/login', async (req, res) => {
       form_errors: form_errors,
       form_data: { correo: req.body.correo || '' }
     });
-  }
-});
-
-// Cambiar idioma desde el perfil y guardar en la base de datos y sesión
-router.post('/perfil/idioma', requireAuth, async (req, res) => {
-  const lang = req.body.lang;
-  const userId = req.session.user.id || req.session.user.user_id || req.session.user.sub; // Ajusta según tu modelo
-  try {
-    // Actualiza el idioma en la base de datos
-    await db.query('UPDATE auth_user SET idioma = ? WHERE email = ?', [lang, req.session.user.email]);
-    // Actualiza la sesión
-    req.session.language = lang;
-    req.session.user.idioma = lang;
-    res.cookie('i18next', lang, { maxAge: 900000, httpOnly: true });
-    res.redirect('back');
-  } catch (err) {
-    console.error('❌ Error actualizando idioma:', err);
-    res.redirect('back');
   }
 });
 

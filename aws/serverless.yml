@@ -9,7 +9,6 @@ provider:
   
   role: ${env:AWS_ROLE, 'arn:aws:iam::837538831487:role/LabRole'}
   
-  # Tags para mejor gestión de recursos
   tags:
     Project: HospitalPadreHurtado
     Environment: ${sls:stage}
@@ -17,18 +16,14 @@ provider:
     Version: 1.0.0
   
   environment:
-    USER_POOL_ID: 
-      Ref: CognitoUserPool
-    USER_POOL_CLIENT_ID: 
-      Ref: CognitoUserPoolClient
+    USER_POOL_ID: { Ref: CognitoUserPool }
+    USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
     USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
     PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
     ACTIVITY_LOGS_TABLE: ${self:service}-${sls:stage}-activity-logs
-    PERSONALIZATION_TOPIC_ARN: 
-      Ref: PersonalizationTopic
-    SYSTEM_NOTIFICATIONS_TOPIC_ARN: 
-      Ref: SystemNotificationsTopic
+    PERSONALIZATION_TOPIC_ARN: { Ref: PersonalizationTopic }
+    SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
     PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
     SERVICE_NAME: ${self:service}
     DB_CATALOGO: ${self:service}-${sls:stage}-catalogo

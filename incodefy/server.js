@@ -96,24 +96,6 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/', authRoutes);
 
-// === RUTA PARA CAMBIAR IDIOMA ===
-app.post('/perfil/idioma', requireAuth, async (req, res) => {
-  const lang = req.body.lang;
-  const userId = req.session.user.id || req.session.user.user_id || req.session.user.sub;
-  try {
-    // Actualiza el idioma en la base de datos
-    await db.query('UPDATE auth_user SET idioma = ? WHERE email = ?', [lang, req.session.user.email]);
-    // Actualiza la sesión
-    req.session.language = lang;
-    req.session.user.idioma = lang;
-    res.cookie('i18next', lang, { maxAge: 900000, httpOnly: true });
-    res.redirect('back');
-  } catch (err) {
-    console.error('❌ Error actualizando idioma:', err);
-    res.redirect('back');
-  }
-});
-
 // === RUTAS PROTEGIDAS (requieren autenticación) ===
 
 // Agenda - protegida

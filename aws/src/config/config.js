@@ -24,7 +24,7 @@ module.exports = {
       },
       'locale.language': { 
         type: 'select',
-        options: process.env.LANGUAGES ? process.env.LANGUAGES.split(',') : ['es', 'en'],
+        options: process.env.LANGUAGES ? process.env.LANGUAGES.split(',') : ['es','en','pt','it','zh','hi','ar','bn','ru','ja','pa','de','jv','ko','fr','te','mr','tr','ta','vi','ur',nl,'pl','th','fa'],
         default: 'es',
         name: 'Idioma'
       },
