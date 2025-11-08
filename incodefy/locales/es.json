@@ -81,7 +81,7 @@
   "box": {
     "title": "Estado de los Boxes",
     "in_progress_aria": "Ver consultas en curso",
-  "in_progress_title": "Consultas en curso",
+    "in_progress_title": "Consultas en curso",
     "back_to_top_aria": "Volver arriba",
     "back_to_top_title": "Volver arriba",
     "header": "Estado de los Boxes",
@@ -94,7 +94,7 @@
     "no_permission_title": "No tienes permiso para ver el detalle de este box.",
     "next_appointment_placeholder": "Próxima consulta no disponible.",
     "hide_details": "Ocultar detalles",
-    "next_appointment": "Próxima Cita",
+    "next_appointment": "Próxima consulta",
     "status_free": "Libre",
     "status_in_use": "En uso",
     "status_waiting": "En espera",
@@ -354,6 +354,8 @@
     "doctor": "Médico",
     "box": "Box",
     "unknown_doctor": "Médico desconocido",
-    "unknown_box": "Box desconocido"
+    "unknown_box": "Box desconocido",
+    "consult_time": "Hora",
+    "type": "Tipo Consulta"
   }
 }

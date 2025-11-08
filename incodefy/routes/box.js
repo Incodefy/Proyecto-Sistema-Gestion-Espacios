@@ -1,7 +1,12 @@
+// routes/box.js
 const express = require('express');
 const router = express.Router();
-const { obtenerPasillos, obtenerBoxes, obtenerAgendaPorFecha } = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
+
+router.use(requireAuth);
+router.use(attachApiClient);
 
 router.get('/box', checkPermission('box.read'), async (req, res) => {
   try {
@@ -12,14 +17,11 @@ router.get('/box', checkPermission('box.read'), async (req, res) => {
     const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
 
-    console.log(hoy, ahora)
-
-    const pasillos = await obtenerPasillos();
-    console.log(pasillos)
-    const boxes = await obtenerBoxes();
-    console.log(boxes)
-    const agendas = await obtenerAgendaPorFecha(hoy)
-    console.log(agendas)
+    const pasillos = (await req.apiClient.obtenerPasillos()).sort((a, b) => a.idPasillo - b.idPasillo);
+    
+    const boxes = (await req.apiClient.obtenerBoxes()).sort((a, b) => a.idBox - b.idBox);
+    
+    const agendas = await req.apiClient.obtenerAgendaPorFecha(hoy);
 
     const pasillo_box_map = generarPasillosConBoxes(
       req,
@@ -39,12 +41,11 @@ router.get('/box', checkPermission('box.read'), async (req, res) => {
       pasillo_box_map, 
       personalization: req.session.user?.personalization || {},
       currentPath: req.path,
-      // Permisos específicos para la vista
       canWrite: userPermissions.includes('box.write') || userPermissions.includes('admin.users'),
       canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')
     });
   } catch (err) {
-    console.error('Error en /box:', err);
+    console.error('❌ Error en /box:', err);
     res.status(500).send('Error cargando datos de boxes');
   }
 });
@@ -137,40 +138,42 @@ function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, f
 
 router.get('/estado-boxes', async (req, res) => {
   try {
+    
     const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
     const contexto = new ContextoEstado();
 
-    const boxes = await obtenerBoxes();
-
-    const agendas = await obtenerAgendaPorFecha(hoy)
+    const boxes = await req.apiClient.obtenerBoxes();
+    let agendas = await req.apiClient.obtenerAgendaPorFecha(hoy);
 
     agendas = agendas.map(a => ({
       ...a,
-      boxId: Number(a.boxId),
+      boxId: Number(a.idbox),
       horaInicio: a.horaInicio.slice(0, 5),
       horaFin: a.horaFin ? a.horaFin.slice(0, 5) : null,
     }));
 
     const data = {};
-    for (const box of boxes) {
-      const estado = contexto.obtenerEstado(req, box, hoy, ahora, agendas);
-      data[box.idBox] = {
-        estado: estado.nombre,
-        medico: estado.medico,
-        especialidad: estado.especialidad,
-        consulta_actual: estado.consulta_actual,
-        consulta_actual_id: estado.consulta_id,
-        proxima_consulta: estado.proxima_consulta,
-        inhabilitado: box.estado === 0,
-      };
+      for (const box of boxes) {
+        const estado = contexto.obtenerEstado(req, box, hoy, ahora, agendas);
+        // console.log("Estado para el box", box.idBox, ":", estado);
+        data[box.idBox] = {
+          estado: estado.nombre,
+          medico: estado.medico,
+          especialidad: estado.especialidad,
+          consulta_actual: estado.consulta_actual,
+          consulta_actual_id: estado.consulta_id,
+          proxima_consulta: estado.proxima_consulta,
+          inhabilitado: box.estado === 0,
+        };
     }
 
     res.json(data);
   } catch (err) {
-    console.error('Error en /estado-boxes:', err);
+    console.error('❌ Error en /estado-boxes:', err);
     res.status(500).json({ error: 'Error cargando estado de boxes' });
   }
+  
 });
 
 class EstadoBox {
@@ -186,26 +189,23 @@ class EstadoBox {
 
 class EstadoInhabilitado {
   calcularEstado(req, box, fecha, horaActual, agendas) {
-    return new EstadoBox({ nombre: req.t('common.state_disabled') });
+    return new EstadoBox({ 
+      nombre: req.t('common.state_disabled')
+    });
   }
 }
 
 class EstadoConConsulta {
   calcularEstado(req, box, fecha, horaActual, agendas) {
     const consultas = agendas.filter(a => {
-        const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
-        const fechaHoy = fecha;
-        const horaInicio = a.horaInicio.slice(0,5);
-        const matchFecha = fechaAgenda === fechaHoy;
-        const matchHora = horaInicio <= horaActual;
-        // Debug log para depuración
-        if (a.boxId === box.idBox) {
-          // console.log('Match:', matchFecha, matchHora);
-        }
+      const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
+      const fechaHoy = fecha;
+      const horaInicio = a.horaInicio.slice(0,5);
+      const matchFecha = fechaAgenda === fechaHoy;
+      const matchHora = horaInicio <= horaActual;
 
-        return a.boxId === box.idBox && matchFecha && matchHora;
-      });
-
+      return a.idBox === box.idBox && matchFecha && matchHora;
+    });
 
     for (const consulta of consultas) {
       const inicio = new Date(`${fecha}T${consulta.horaInicio}`);
@@ -235,8 +235,8 @@ class EstadoConConsulta {
 
         return new EstadoBox({
           nombre: nombreEstado,
-          medico: consulta.medico,
-          especialidad: consulta.especialidad,
+          medico: consulta.medicoNombre,
+          especialidad: consulta.especialidadNombre,
           consulta_actual: `${consulta.horaInicio} - ${consulta.horaFin}`,
           consulta_id: consulta.idAgenda
         });
@@ -250,27 +250,21 @@ class EstadoConConsulta {
 class EstadoLibre {
   calcularEstado(req, box, fecha, horaActual, agendas) {
     const proximas = agendas.filter(a => {
-        const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
-        const fechaHoy = fecha;
-        const horaInicio = a.horaInicio.slice(0,5);
-        const matchFecha = fechaAgenda === fechaHoy;
-        const matchHora = horaInicio > horaActual;
-
-        // Debug log para depuración
-        if (a.boxId === box.idBox) {
-          // console.log('Match próxima:', matchFecha, matchHora);
-        }
-
-        return a.boxId === box.idBox && matchFecha && matchHora;
-      });
+      const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
+      const fechaHoy = fecha;
+      const horaInicio = a.horaInicio.slice(0,5);
+      const matchFecha = fechaAgenda === fechaHoy;
+      const matchHora = horaInicio > horaActual;
+      return a.idBox === box.idBox && matchFecha && matchHora;
+    });
 
     const proxima = proximas.sort((a, b) => a.horaInicio.localeCompare(b.horaInicio))[0];
 
     if (proxima) {
       return new EstadoBox({
         nombre: req.t('common.state_free'),
-        medico: proxima.medico,
-        especialidad: proxima.especialidad,
+        medico: proxima.medicoNombre,
+        especialidad: proxima.especialidadNombre,
         proxima_consulta: `${proxima.horaInicio} - ${proxima.horaFin || ''}`
       });
     }
@@ -281,7 +275,6 @@ class EstadoLibre {
 
 class ContextoEstado {
   obtenerEstado(req, box, fecha, horaActual, agendas) {
-
     if (box.estado === 0) {
       return new EstadoInhabilitado().calcularEstado(req, box, fecha, horaActual, agendas);
     }

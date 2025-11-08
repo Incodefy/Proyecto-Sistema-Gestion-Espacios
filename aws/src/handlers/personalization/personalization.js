@@ -153,14 +153,14 @@ module.exports.setPersonalization = async (event) => {
       });
     }
 
-    // ✅ AGREGAR: Idempotencia basada en el hash de parámetros
     const paramsHash = require('crypto')
       .createHash('sha256')
       .update(JSON.stringify(parameters))
       .digest('hex')
       .substring(0, 16);
-    
-    const idempotencyKey = `setPersonalization-${userSub}-${paramsHash}`;
+
+    const timestamp = new Date().toISOString();
+    const idempotencyKey = `setPersonalization-${userSub}-${paramsHash}-${timestamp}`;
     
     if (await wasAlreadyProcessed(idempotencyKey)) {
       console.log(`[Personalization] ⏭️ Actualización ya procesada: ${idempotencyKey}`);
@@ -171,7 +171,8 @@ module.exports.setPersonalization = async (event) => {
         ok: true,
         message: "Parámetros ya estaban actualizados",
         final_parameters: JSON.parse(currentState.body).final_parameters,
-        already_processed: true
+        already_processed: true,
+        idempotencyKey: idempotencyKey
       });
     }
 
@@ -194,7 +195,6 @@ module.exports.setPersonalization = async (event) => {
       return response(400, { ok: false, errors });
     }
 
-    // ✅ AGREGAR: Retry a la consulta de valores anteriores
     const previousResult = await retryWithJitter(
       async () => {
         if (!dynamoBreaker.shouldAllow()) {
@@ -216,7 +216,6 @@ module.exports.setPersonalization = async (event) => {
       previousValues[item.parameter_key] = item.parameter_value;
     });
 
-    const timestamp = new Date().toISOString();
     const savedParameters = [];
 
     for (const [key, value] of Object.entries(validParameters)) {
@@ -249,7 +248,6 @@ module.exports.setPersonalization = async (event) => {
       });
     }
 
-    // ✅ Marcar como procesado DESPUÉS de escritura exitosa
     await markAsProcessed(idempotencyKey);
 
     await publishPersonalizationEvent('PERSONALIZATION_UPDATED', {
@@ -257,7 +255,7 @@ module.exports.setPersonalization = async (event) => {
       userEmail,
       updatedParameters: savedParameters,
       timestamp,
-      idempotencyKey  // ✅ Agregar para trazabilidad
+      idempotencyKey
     });
 
     const updatedResult = await module.exports.getPersonalization(event);

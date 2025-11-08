@@ -269,3 +269,34 @@ body {
         font-size: 1.3rem;
     }
 }
+
+
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    border-radius: 6px!important;
+}
+
+.custom-toast {
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.custom-toast .toast-header {
+    background-color: var(--primary-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+.custom-toast .toast-body {
+    font-size: 0.95rem;
+    background-color: var(--card-background);
+    border-radius: 0 0 6px 6px!important
+}
+
+.toast-body .i {
+    color: var(--text-color);
+}

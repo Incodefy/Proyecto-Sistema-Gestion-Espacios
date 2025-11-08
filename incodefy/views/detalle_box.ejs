@@ -223,7 +223,7 @@
                             <ul id="lista-instrumentos" class="instrument-list-enhanced">
                                 <% instrumentos.forEach(item => { %>
                                     <li class="instrument-item-enhanced" data-tipo="<%= item.tipo || 'MEDICO' %>">
-                                        <span class="instrument-name"><%= item.nombre %></span>
+                                        <span class="instrument-name"><%= item.instrumentoNombre %></span>
                                         <span class="instrument-count"><%= item.cantidad %></span>
                                     </li>
                                 <% }) %>

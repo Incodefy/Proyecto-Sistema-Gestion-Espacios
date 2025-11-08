@@ -354,6 +354,8 @@
     "doctor": "Doctor",
     "box": "Box",
     "unknown_doctor": "Unknown doctor",
-    "unknown_box": "Unknown box"
+    "unknown_box": "Unknown box",
+    "consult_time": "Hour",
+    "type": "Consult Type"
   }
 }

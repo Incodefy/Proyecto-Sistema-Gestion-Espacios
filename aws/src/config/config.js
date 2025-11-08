@@ -2,7 +2,7 @@
 module.exports = {
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',
-    role: process.env.AWS_ROLE || 'arn:aws:iam::851725349092:role/LabRole'
+    role: process.env.AWS_ROLE || 'arn:aws:iam::837538831487:role/LabRole'
   },
 
   personalization: {

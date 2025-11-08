@@ -197,12 +197,12 @@
         tablaBody.innerHTML = '';
         if (Array.isArray(detalle)) {
           detalle.forEach(d => {
-            // Nota: d.estado se compara contra el texto traducido ya renderizado del lado servidor
+            console.log(d.tipoconsulta)
             const row = `
               <tr>
                 <td>${d.fecha || '-'}</td>
-                <td>${d.horainicio || '-'}</td>
-                <td>${d.horafin || '-'}</td>
+                <td>${d.horaInicio || '-'}</td>
+                <td>${d.horaFin || '-'}</td>
                 <td>${d.medico || '-'}</td>
                 <td>${d.box || '-'}</td>
                 <td>${d.tipoconsulta || '-'}</td>

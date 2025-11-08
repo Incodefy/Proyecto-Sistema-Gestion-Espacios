@@ -1,28 +1,24 @@
 // routes/dashboard.js
 const express = require('express');
 const router = express.Router();
-const { 
-  obtenerEspecialidades, obtenerBoxes, obtenerEspecialidadMasDemandada, obtenerBoxesDisponibles, 
-  obtenerTotalConsultas, obtenerRendimientoMedicos, obtenerMedicosPorEspecialidades,
-  obtenerConsultasPorDia, obtenerConsultasPorEspecialidad
-} = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
 
-// --- Helpers ---
+router.use(requireAuth);
+router.use(attachApiClient);
 
-// Función para normalizar y crear claves de traducción
 const toKey = (str) => {
   if (!str) return '';
   return str.toLowerCase()
-    .normalize('NFD') // Descomponer tildes y caracteres especiales
-    .replace(/[\u0300-\u036f]/g, '') // Eliminar tildes
-    .replace(/\s+/g, '_'); // Reemplazar espacios con guiones bajos
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_');
 };
-
 
 function obtenerSemanaActual() {
   const hoy = new Date();
-  const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes
+  const diaSemana = hoy.getDay();
   const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
 
   const lunes = new Date(hoy);
@@ -39,7 +35,6 @@ function obtenerSemanaActual() {
   };
 }
 
-// **NUEVA FUNCIÓN: Calcular período anterior**
 function calcularPeriodoAnterior(fechaInicio, fechaFin) {
   try {
     const fechaInicioDate = new Date(fechaInicio);
@@ -58,56 +53,28 @@ function calcularPeriodoAnterior(fechaInicio, fechaFin) {
       fin: fechaFinAnterior.toISOString().split('T')[0]
     };
   } catch (error) {
+    console.error('Error calculando período anterior:', error);
     return null;
   }
 }
 
-// **NUEVA FUNCIÓN: Aplicar filtros base**
-async function construirFiltrosDynamoDB(especialidades, boxes, fechaInicio, fechaFin) {
-  let filtros = {};
-  let expressionAttributeValues = {};
-
-  // Filtro por fecha
-  filtros['fecha'] = { 
-    ConditionExpression: 'fecha BETWEEN :fechaInicio AND :fechaFin', 
-    ExpressionAttributeValues: { ':fechaInicio': fechaInicio, ':fechaFin': fechaFin }
+async function construirFiltrosDynamoDB(fechaInicio, fechaFin) {
+  const filtros = {
+    fechaInicio: fechaInicio,
+    fechaFin: fechaFin
   };
-  
-  // Filtro por especialidades
-  if (especialidades && especialidades.length > 0) {
-    const medicoIds = await obtenerMedicosPorEspecialidades(especialidades);
-    if (medicoIds.length > 0) {
-      filtros['medicos'] = {
-        ConditionExpression: 'idmedico IN (:medicoIds)',
-        ExpressionAttributeValues: { ':medicoIds': medicoIds }
-      };
-    }
-  }
 
-  // Filtro por boxes
-  if (boxes && boxes.length > 0) {
-    filtros['boxes'] = {
-      ConditionExpression: 'idbox IN (:boxes)',
-      ExpressionAttributeValues: { ':boxes': boxes }
-    };
-  }
-
-  // Crear la expresión completa para DynamoDB
-  let finalFilterExpression = Object.values(filtros).map(f => f.ConditionExpression).join(' AND ');
-
-  // Agregar valores de expresiones
-  expressionAttributeValues = Object.assign({}, ...Object.values(filtros).map(f => f.ExpressionAttributeValues));
-
-  return { finalFilterExpression, expressionAttributeValues };
+  return filtros;
 }
 
 // ==========================
 // 1. Render del dashboard
 // ==========================
-router.get('/dashboard',checkPermission('dashboard.read'), async (req, res) => {
+router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => {
   res.render('dashboard', { 
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {}
+    personalization: req.session.user?.personalization || {},
+    user: req.session.user
   });
 });
 
@@ -116,21 +83,29 @@ router.get('/dashboard',checkPermission('dashboard.read'), async (req, res) => {
 // ==========================
 router.get('/dashboard/filtros-iniciales', async (req, res) => {
   try {
-    // Consultar especialidades desde DynamoDB
-    const especialidades = await obtenerEspecialidades();
-    // Consultar boxes desde DynamoDB
-    const boxes = await obtenerBoxes();
+    console.log('📊 Obteniendo filtros iniciales del dashboard');
 
-    // Formatear y traducir los datos
+    const [especialidades, boxes] = await Promise.all([
+      req.apiClient.obtenerEspecialidades(),
+      req.apiClient.obtenerBoxes()
+    ]);
+
     const especialidadesFormatted = especialidades.map(esp => ({
       id: esp.idEspecialidad,
-      nombre: req.t(`specialties.${toKey(esp.nombre)}`, esp.nombre) // Traducir usando 't()' con fallback al nombre original
+      nombre: req.t(`specialties.${toKey(esp.nombre)}`, esp.nombre)
     }));
 
-    const boxesFormatted = boxes.map(box => ({
-      id: box.idBox,
-      nombre: box.nombre
-    }));
+    const boxesFormatted = boxes
+      .map(box => ({
+        id: box.idBox,
+        nombre: box.nombre || `Box ${box.idBox}`
+      }))
+      .sort((a, b) => a.id - b.id);
+
+    console.log('✅ Filtros obtenidos:', {
+      especialidades: especialidadesFormatted.length,
+      boxes: boxesFormatted.length
+    });
 
     res.json({
       success: true,
@@ -138,8 +113,11 @@ router.get('/dashboard/filtros-iniciales', async (req, res) => {
       boxes: boxesFormatted,
     });
   } catch (err) {
-    console.error('Error en filtros-iniciales:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('❌ Error en filtros-iniciales:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
   }
 });
 
@@ -156,54 +134,85 @@ router.post('/dashboard/datos', async (req, res) => {
       fecha_fin = semana.fin;
     }
 
-    // **MEJORADO: Filtrar y convertir a enteros como en Python**
-    especialidades = especialidades.filter(id => id && !isNaN(parseInt(id))).map(id => parseInt(id));
-    boxes = boxes.filter(id => id && !isNaN(parseInt(id))).map(id => parseInt(id));
+    especialidades = especialidades
+      .filter(id => id && !isNaN(parseInt(id)))
+      .map(id => parseInt(id));
+    
+    boxes = boxes
+      .filter(id => id && !isNaN(parseInt(id)))
+      .map(id => parseInt(id));
 
-    console.log('Procesando dashboard con filtros:', { especialidades, boxes, fecha_inicio, fecha_fin });
+    console.log('📊 Procesando dashboard con filtros:', { 
+      especialidades, 
+      boxes, 
+      fecha_inicio, 
+      fecha_fin 
+    });
 
-    // Pasar req para acceder a la función de traducción t()
-    const kpis = await calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin);
-    const graficos = await calcularGraficos(req, especialidades, boxes, fecha_inicio, fecha_fin);
+    console.log("Especialidades: ", especialidades)
+    console.log("Boxes: ", boxes)
+    console.log("Fecha: ", fecha_inicio, fecha_fin)
+
+    const [kpis, graficos] = await Promise.all([
+      calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin),
+      calcularGraficos(req, especialidades, boxes, fecha_inicio, fecha_fin)
+    ]);
+
+    console.log('✅ Dashboard calculado exitosamente');
 
     res.json({ success: true, kpis, graficos });
   } catch (err) {
-    console.error('Error en dashboard/datos:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('❌ Error en dashboard/datos:', err);
+    console.error('Stack:', err.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
   }
 });
 
 // ==========================
-// 4. Función: calcular KPIs (MEJORADA)
+// 4. Función: calcular KPIs
 // ==========================
 async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   const periodoAnterior = calcularPeriodoAnterior(fechaInicio, fechaFin);
   
-  const { filtros, params } = construirFiltrosDynamoDB(especialidades, boxes, fechaInicio, fechaFin);
-  
   const fechaInicioDate = new Date(fechaInicio);
   const fechaFinDate = new Date(fechaFin);
-  const diasPeriodo = Math.floor((fechaFinDate - fechaInicioDate) / (1000 * 60 * 60 * 24));
+  const diasPeriodo = Math.floor((fechaFinDate - fechaInicioDate) / (1000 * 60 * 60 * 24)) + 1;
 
-  console.log(`Período actual: ${fechaInicio} a ${fechaFin} (${diasPeriodo} días)`);
+  console.log(`📅 Período actual: ${fechaInicio} a ${fechaFin} (${diasPeriodo} días)`);
 
-  const totalActual = await obtenerTotalConsultas(filtros);
+  // ✅ Construir filtros para Lambda
+  const filtrosActuales = await construirFiltrosDynamoDB(fechaInicio, fechaFin);
+
+  console.log("Filtros: ", filtrosActuales)
+
+  // Obtener total de consultas actual
+  const totalActual = await req.apiClient.obtenerTotalConsultas(filtrosActuales);
 
   let variacionConsultas = 0;
   let totalConsultasAnterior = 0;
   
   if (periodoAnterior) {
-    const { filtros: filtrosAnt, params: paramsAnt } = construirFiltrosDynamoDB(
-      especialidades, boxes, periodoAnterior.inicio, periodoAnterior.fin
+    const filtrosAnteriores = await construirFiltrosDynamoDB(
+      periodoAnterior.inicio, 
+      periodoAnterior.fin
     );
-    totalConsultasAnterior = await obtenerTotalConsultas(filtrosAnt);
+    
+    totalConsultasAnterior = await req.apiClient.obtenerTotalConsultas(filtrosAnteriores);
     variacionConsultas = totalActual - totalConsultasAnterior;
     
-    console.log(`Período anterior: ${periodoAnterior.inicio} a ${periodoAnterior.fin}`);
-    console.log(`Consultas actuales: ${totalActual}, anteriores: ${totalConsultasAnterior}`);
+    console.log(`📈 Período anterior: ${periodoAnterior.inicio} a ${periodoAnterior.fin}`);
+    console.log(`📊 Consultas actuales: ${totalActual}, anteriores: ${totalConsultasAnterior}`);
   }
 
-  const totalBoxes = await obtenerBoxesDisponibles(boxes);
+  // Obtener boxes disponibles
+  const todosBoxes = await req.apiClient.obtenerBoxes();
+  const boxesFiltrados = boxes.length > 0 
+    ? todosBoxes.filter(b => boxes.includes(b.idBox))
+    : todosBoxes;
+  const totalBoxes = boxesFiltrados.length;
 
   let ocupacionActual = null;
   let variacionOcupacion = 0;
@@ -218,21 +227,29 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
     }
   }
 
-  const promedioConsultasDiario = diasPeriodo > 0 ? parseFloat((totalActual / diasPeriodo).toFixed(1)) : 0;
-  let variacionPromedioDiario = 0;
+  const promedioConsultasDiario = diasPeriodo > 0 
+    ? parseFloat((totalActual / diasPeriodo).toFixed(1)) 
+    : 0;
   
-  const promedioAnterior = parseFloat((totalConsultasAnterior / diasPeriodo).toFixed(1));
-  variacionPromedioDiario = parseFloat((promedioConsultasDiario - promedioAnterior).toFixed(1));
+  let variacionPromedioDiario = 0;
+  if (periodoAnterior && totalConsultasAnterior > 0) {
+    const promedioAnterior = parseFloat((totalConsultasAnterior / diasPeriodo).toFixed(1));
+    variacionPromedioDiario = parseFloat((promedioConsultasDiario - promedioAnterior).toFixed(1));
+  }
 
-  const especialidadTop = await obtenerEspecialidadMasDemandada(filtros);
+  // Especialidad más demandada
+  const especialidadTop = await req.apiClient.obtenerEspecialidadMasDemandada(filtrosActuales);
+
+  console.log("especialidadTop: ", especialidadTop)
 
   let tendenciaEspecialidad = 'igual';
   if (especialidadTop && periodoAnterior) {
-    const { filtros: filtrosAnt, params: paramsAnt } = construirFiltrosDynamoDB(
-      especialidades, boxes, periodoAnterior.inicio, periodoAnterior.fin
+    const filtrosAnteriores = await construirFiltrosDynamoDB(
+      periodoAnterior.inicio,
+      periodoAnterior.fin
     );
     
-    const especialidadAnt = await obtenerEspecialidadMasDemandada(filtrosAnt);
+    const especialidadAnt = await req.apiClient.obtenerEspecialidadMasDemandada(filtrosAnteriores);
     
     if (especialidadAnt) {
       const consultasAnteriores = especialidadAnt.consultas;
@@ -257,10 +274,14 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
     variacion_promedio_diario: variacionPromedioDiario,
     promedio_subtext: req.t('dashboard.kpi.appointments_per_day'),
 
-    especialidad_mas_demandada: especialidadTop ? req.t(`specialties.${toKey(especialidadTop.nombre)}`, especialidadTop.nombre) : null,
+    especialidad_mas_demandada: especialidadTop 
+      ? req.t(`specialties.${toKey(especialidadTop.nombre)}`, especialidadTop.nombre) 
+      : null,
     consultas_especialidad_top: especialidadTop?.consultas || 0,
     tendencia_especialidad: tendenciaEspecialidad,
-    especialidad_subtext: especialidadTop ? req.t('dashboard.kpi.appointments_count', { count: especialidadTop.consultas }) : '',
+    especialidad_subtext: especialidadTop 
+      ? req.t('dashboard.kpi.appointments_count', { count: especialidadTop.consultas }) 
+      : '',
 
     total_boxes_disponibles: totalBoxes,
     dias_periodo: diasPeriodo,
@@ -274,39 +295,73 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
 }
 
 // ==========================
-// 5. Función: calcular Gráficos (MEJORADA)
+// 5. Función: calcular Gráficos
 // ==========================
 async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFin) {
-  const { filtros, params } = construirFiltrosDynamoDB(especialidades, boxes, fechaInicio, fechaFin);
+  console.log('📊 Calculando gráficos del dashboard');
 
-  const consultasPorEspecialidad = await obtenerConsultasPorEspecialidad(filtros);
-  const consultasPorEspecialidadFormatted = consultasPorEspecialidad ? {
-    labels: consultasPorEspecialidad.map((e) => req.t(`specialties.${toKey(e.nombre)}`, e.nombre)),
+  // ✅ Construir filtros
+  const filtros = await construirFiltrosDynamoDB(fechaInicio, fechaFin);
+
+  // ✅ Obtener datos en paralelo
+  const [consultasPorEspecialidad, consultasPorDia, rendimientoMedicos] = await Promise.all([
+    req.apiClient.obtenerConsultasPorEspecialidad(filtros),
+    req.apiClient.obtenerConsultasPorDia(filtros),
+    req.apiClient.obtenerRendimientoMedicos(filtros)
+  ]);
+
+  // Formatear consultas por especialidad
+  const consultasPorEspecialidadFormatted = consultasPorEspecialidad && consultasPorEspecialidad.length > 0 ? {
+    labels: consultasPorEspecialidad.map((e) => 
+      req.t(`specialties.${toKey(e.nombre)}`, e.nombre)
+    ),
     data: consultasPorEspecialidad.map((e) => e.consultas),
     total: consultasPorEspecialidad.reduce((sum, e) => sum + e.consultas, 0)
-  } : null;
+  } : { labels: [], data: [], total: 0 };
 
-  const consultasPorDia = await obtenerConsultasPorDia(filtros);
+  // Formatear consultas por día
   const dias = [
-    req.t('days.monday'), req.t('days.tuesday'), req.t('days.wednesday'), 
-    req.t('days.thursday'), req.t('days.friday'), req.t('days.saturday'), req.t('days.sunday')
+    req.t('days.monday'), 
+    req.t('days.tuesday'), 
+    req.t('days.wednesday'), 
+    req.t('days.thursday'), 
+    req.t('days.friday'), 
+    req.t('days.saturday'), 
+    req.t('days.sunday')
   ];
-  const totalDias = consultasPorDia.reduce((sum, count) => sum + count, 0);
-  const diaMasActivo = totalDias > 0 ? dias[consultasPorDia.indexOf(Math.max(...consultasPorDia))] : null;
 
-  const rendimientoMedicos = await obtenerRendimientoMedicos(filtros);
-  const rendimientoMedicosFormatted = rendimientoMedicos ? {
+  const consultasPorDiaData = Array.isArray(consultasPorDia) 
+    ? consultasPorDia 
+    : [0, 0, 0, 0, 0, 0, 0];
+  
+  const totalDias = consultasPorDiaData.reduce((sum, count) => sum + count, 0);
+  const diaMasActivo = totalDias > 0 
+    ? dias[consultasPorDiaData.indexOf(Math.max(...consultasPorDiaData))] 
+    : null;
+
+  // Formatear rendimiento de médicos
+  const rendimientoMedicosFormatted = rendimientoMedicos && rendimientoMedicos.length > 0 ? {
     labels: rendimientoMedicos.map((m) => m.nombre),
     data: rendimientoMedicos.map((m) => m.consultas),
-    especialidades: rendimientoMedicos.map((m) => req.t(`specialties.${toKey(m.especialidad)}`, m.especialidad)),
-    promedio: parseFloat((rendimientoMedicos.reduce((sum, m) => sum + m.consultas, 0) / rendimientoMedicos.length).toFixed(1))
-  } : null;
+    especialidades: rendimientoMedicos.map((m) => 
+      req.t(`specialties.${toKey(m.especialidad)}`, m.especialidad)
+    ),
+    promedio: parseFloat(
+      (rendimientoMedicos.reduce((sum, m) => sum + m.consultas, 0) / rendimientoMedicos.length).toFixed(1)
+    )
+  } : { labels: [], data: [], especialidades: [], promedio: 0 };
+
+  console.log('✅ Gráficos calculados:', {
+    especialidades: consultasPorEspecialidadFormatted.labels.length,
+    dias: consultasPorDiaData.length,
+    medicos: rendimientoMedicosFormatted.labels.length
+  });
 
   return {
     consultas_por_especialidad: consultasPorEspecialidadFormatted,
     consultas_por_dia: {
       labels: dias,
-      data: consultasPorDia,
+      data: consultasPorDiaData,
       total: totalDias,
       dia_mas_activo: diaMasActivo
     },

@@ -321,13 +321,13 @@
 
     .navbar-menu {
         flex-direction: column !important;
-        background-color: #ffffff !important;
+        background-color: var(--card-background) !important;
         width: 400px !important;
         height: 100vh !important;
         position: fixed !important;
         top: 0 !important;
         left: -400px !important;
-        border-right: 1px solid #ddd !important;
+        border-right: 1px solid var(--border-color) !important;
         box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
         padding: 120px 1rem 1rem 1rem!important;
         z-index: 1001 !important;

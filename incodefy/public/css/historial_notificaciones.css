@@ -103,15 +103,20 @@ body {
 .fecha-etiqueta {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    background: color-mix(in srgb, var(--light-blue) 65%, white);
-    color: var(--primary-blue);
+    gap: 0.1rem;
+    background: var(--background-color);
+    color: var(--text-color);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-weight: 600;
     font-size: 0.85rem;
     margin-bottom: 1.4rem;
     border: 1px solid rgba(43, 76, 126, 0.15);
+}
+
+.fecha-etiqueta i {
+    color: var(--primary-color);
+    margin-top: 2px;
 }
 
 .notificacion-item {
@@ -147,12 +152,12 @@ body {
 }
 
 .fecha-noti {
-    color: var(--secondary-text-color);
+    color: var(--secondary-text-color)!important;
     font-size: 0.875rem;
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.05rem;
     margin-bottom: 0.75rem;
 }
 

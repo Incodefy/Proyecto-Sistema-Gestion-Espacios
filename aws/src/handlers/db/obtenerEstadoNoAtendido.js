@@ -13,7 +13,7 @@ module.exports.handler = async () => {
     };
 
     try {
-        const data = await docClient.send(new QueryCommand(params));
+        const data = await client.send(new QueryCommand(params));
         return data.Items?.[0]?.idEstado || null;
     } catch (err) {
         return {

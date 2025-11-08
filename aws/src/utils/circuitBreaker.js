@@ -1,12 +1,12 @@
 // src/utils/circuitBreaker.js
 
 function createCircuitBreaker({
-  failureThreshold = 5,     // cuántos fallos seguidos gatillan OPEN
-  cooldownMs = 30000,       // cuánto tiempo esperamos antes de probar de nuevo
-  halfOpenMaxCalls = 1      // cuántas llamadas "de prueba" permitimos cuando salimos de OPEN
+  failureThreshold = 5,
+  cooldownMs = 30000,
+  halfOpenMaxCalls = 1
 } = {}) {
 
-  let state = 'CLOSED'; // CLOSED -> OPEN -> HALF_OPEN -> CLOSED
+  let state = 'CLOSED';
   let failureCount = 0;
   let nextAttemptAfter = 0;
   let halfOpenCalls = 0;
@@ -22,7 +22,6 @@ function createCircuitBreaker({
 
     if (state === 'OPEN') {
       if (now() > nextAttemptAfter) {
-        // pasamos a HALF_OPEN para probar
         state = 'HALF_OPEN';
         halfOpenCalls = 0;
         return true;

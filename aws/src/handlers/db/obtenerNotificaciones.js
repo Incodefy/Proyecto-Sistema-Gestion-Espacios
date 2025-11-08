@@ -5,31 +5,28 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 module.exports.handler = async () => {
   const params = {
-    TableName: process.env.DB_CATALOGO,
-    FilterExpression: "begins_with(PK, :pk)",
-    ExpressionAttributeValues: {
-      ":pk": "PASILLO#"
-    }
+    TableName: process.env.DB_NOTIFICACION,
+    Limit: 50
   };
 
   try {
     const data = await client.send(new ScanCommand(params));
 
-    const itemsOrdenados = (data.Items || []).sort((a, b) => {
-      if (a.idBox < b.idBox) return -1;
-      if (a.idBox > b.idBox) return 1;
-      return 0;
-    });
+    const items = data.Items || [];
+
+    items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     return {
       statusCode: 200,
-      body: JSON.stringify(itemsOrdenados)
+      body: JSON.stringify(items)
     };
+
   } catch (err) {
-    console.error(err);
+    console.error("Error obteniendo notificaciones:", err);
+
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Error obteniendo pasillos" })
+      body: JSON.stringify({ error: "Error obteniendo notificaciones" })
     };
   }
 };
