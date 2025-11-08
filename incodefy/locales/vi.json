@@ -1,52 +1,52 @@
 {
   "colors": {
-    "blue": "Blue",
-    "red": "Red",
-    "green": "Green",
-    "purple": "Purple",
-    "orange": "Orange"
+    "blue": "Xanh dương",
+    "red": "Đỏ",
+    "green": "Xanh lá",
+    "purple": "Tím",
+    "orange": "Cam"
   },
   "font_scales": {
-    "small": "Small",
-    "medium": "Medium",
-    "large": "Large"
+    "small": "Nhỏ",
+    "medium": "Trung bình",
+    "large": "Lớn"
   },
   "languages": {
-    "es": "Spanish",
-    "en": "English",
-    "pt": "Portuguese",
-    "it": "Italian",
-    "zh": "Chinese",
-    "hi": "Hindi",
-    "ar": "Arabic",
-    "bn": "Bengali",
-    "ru": "Russian",
-    "ja": "Japanese",
-    "pa": "Punjabi",
-    "de": "German",
-    "jv": "Javanese",
-    "ko": "Korean",
-    "fr": "French",
-    "te": "Telugu",
-    "mr": "Marathi",
-    "tr": "Turkish",
-    "ta": "Tamil",
-    "vi": "Vietnamese",
-    "ur": "Urdu",
-    "nl": "Dutch",
-    "pl": "Polish",
-    "th": "Thai",
-    "fa": "Persian"
+    "es": "Tiếng Tây Ban Nha",
+    "en": "Tiếng Anh",
+    "pt": "Tiếng Bồ Đào Nha",
+    "it": "Tiếng Ý",
+    "zh": "Tiếng Trung",
+    "hi": "Tiếng Hindi",
+    "ar": "Tiếng Ả Rập",
+    "bn": "Tiếng Bengal",
+    "ru": "Tiếng Nga",
+    "ja": "Tiếng Nhật",
+    "pa": "Tiếng Punjab",
+    "de": "Tiếng Đức",
+    "jv": "Tiếng Java",
+    "ko": "Tiếng Hàn",
+    "fr": "Tiếng Pháp",
+    "te": "Tiếng Telugu",
+    "mr": "Tiếng Marathi",
+    "tr": "Tiếng Thổ Nhĩ Kỳ",
+    "ta": "Tiếng Tamil",
+    "vi": "Tiếng Việt",
+    "ur": "Tiếng Urdu",
+    "nl": "Tiếng Hà Lan",
+    "pl": "Tiếng Ba Lan",
+    "th": "Tiếng Thái",
+    "fa": "Tiếng Ba Tư"
   },
   "profile": {
     "title": "My Profile - Customization",
     "header": "My Profile",
     "subtitle": "Customize your interface appearance",
     "theme": {
-      "title": "Theme",
+      "title": "Chủ đề",
       "mode": "Mode:",
-      "light": "Light",
-      "dark": "Dark",
+      "light": "Sáng",
+      "dark": "Tối",
       "primary_color": "Main color:"
     },
     "font": {
@@ -54,7 +54,7 @@
       "scale": "Text scale:"
     },
     "language": {
-      "title": "Language",
+      "title": "Ngôn ngữ",
       "interface_language": "Interface language:"
     },
     "buttons": {
@@ -71,20 +71,20 @@
     }
   },
   "navbar": {
-    "dashboard": "Dashboard",
-    "agenda": "Schedule",
-    "box": "Box",
-    "notifications": "Notifications",
-    "profile": "Profile",
-    "logout": "Logout"
+    "dashboard": "Bảng điều khiển",
+    "agenda": "Lịch trình",
+    "box": "Phòng",
+    "notifications": "Thông báo",
+    "profile": "Hồ sơ",
+    "logout": "Đăng xuất"
   },
   "box": {
-    "title": "Box Status",
+    "title": "Trạng thái phòng",
     "in_progress_aria": "View in-progress appointments",
     "in_progress_title": "In-progress appointments",
     "back_to_top_aria": "Back to top",
     "back_to_top_title": "Back to top",
-    "header": "Box Status",
+    "header": "Trạng thái phòng",
     "filters": {
       "filter_corridor": "Filter by corridor...",
       "filter_box": "Filter by box...",
@@ -106,12 +106,12 @@
     "copyright": "© 2025 Incodefy. Medical Agenda System - All rights reserved."
   },
   "login": {
-    "title": "Login",
+    "title": "Đăng nhập",
     "email": "Email",
-    "password": "Password",
-    "remember_me": "Remember me",
+    "password": "Mật khẩu",
+    "remember_me": "Ghi nhớ đăng nhập",
     "forgot_password": "Forgot your password?",
-    "login_button": "Login",
+    "login_button": "Đăng nhập",
     "show_password": "Show password"
   },
   "dashboard": {
@@ -122,9 +122,9 @@
       "date_range": "Date range",
       "from": "From",
       "to": "To",
-      "specialties": "Specialties",
+      "specialties": "Các chuyên khoa",
       "select_all": "Select All",
-      "boxes": "Boxes",
+      "boxes": "Các phòng",
       "reset": "Reset"
     },
     "kpi": {
@@ -151,37 +151,37 @@
     "loading": "Loading data..."
   },
   "specialties": {
-    "cardiologia": "Cardiology",
-    "pediatria": "Pediatrics",
+    "cardiologia": "Tim mạch",
+    "pediatria": "Nhi khoa",
     "ginecologia": "Gynecology",
     "traumatologia": "Traumatology",
-    "dermatologia": "Dermatology",
-    "neurologia": "Neurology"
+    "dermatologia": "Da liễu",
+    "neurologia": "Thần kinh"
   },
   "days": {
-    "monday": "Monday",
-    "tuesday": "Tuesday",
-    "wednesday": "Wednesday",
-    "thursday": "Thursday",
-    "friday": "Friday",
-    "saturday": "Saturday",
-    "sunday": "Sunday"
+    "monday": "Thứ Hai",
+    "tuesday": "Thứ Ba",
+    "wednesday": "Thứ Tư",
+    "thursday": "Thứ Năm",
+    "friday": "Thứ Sáu",
+    "saturday": "Thứ Bảy",
+    "sunday": "Chủ Nhật"
   },
   "agenda": {
-    "title": "Agenda",
+    "title": "Lịch làm việc",
     "main_title": "Agenda System",
     "main_subtitle": "Manage your medical agenda efficiently",
     "management": {
       "title": "Agenda Management",
       "description": "View and manage your medical appointments",
-      "box": "Box",
-      "doctor": "Doctor"
+      "box": "Phòng",
+      "doctor": "Bác sĩ"
     },
     "data": {
       "title": "Data Management",
       "description": "Export and import consultation information",
-      "import": "Import",
-      "export": "Export"
+      "import": "Nhập",
+      "export": "Xuất"
     },
     "no_permissions": {
       "title": "No permissions available",
@@ -205,8 +205,8 @@
     "instrument_categories_aria": "Instrument categories"
   },
   "notifications": {
-    "history_title": "Notification History",
-    "history_header": "Notification History",
+    "history_title": "Lịch sử thông báo",
+    "history_header": "Lịch sử thông báo",
     "history_subheader": "Stay up to date with all system activities and updates",
     "view_details_aria": "View notification details",
     "attended": "Attended",
@@ -232,14 +232,14 @@
       "select_time_placeholder": "-- Select time --"
     },
     "table": {
-      "hour": "Time",
-      "monday": "Monday",
-      "tuesday": "Tuesday",
-      "wednesday": "Wednesday",
-      "thursday": "Thursday",
-      "friday": "Friday",
-      "saturday": "Saturday",
-      "sunday": "Sunday"
+      "hour": "Giờ",
+      "monday": "Thứ Hai",
+      "tuesday": "Thứ Ba",
+      "wednesday": "Thứ Tư",
+      "thursday": "Thứ Năm",
+      "friday": "Thứ Sáu",
+      "saturday": "Thứ Bảy",
+      "sunday": "Chủ Nhật"
     },
     "drag_to_unschedule": "Drag here to unschedule",
     "toast": {
@@ -251,22 +251,22 @@
     }
   },
   "common": {
-    "hour": "Time",
-    "specialty": "Specialty",
-    "import": "Import",
-    "export": "Export",
+    "hour": "Giờ",
+    "specialty": "Chuyên khoa",
+    "import": "Nhập",
+    "export": "Xuất",
     "data_management": "Data Management",
     "view_details": "View details",
     "import_success": "Import completed successfully",
     "import_details": "Import Details",
-    "close": "Close",
+    "close": "Đóng",
     "import_table_caption": "Medical consultations import details",
-    "date": "Date",
-    "start_time": "Start Time",
-    "end_time": "End Time",
+    "date": "Ngày",
+    "start_time": "Giờ bắt đầu",
+    "end_time": "Giờ kết thúc",
     "consult_type": "Consult Type",
-    "status": "Status",
-    "pending": "Pending",
+    "status": "Trạng thái",
+    "pending": "Đang chờ",
     "confirmed": "Confirmed",
     "total_in_progress": "Total in Progress",
     "no_results": "No results found",
@@ -277,17 +277,17 @@
     "filters_title": "Filters",
     "select_all": "Select All",
     "select_corridor": "Select Corridor",
-    "select_box": "Select Box",
+    "select_box": "Chọn phòng",
     "select_specialty": "Select Specialty",
     "select_doctor": "Select Doctor",
     "select_date": "Select Date",
-    "select_time": "Time",
+    "select_time": "Giờ",
     "select_type": "Select type",
     "medical": "Medical",
     "non_medical": "Non-medical",
-    "confirm_appointment": "Confirm Appointment",
-  "unconfirm_appointment": "Unconfirm",
-    "appointments": "Appointments",
+    "confirm_appointment": "Xác nhận cuộc hẹn",
+    "unconfirm_appointment": "Unconfirm",
+    "appointments": "Các cuộc hẹn",
     "appointments_management": "Appointments Management",
     "appointments_management_desc": "View and manage your medical appointments",
     "corridor": "Corridor",
@@ -304,7 +304,7 @@
     "boxes_waiting": "Waiting",
     "boxes_in_use": "In Use",
     "boxes_disabled": "Disabled",
-    "no_notifications": "No notifications",
+    "no_notifications": "Không có thông báo",
     "no_notifications_desc": "When you have new notifications, they will appear here.",
     "error_loading_notifications": "Error loading notifications",
     "try_again_later": "Please try again later.",
@@ -351,8 +351,8 @@
     "medical_instruments": "Medical",
     "furniture": "Furniture",
     "no_items_in_category": "No items in this category.",
-    "doctor": "Doctor",
-    "box": "Box",
+    "doctor": "Bác sĩ",
+    "box": "Phòng",
     "unknown_doctor": "Unknown doctor",
     "unknown_box": "Unknown box"
   }

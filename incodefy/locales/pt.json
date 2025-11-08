@@ -1,0 +1,339 @@
+{
+  "colors": {
+    "blue": "Azul",
+    "red": "Vermelho",
+    "green": "Verde",
+    "purple": "Roxo",
+    "orange": "Laranja"
+  },
+  "font_scales": {
+    "small": "Pequeno",
+    "medium": "Médio",
+    "large": "Grande"
+  },
+  "languages": {
+    "es": "Espanhol", "en": "Inglês", "pt": "Português", "it": "Italiano", "zh": "Chinês",
+    "hi": "Hindi", "ar": "Árabe", "bn": "Bengali", "ru": "Russo", "ja": "Japonês",
+    "pa": "Punjabi", "de": "Alemão", "jv": "Javanês", "ko": "Coreano", "fr": "Francês",
+    "te": "Telugu", "mr": "Marathi", "tr": "Turco", "ta": "Tamil", "vi": "Vietnamita",
+    "ur": "Urdu", "nl": "Holandês", "pl": "Polonês", "th": "Tailandês", "fa": "Persa"
+  },
+  "profile": {
+    "title": "Meu Perfil - Personalização",
+    "header": "Meu Perfil",
+    "subtitle": "Personalize a aparência da sua interface",
+    "theme": {
+      "title": "Tema",
+      "mode": "Modo:",
+      "light": "Claro",
+      "dark": "Escuro",
+      "primary_color": "Cor principal:"
+    },
+    "font": {
+      "title": "Tamanho da fonte",
+      "scale": "Escala de texto:"
+    },
+    "language": {
+      "title": "Idioma",
+      "interface_language": "Idioma da interface:"
+    },
+    "buttons": {
+      "preview": "Visualização",
+      "save": "Salvar alterações",
+      "reset": "Redefinir alterações"
+    },
+    "messages": {
+      "saving": "Salvando...",
+      "save_error": "Erro ao salvar as alterações.",
+      "save_success": "Alterações salvas. A página será recarregada...",
+      "preview_disabled": "A visualização está desativada. Salve as alterações para aplicá-las.",
+      "unsaved": "Alterações não salvas"
+    }
+  },
+  "navbar": {
+    "dashboard": "Painel",
+    "agenda": "Agenda",
+    "box": "Box",
+    "notifications": "Notificações",
+    "profile": "Perfil",
+    "logout": "Sair"
+  },
+  "box": {
+    "title": "Estado dos Boxes",
+    "in_progress_aria": "Ver consultas em andamento",
+    "in_progress_title": "Consultas em andamento",
+    "back_to_top_aria": "Voltar ao topo",
+    "back_to_top_title": "Voltar ao topo",
+    "header": "Estado dos Boxes",
+    "filters": {
+      "filter_corridor": "Filtrar por corredor...",
+      "filter_box": "Filtrar por box...",
+      "filter_state": "Filtrar por estado",
+      "show_all": "Mostrar todos"
+    },
+    "no_permission_title": "Você não tem permissão para ver os detalhes deste box.",
+    "next_appointment_placeholder": "Próxima consulta não disponível.",
+    "hide_details": "Ocultar detalhes",
+    "next_appointment": "Próxima Consulta",
+    "status_free": "Livre",
+    "status_in_use": "Em uso",
+    "status_waiting": "Em espera",
+    "status_disabled": "Desabilitado",
+    "no_next_consultations": "Não há mais consultas para hoje",
+    "corridor_prefix": "Corredor {{count}}"
+  },
+  "footer": {
+    "copyright": "© 2025 Incodefy. Sistema de Agenda Médica - Todos os direitos reservados."
+  },
+  "login": {
+    "title": "Entrar",
+    "email": "Email",
+    "password": "Senha",
+    "remember_me": "Lembrar-me",
+    "forgot_password": "Esqueceu sua senha?",
+    "login_button": "Entrar",
+    "show_password": "Mostrar senha"
+  },
+  "dashboard": {
+    "title": "Painel de Administração",
+    "header": "Painel de Administração",
+    "subheader": "Painel de métricas e notificações em tempo real",
+    "filters": {
+      "date_range": "Intervalo de datas",
+      "from": "De",
+      "to": "Até",
+      "specialties": "Especialidades",
+      "select_all": "Selecionar Tudo",
+      "boxes": "Boxes",
+      "reset": "Redefinir"
+    },
+    "kpi": {
+      "title": "Indicadores Chave",
+      "occupation": "Ocupação de boxes",
+      "total_appointments": "Total de consultas",
+      "daily_average": "Média diária",
+      "most_demanded_specialty": "Especialidade mais demandada",
+      "days_in_period_one": "Em {{count}} dia",
+      "days_in_period_other": "Em {{count}} dias",
+      "total_capacity": "Capacidade total: {{count}} boxes",
+      "appointments_per_day": "Consultas por dia",
+      "appointments_count_one": "{{count}} consulta",
+      "appointments_count_other": "{{count}} consultas"
+    },
+    "charts": {
+      "title": "Análise Visual",
+      "appointments_by_specialty": "Consultas por Especialidade",
+      "appointments_by_day": "Consultas por Dia",
+      "doctor_performance": "Desempenho dos Médicos",
+      "no_data": "Sem dados",
+      "no_data_desc": "Aplique filtros para ver o KPI"
+    },
+    "loading": "Carregando dados..."
+  },
+  "specialties": {
+    "cardiologia": "Cardiologia",
+    "pediatria": "Pediatria",
+    "ginecologia": "Ginecologia",
+    "traumatologia": "Traumatologia",
+    "dermatologia": "Dermatologia",
+    "neurologia": "Neurologia"
+  },
+  "days": {
+    "monday": "Segunda-feira",
+    "tuesday": "Terça-feira",
+    "wednesday": "Quarta-feira",
+    "thursday": "Quinta-feira",
+    "friday": "Sexta-feira",
+    "saturday": "Sábado",
+    "sunday": "Domingo"
+  },
+  "agenda": {
+    "title": "Agenda",
+    "main_title": "Sistema de Agenda",
+    "main_subtitle": "Gerencie sua agenda médica de forma eficiente",
+    "management": {
+      "title": "Gestão de Agenda",
+      "description": "Visualize e gerencie suas consultas médicas",
+      "box": "Box",
+      "doctor": "Médico"
+    },
+    "data": {
+      "title": "Gestão de Dados",
+      "description": "Exporte e importe informações de consultas",
+      "import": "Importar",
+      "export": "Exportar"
+    },
+    "no_permissions": {
+      "title": "Sem permissões disponíveis",
+      "description": "Você não tem permissões para acessar nenhuma seção da agenda. Entre em contato com o administrador."
+    }
+  },
+  "in_progress": {
+    "title": "Consultas em Andamento",
+    "header": "Consultas em Andamento",
+    "subheader": "Monitoramento em tempo real do estado das consultas médicas",
+    "legend": {
+      "pending": "Consulta a confirmar",
+      "confirmed": "Consulta já realizada"
+    },
+    "loading": "Carregando consultas...",
+    "no_appointments_title": "Não há consultas em andamento",
+    "no_appointments_desc": "Não há consultas agendadas no momento."
+  },
+  "detalle_box": {
+    "title": "Detalhe do Box",
+    "instrument_categories_aria": "Categorias de instrumentos"
+  },
+  "notifications": {
+    "history_title": "Histórico de Notificações",
+    "history_header": "Histórico de Notificações",
+    "history_subheader": "Mantenha-se atualizado com todas as atividades e atualizações do sistema",
+    "view_details_aria": "Ver detalhes da notificação",
+    "attended": "Atendido",
+    "not_attended": "Não atendido",
+    "canceled": "Cancelado",
+    "import_success_one": "{{count}} consulta foi importada.",
+    "import_success_other": "{{count}} consultas foram importadas."
+  },
+  "calendar": {
+    "title": "Agenda Médica",
+    "select_parent_placeholder": "-- Selecione um {{parent}} --",
+    "select_entity_placeholder": "-- Selecione um {{entity}} --",
+    "schedule_button": "Fazer agendamento",
+    "modal": {
+      "title": "Agendar Consulta Médica",
+      "location": "Localização",
+      "select_corridor_placeholder": "-- Selecione um corredor --",
+      "select_box_placeholder": "-- Selecione um box --",
+      "medical_staff": "Equipe Médica",
+      "select_specialty_placeholder": "-- Selecione uma especialidade --",
+      "select_doctor_placeholder": "-- Selecione um médico --",
+      "date_time": "Data e Hora",
+      "select_time_placeholder": "-- Selecione hora --"
+    },
+    "table": {
+      "hour": "Hora",
+      "monday": "Segunda",
+      "tuesday": "Terça",
+      "wednesday": "Quarta",
+      "thursday": "Quinta",
+      "friday": "Sexta",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    },
+    "drag_to_unschedule": "Arraste aqui para desagendar",
+    "toast": {
+      "appointment_scheduled": "Consulta agendada corretamente.",
+      "appointment_unscheduled": "Consulta desagendada corretamente.",
+      "error_scheduling": "Erro ao agendar a consulta.",
+      "error_unscheduling": "Erro ao desagendar a consulta.",
+      "unschedule_confirmation": "Tem certeza de que deseja desagendar esta consulta?"
+    }
+  },
+  "common": {
+    "hour": "Hora",
+    "specialty": "Especialidade",
+    "import": "Importar",
+    "export": "Exportar",
+    "data_management": "Gestão de Dados",
+    "view_details": "Ver detalhes",
+    "import_success": "Importação concluída com sucesso",
+    "import_details": "Detalhes da Importação",
+    "close": "Fechar",
+    "import_table_caption": "Detalhes da importação de consultas médicas",
+    "date": "Data",
+    "start_time": "Hora Início",
+    "end_time": "Hora Fim",
+    "consult_type": "Tipo Consulta",
+    "status": "Estado",
+    "pending": "Pendente",
+    "confirmed": "Confirmada",
+    "total_in_progress": "Total em Andamento",
+    "no_results": "Nenhum resultado encontrado",
+    "no_results_desc": "Não há boxes que correspondam aos filtros aplicados. Tente ajustar os critérios de pesquisa.",
+    "reset_filters": "Redefinir filtros",
+    "show_details": "Mostrar detalhes",
+    "filters": "Filtros",
+    "filters_title": "Filtros",
+    "select_all": "Selecionar Tudo",
+    "select_corridor": "Selecione Corredor",
+    "select_box": "Selecione Box",
+    "select_specialty": "Selecione Especialidade",
+    "select_doctor": "Selecione Médico",
+    "select_date": "Selecione Data",
+    "select_time": "Hora",
+    "select_type": "Selecione tipo",
+    "medical": "Médica",
+    "non_medical": "Não médico",
+    "confirm_appointment": "Confirmar Consulta",
+    "unconfirm_appointment": "Desconfirmar",
+    "appointments": "Consultas",
+    "appointments_management": "Gestão de Agenda",
+    "appointments_management_desc": "Visualize e gerencie suas consultas médicas",
+    "corridor": "Corredor",
+    "state": "Estado",
+    "state_in_use": "Em uso",
+    "state_waiting": "Em espera",
+    "state_free": "Livre",
+    "state_disabled": "Desabilitado",
+    "free": "Livre",
+    "waiting": "Em espera",
+    "in_use": "Em uso",
+    "disabled": "Desabilitado",
+    "boxes_free": "Boxes Livres",
+    "boxes_waiting": "Em espera",
+    "boxes_in_use": "Em Uso",
+    "boxes_disabled": "Desabilitados",
+    "no_notifications": "Não há notificações",
+    "no_notifications_desc": "Quando você tiver novas notificações, elas aparecerão aqui.",
+    "error_loading_notifications": "Erro ao carregar notificações",
+    "try_again_later": "Por favor, tente novamente mais tarde.",
+    "back_to_home": "Voltar ao início",
+    "error": "Erro",
+    "not_found": "Página não encontrada",
+    "not_found_message": "O caminho {{path}} não existe",
+    "no_permissions": "Não há permissões disponíveis",
+    "no_permissions_desc": "Você não tem permissões para acessar nenhuma seção da agenda. Entre em contato com o administrador.",
+    "admin_dashboard": "Painel de Administração",
+    "metrics_panel": "Painel de métricas e notificações em tempo real",
+    "key_indicators": "Indicadores Chave",
+    "box_occupation": "Ocupação de boxes",
+    "total_appointments": "Total de consultas",
+    "daily_average": "Média diária",
+    "most_demanded_specialty": "Especialidade mais demandada",
+    "visual_analysis": "Análise Visual",
+    "appointments_by_specialty": "Consultas por Especialidade",
+    "appointments_by_day": "Consultas por dia",
+    "doctor_performance": "Desempenho de médicos",
+    "no_data": "Sem dados",
+    "select_interface_language": "Selecione o idioma da interface",
+    "pending_appointments": "Consultas Pendentes",
+    "confirmed_appointments": "Consultas Confirmadas",
+    "appointments_in_progress": "Consultas em Andamento",
+    "real_time_monitoring": "Monitoramento em tempo real do estado das consultas médicas",
+    "appointments_today": "Consultas do Dia",
+    "statistics_metrics": "Estatísticas e Métricas",
+    "total_appointments_metric": "Total Consultas",
+    "box_usage": "Uso de Boxes",
+    "not_done": "Não Realizadas",
+    "compliance": "Cumprimento",
+    "box_usage_chart": "Uso de Box",
+    "compliance_chart": "Cumprimento de Consultas",
+    "box_info": "Informações do Box",
+    "name": "Nome",
+    "corridor_label": "Corredor",
+    "state_label": "Estado",
+    "box_instruments": "Instrumentos do Box",
+    "select_date_label": "Selecionar Data",
+    "previous_day": "Dia anterior",
+    "next_day": "Dia seguinte",
+    "select_date_input": "Selecionar data",
+    "medical_instruments": "Médicos",
+    "furniture": "Mobiliário",
+    "no_items_in_category": "Não há elementos nesta categoria.",
+    "doctor": "Médico",
+    "box": "Box",
+    "unknown_doctor": "Médico desconhecido",
+    "unknown_box": "Box desconhecido"
+  }
+}
