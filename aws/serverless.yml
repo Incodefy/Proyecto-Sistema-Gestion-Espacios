@@ -1,4 +1,4 @@
-service: hospital-backend
+service: aws-cognito-jwt-login
 frameworkVersion: '3'
 
 provider:
@@ -7,7 +7,7 @@ provider:
   region: ${env:AWS_REGION, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   
-  role: ${env:AWS_ROLE, 'arn:aws:iam::851725349092:role/LabRole'}
+  role: ${env:AWS_ROLE, 'arn:aws:iam::837538831487:role/LabRole'}
   
   # Tags para mejor gestión de recursos
   tags:
@@ -17,17 +17,24 @@ provider:
     Version: 1.0.0
   
   environment:
-    USER_POOL_ID: { Ref: CognitoUserPool }
-    USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
+    USER_POOL_ID: 
+      Ref: CognitoUserPool
+    USER_POOL_CLIENT_ID: 
+      Ref: CognitoUserPoolClient
     USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
     PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
     ACTIVITY_LOGS_TABLE: ${self:service}-${sls:stage}-activity-logs
-    PERSONALIZATION_TOPIC_ARN: { Ref: PersonalizationTopic }
-    SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
+    PERSONALIZATION_TOPIC_ARN: 
+      Ref: PersonalizationTopic
+    SYSTEM_NOTIFICATIONS_TOPIC_ARN: 
+      Ref: SystemNotificationsTopic
     PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
     SERVICE_NAME: ${self:service}
-    DB_CATALOGO: ${self:service}-catalogo
+    DB_CATALOGO: ${self:service}-${sls:stage}-catalogo
+    DB_AGENDA: ${self:service}-${sls:stage}-agenda
+    DB_BOX_INSTRUMENTO: ${self:service}-${sls:stage}-box-instrumento
+    DB_NOTIFICACION: ${self:service}-${sls:stage}-notificacion
     STAGE: ${sls:stage}
     
   logs:
@@ -35,18 +42,18 @@ provider:
     
   httpApi:
     cors:
-        allowedOrigins:
-          - '*'
-        allowedHeaders:
-          - Content-Type
-          - Authorization
-        allowedMethods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
-          - OPTIONS
-        allowCredentials: false
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: false
     authorizers:
       cognitoJwt:
         type: jwt
@@ -54,17 +61,18 @@ provider:
         issuerUrl:
           Fn::Sub:
             - https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
-            - { UserPoolId: { Ref: CognitoUserPool } }
+            - UserPoolId: 
+                Ref: CognitoUserPool
         audience:
-          - { Ref: CognitoUserPoolClient }
+          - Ref: CognitoUserPoolClient
   
   iamRoleStatements:
     - Effect: Allow
       Action:
         - sns:Publish
       Resource:
-        - { Ref: PersonalizationTopic }
-        - { Ref: SystemNotificationsTopic }
+        - Ref: PersonalizationTopic
+        - Ref: SystemNotificationsTopic
     
     - Effect: Allow
       Action:
@@ -73,7 +81,7 @@ provider:
         - dynamodb:Query
         - dynamodb:Scan
       Resource:
-        - { Fn::GetAtt: [ActivityLogsTable, Arn] }
+        - Fn::GetAtt: [ActivityLogsTable, Arn]
         - Fn::Sub: '${ActivityLogsTable.Arn}/index/*'
     
     - Effect: Allow
@@ -83,7 +91,7 @@ provider:
         - dynamodb:Query
         - dynamodb:UpdateItem
       Resource:
-        - { Fn::GetAtt: [ParametersTable, Arn] }
+        - Fn::GetAtt: [ParametersTable, Arn]
     
     - Effect: Allow
       Action:
@@ -94,7 +102,7 @@ provider:
         - dynamodb:Query
         - dynamodb:Scan
       Resource:
-        - { Fn::GetAtt: [UserRolesTable, Arn] }
+        - Fn::GetAtt: [UserRolesTable, Arn]
         - Fn::Sub: '${UserRolesTable.Arn}/index/*'
     
     - Effect: Allow
@@ -103,7 +111,7 @@ provider:
         - dynamodb:Query
         - dynamodb:Scan
       Resource:
-        - { Fn::GetAtt: [PermissionsTable, Arn] }
+        - Fn::GetAtt: [PermissionsTable, Arn]
 
     - Effect: Allow
       Action:
@@ -112,15 +120,39 @@ provider:
         - sqs:GetQueueAttributes
         - sqs:ChangeMessageVisibility
       Resource:
-        - { Fn::GetAtt: [PersonalizationQueue, Arn] }
-        - { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+        - Fn::GetAtt: [PersonalizationQueue, Arn]
+        - Fn::GetAtt: [SystemNotificationsQueue, Arn]
 
     - Effect: Allow
       Action:
         - dynamodb:PutItem
         - dynamodb:GetItem
       Resource:
-        - { Fn::GetAtt: [ProcessedMessagesTable, Arn] }
+        - Fn::GetAtt: [ProcessedMessagesTable, Arn]
+    
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource:
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-*'
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - Fn::GetAtt: [CatalogoTable, Arn]
+        - Fn::Sub: '${CatalogoTable.Arn}/index/*'
+        - Fn::GetAtt: [AgendaTable, Arn]
+        - Fn::Sub: '${AgendaTable.Arn}/index/*'
+        - Fn::GetAtt: [BoxInstrumentoTable, Arn]
+        - Fn::Sub: '${BoxInstrumentoTable.Arn}/index/*'
+        - Fn::GetAtt: [NotificacionTable, Arn]
+        - Fn::Sub: '${NotificacionTable.Arn}/index/*'
 
 functions:
   # === HEALTH CHECK ===
@@ -289,9 +321,11 @@ functions:
   dbProxy:
     handler: src/handlers/dbProxy.handler
     events:
-      - http:
-          path: db/{proxy+}
+      - httpApi:
+          path: /db/{proxy+}
           method: any
+          authorizer:
+            name: cognitoJwt
   
   obtenerPasillos:
     handler: src/handlers/db/obtenerPasillos.handler
@@ -313,6 +347,9 @@ functions:
   
   obtenerAgendaPorMedico:
     handler: src/handlers/db/obtenerAgendaPorMedico.handler
+  
+  obtenerAgendaPorId:
+    handler: src/handlers/db/obtenerAgendaPorId.handler
 
   verificarConflictoBox:
     handler: src/handlers/db/verificarConflictoBox.handler
@@ -325,6 +362,51 @@ functions:
   
   insertarAgenda:
     handler: src/handlers/db/insertarAgenda.handler
+
+  actualizarEstadoAgenda:
+    handler: src/handlers/db/actualizarEstadoAgenda.handler
+
+  obtenerInstrumentosPorBox:
+    handler: src/handlers/db/obtenerInstrumentosPorBox.handler
+
+  obtenerBoxYPasillo:
+    handler: src/handlers/db/obtenerBoxYPasillo.handler
+  
+  obtenerAgendaPorBoxYFecha:
+    handler: src/handlers/db/obtenerAgendaPorBoxYFecha.handler
+
+  obtenerNotificaciones:
+    handler: src/handlers/db/obtenerNotificaciones.handler
+
+  obtenerMedicoNombre:
+    handler: src/handlers/db/obtenerMedicoNombre.handler
+
+  obtenerTotalConsultas:
+    handler: src/handlers/db/obtenerTotalConsultas.handler
+  
+  obtenerBoxesDisponibles:
+    handler: src/handlers/db/obtenerBoxesDisponibles.handler
+  
+  obtenerEspecialidadMasDemandada:
+    handler: src/handlers/db/obtenerEspecialidadMasDemandada.handler
+
+  obtenerConsultasPorEspecialidad:
+    handler: src/handlers/db/obtenerConsultasPorEspecialidad.handler
+  
+  obtenerConsultasPorDia:
+    handler: src/handlers/db/obtenerConsultasPorDia.handler
+  
+  obtenerRendimientoMedicos:
+    handler: src/handlers/db/obtenerRendimientoMedicos.handler
+
+  obtenerMedicosPorEspecialidades:
+    handler: src/handlers/db/obtenerMedicosPorEspecialidades.handler
+  
+  obtenerConsultasEnCurso:
+    handler: src/handlers/db/obtenerConsultasEnCurso.handler
+  
+  eliminarAgenda:
+    handler: src/handlers/db/eliminarAgenda.handler
 
 # Plugins comentados - no necesarios para deployment
 # plugins:
@@ -603,7 +685,8 @@ resources:
         QueueName: ${self:service}-${sls:stage}-personalization-queue
         VisibilityTimeout: 60
         RedrivePolicy:
-          deadLetterTargetArn: { Fn::GetAtt: [PersonalizationDLQ, Arn] }
+          deadLetterTargetArn: 
+            Fn::GetAtt: [PersonalizationDLQ, Arn]
           maxReceiveCount: 3
 
     # Permitir que SNS publique en la cola
@@ -611,25 +694,29 @@ resources:
       Type: AWS::SQS::QueuePolicy
       Properties:
         Queues:
-          - { Ref: PersonalizationQueue }
+          - Ref: PersonalizationQueue
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Principal: "*"
               Action: sqs:SendMessage
-              Resource: { Fn::GetAtt: [PersonalizationQueue, Arn] }
+              Resource: 
+                Fn::GetAtt: [PersonalizationQueue, Arn]
               Condition:
                 ArnEquals:
-                  aws:SourceArn: { Ref: PersonalizationTopic }
+                  aws:SourceArn: 
+                    Ref: PersonalizationTopic
 
     # Suscripción SNS -> SQS
     PersonalizationSubscription:
       Type: AWS::SNS::Subscription
       Properties:
         Protocol: sqs
-        TopicArn: { Ref: PersonalizationTopic }
-        Endpoint: { Fn::GetAtt: [PersonalizationQueue, Arn] }
+        TopicArn: 
+          Ref: PersonalizationTopic
+        Endpoint: 
+          Fn::GetAtt: [PersonalizationQueue, Arn]
 
     # === SQS PARA NOTIFICACIONES DEL SISTEMA ===
     SystemNotificationsDLQ:
@@ -644,31 +731,36 @@ resources:
         QueueName: ${self:service}-${sls:stage}-system-notifications-queue
         VisibilityTimeout: 60
         RedrivePolicy:
-          deadLetterTargetArn: { Fn::GetAtt: [SystemNotificationsDLQ, Arn] }
+          deadLetterTargetArn: 
+            Fn::GetAtt: [SystemNotificationsDLQ, Arn]
           maxReceiveCount: 3
 
     SystemNotificationsQueuePolicy:
       Type: AWS::SQS::QueuePolicy
       Properties:
         Queues:
-          - { Ref: SystemNotificationsQueue }
+          - Ref: SystemNotificationsQueue
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Principal: "*"
               Action: sqs:SendMessage
-              Resource: { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+              Resource: 
+                Fn::GetAtt: [SystemNotificationsQueue, Arn]
               Condition:
                 ArnEquals:
-                  aws:SourceArn: { Ref: SystemNotificationsTopic }
+                  aws:SourceArn: 
+                    Ref: SystemNotificationsTopic
 
     SystemNotificationsSubscription:
       Type: AWS::SNS::Subscription
       Properties:
         Protocol: sqs
-        TopicArn: { Ref: SystemNotificationsTopic }
-        Endpoint: { Fn::GetAtt: [SystemNotificationsQueue, Arn] }
+        TopicArn: 
+          Ref: SystemNotificationsTopic
+        Endpoint: 
+          Fn::GetAtt: [SystemNotificationsQueue, Arn]
 
     # === COGNITO ===
     CognitoUserPool:
@@ -695,13 +787,14 @@ resources:
       Properties:
         ClientName: ${self:service}-${sls:stage}-app
         GenerateSecret: false
-        UserPoolId: { Ref: CognitoUserPool }
+        UserPoolId: 
+          Ref: CognitoUserPool
         PreventUserExistenceErrors: ENABLED
         ExplicitAuthFlows:
           - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
-        AccessTokenValidity: 5
-        IdTokenValidity: 5
+        AccessTokenValidity: 30
+        IdTokenValidity: 30
         RefreshTokenValidity: 30
         TokenValidityUnits:
           AccessToken: minutes
@@ -722,43 +815,8 @@ resources:
         DisplayName: "Notificaciones del sistema"
 
   Outputs:
-    HttpApiUrl:
-      Description: URL of the HTTP API
-      Value:
-        Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
     UserPoolId:
-      Description: Cognito User Pool ID
-      Value:
-        Ref: CognitoUserPool
-    UserPoolClientId:
-      Description: Cognito User Pool Client ID
-      Value:
-        Ref: CognitoUserPoolClient
-    Stage:
-      Description: Deployment stage
-      Value: ${sls:stage}
-    Region:
-      Description: AWS Region
-      Value: ${self:provider.region}
+      Value: { Ref: CognitoUserPool }
     
     UserPoolClientId:
       Value: { Ref: CognitoUserPoolClient }
-    
-    PersonalizationTopicArn:
-      Value: { Ref: PersonalizationTopic }
-    
-    SystemNotificationsTopicArn:
-      Value: { Ref: SystemNotificationsTopic }
-    
-    ActivityLogsTableName:
-      Value: { Ref: ActivityLogsTable }
-    
-    ApiEndpoint:
-      Value:
-        Fn::Sub: 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
-    
-    PersonalizationQueueUrl:
-      Value: { Ref: PersonalizationQueue }
-
-    SystemNotificationsQueueUrl:
-      Value: { Ref: SystemNotificationsQueue }

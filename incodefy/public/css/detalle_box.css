@@ -632,4 +632,5 @@ body {
   color: var(--text-color)!important;
   text-align: center;
   margin-top: .75rem;
+  margin-bottom: 3rem;
 }

@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { obtenerInstrumentosPorBox, obtenerBoxYPasillo, obtenerAgendaPorBoxYFecha } = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
+
+router.use(requireAuth);
+router.use(attachApiClient);
 
 function formatFechaLarga(fechaStr) {
   const meses = [
@@ -16,12 +20,14 @@ router.get('/box/:id', checkPermission('box.detalle.read'), async (req, res) => 
   try {
     const boxId = req.params.id;
 
-    const box = await obtenerBoxYPasillo(boxId);
+    const box = await req.apiClient.obtenerBoxYPasillo(boxId);
     if (!box) {
       return res.status(404).send("Box no encontrado");
     }
 
-    const instrumentos = await obtenerInstrumentosPorBox(boxId);
+    const instrumentos = await req.apiClient.obtenerInstrumentosPorBox(boxId);
+
+    console.log(instrumentos)
 
     const userPermissions = req.session.user?.permissions || [];
 
@@ -42,7 +48,7 @@ router.get('/box/:id', checkPermission('box.detalle.read'), async (req, res) => 
       instrumentos: instrumentos,
     });
   } catch (err) {
-    console.error('Error cargando detalle del box:', err);
+    console.error('❌ Error cargando detalle del box:', err);
     res.status(500).send('Error cargando detalle del box');
   }
 });
@@ -54,7 +60,7 @@ router.get('/api/box-info', async (req, res) => {
       return res.status(400).json({ error: "Faltan parámetros" });
     }
 
-    const agendas = await obtenerAgendaPorBoxYFecha(box_id, fecha);
+    const agendas = await req.apiClient.obtenerAgendaPorBoxYFecha(box_id, fecha);
 
     const horas_disponibles = [
       "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
@@ -73,18 +79,19 @@ router.get('/api/box-info', async (req, res) => {
         const bloque = `${inicio} - ${fin}`;
         if (tabla_horaria[bloque] !== undefined) {
           tabla_horaria[bloque] = {
-            medico: a.medico || '',
-            especialidad: a.especialidad || '',
-            estado: a.estado || '',
+            medico: a.medicoNombre || '',
+            especialidad: a.especialidadNombre || '',
+            estado: a.estadoNombre || '',
             tipo_consulta: a.tipoConsulta || '',
           };
         }
       }
     });
 
+
     const total_consultas = agendas.length;
     const consultas_no_realizadas = agendas.filter(
-      (a) => a.estado === 'No atendido'
+      (a) => a.estadoNombre === 'No atendido'
     ).length;
     const consultas_realizadas = total_consultas - consultas_no_realizadas;
     const uso_box = horas_disponibles.length
@@ -104,7 +111,7 @@ router.get('/api/box-info', async (req, res) => {
       cumplimiento,
     });
   } catch (err) {
-    console.error("Error en /api/box-info:", err);
+    console.error("❌ Error en /api/box-info:", err);
     res.status(500).json({ error: "Error al cargar información del box" });
   }
 });

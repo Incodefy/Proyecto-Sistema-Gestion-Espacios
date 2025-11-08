@@ -1,12 +1,12 @@
 // routes/calendario.js
 const express = require('express');
 const router = express.Router();
-const { 
-  obtenerPasillos, obtenerBoxes, obtenerMedicos, obtenerEspecialidades, 
-  obtenerAgendaPorMedico, obtenerAgendaPorBox, obtenerEstadoNoAtendido,
-  verificarConflictoMedico, verificarConflictoBox, insertarAgenda
-} = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
+
+router.use(requireAuth);
+router.use(attachApiClient);
 
 // Ruta principal del calendario
 router.get('/agenda/calendario/:tipo', async (req, res) => {
@@ -25,12 +25,11 @@ router.get('/agenda/calendario/:tipo', async (req, res) => {
     ];
     const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-    // Obtener datos base
     const [pasillos, boxes, especialidades, medicos] = await Promise.all([
-      obtenerPasillos(),
-      obtenerBoxes(),
-      obtenerEspecialidades(),
-      obtenerMedicos() 
+      req.apiClient.obtenerPasillos(),
+      req.apiClient.obtenerBoxes(),
+      req.apiClient.obtenerEspecialidades(),
+      req.apiClient.obtenerMedicos()
     ]);
 
     let config;
@@ -108,11 +107,16 @@ router.get('/agenda/calendario/:tipo', async (req, res) => {
       boxes,
       pasillos,
       especialidades,
+      personalization: req.session.user?.personalization || {},
+      user: req.session.user
     });
 
   } catch (error) {
-    console.error('Error al cargar calendario:', error);
-    res.status(500).render('error', { message: 'Error al cargar el calendario' });
+    console.error('❌ Error al cargar calendario:', error);
+    res.status(500).render('error', { 
+      message: 'Error al cargar el calendario',
+      error_msg: ['Error al cargar el calendario']
+    });
   }
 });
 
@@ -129,15 +133,12 @@ router.get('/agenda/obtener-agendamientos', async (req, res) => {
     
     let agendas = [];
 
-
     if (tipo === 'box' && box_id) {
       console.log('Consultando por BOX, box_id:', box_id);
-
-      agendas = await obtenerAgendaPorBox(box_id);
+      agendas = await req.apiClient.obtenerAgendaPorBox(box_id);
     } else if (tipo === 'medico' && medico_id) {
       console.log('Consultando por MEDICO, medico_id:', medico_id);
-
-      agendas = await obtenerAgendaPorMedico(medico_id);
+      agendas = await req.apiClient.obtenerAgendaPorMedico(medico_id);
     } else {
       console.log('Parámetros inválidos - tipo:', tipo, 'box_id:', box_id, 'medico_id:', medico_id);
       return res.status(400).json({ error: 'Parámetros inválidos' });
@@ -147,7 +148,7 @@ router.get('/agenda/obtener-agendamientos', async (req, res) => {
     res.json({ agendamientos: agendas });
 
   } catch (error) {
-    console.error('Error al obtener agendamientos:', error);
+    console.error('❌ Error al obtener agendamientos:', error);
     res.status(500).json({ error: 'Error al obtener agendamientos' });
   }
 });
@@ -157,21 +158,45 @@ router.post('/agenda/guardar-agenda', async (req, res) => {
   try {
     const { medico_id, hora, fecha_inicio, box_id, tipo_usuario } = req.body;
     
+    if (!medico_id || !hora || !fecha_inicio || !box_id) {
+      return res.status(400).json({ 
+        status: 'error', 
+        mensaje: 'Faltan datos requeridos' 
+      });
+    }
+    
     const partes_hora = hora.split(' - ');
+    if (partes_hora.length !== 2) {
+      return res.status(400).json({ 
+        status: 'error', 
+        mensaje: 'Formato de hora inválido' 
+      });
+    }
+    
     const hora_inicio = partes_hora[0];
     const hora_fin = partes_hora[1];
     
-    const conflictoBox = await verificarConflictoBox(box_id, fecha_inicio, hora_inicio, hora_fin);
-    if (conflictoBox) {
-      return res.json({ status: 'error', mensaje: 'Ese horario ya está ocupado en el box.' });
+    const [conflictoBox, conflictoMedico] = await Promise.all([
+      req.apiClient.verificarConflictoBox(box_id, fecha_inicio, hora_inicio, hora_fin),
+      req.apiClient.verificarConflictoMedico(medico_id, fecha_inicio, hora_inicio, hora_fin)
+    ]);
+
+    if (conflictoBox && conflictoBox.tieneConflicto) {
+      return res.json({ 
+        status: 'error', 
+        mensaje: 'Ese horario ya está ocupado en el box.' 
+      });
     }
 
-    const conflictoMedico = await verificarConflictoMedico(medico_id, fecha_inicio, hora_inicio, hora_fin);
-    if (conflictoMedico) {
-      return res.json({ status: 'error', mensaje: 'El médico ya está asignado en ese horario.' });
+    if (conflictoMedico && conflictoMedico.tieneConflicto) {
+      return res.json({ 
+        status: 'error', 
+        mensaje: 'El médico ya está asignado en ese horario.' 
+      });
     }
 
-    const estadoId = await obtenerEstadoNoAtendido();
+    const estadoData = await req.apiClient.obtenerEstadoNoAtendido();
+    const estadoId = estadoData.idEstado || estadoData.id;
 
     const nuevaAgenda = {
       PK: `BOX#${box_id}#DATE#${fecha_inicio}`,
@@ -182,16 +207,23 @@ router.post('/agenda/guardar-agenda', async (req, res) => {
       horaInicio: hora_inicio,
       horaFin: hora_fin,
       fecha: fecha_inicio,
-      tipoConsulta: tipo_usuario
+      tipoConsulta: tipo_usuario,
+      creadoPor: req.session.user.email,
+      fechaCreacion: new Date().toISOString()
     };
 
-    await insertarAgenda(nuevaAgenda);
+    await req.apiClient.insertarAgenda(nuevaAgenda);
 
+    console.log('✅ Agenda guardada correctamente:', nuevaAgenda);
     res.json({ status: 'ok', mensaje: 'Agenda guardada correctamente' });
 
   } catch (error) {
-    console.error('Error al guardar agenda:', error);
-    res.status(500).json({ status: 'error', mensaje: 'Error interno del servidor' });
+    console.error('❌ Error al guardar agenda:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      mensaje: 'Error interno del servidor',
+      detalle: error.message 
+    });
   }
 });
 
@@ -199,47 +231,80 @@ router.post('/agenda/guardar-agenda', async (req, res) => {
 router.post('/agenda/eliminar-agenda-medico', async (req, res) => {
   try {
     const { medico_id, fecha, hora, box_id } = req.body;
-    
     const [hora_inicio, hora_fin] = hora.split(' - ');
     
-    const result = await db.query(`
-      DELETE FROM agenda 
-      WHERE idmedico = ? AND fecha = ? AND horainicio = ? AND horafin = ? AND idbox = ?
-    `, [medico_id, fecha, hora_inicio, hora_fin, box_id]);
+    const agendas = await req.apiClient.obtenerAgendaPorMedico(medico_id);
+    const agendaEncontrada = agendas.find(a => 
+      a.fecha === fecha && 
+      a.horaInicio === hora_inicio && 
+      a.horaFin === hora_fin &&
+      a.idBox === parseInt(box_id)
+    );
 
-    if (result.affectedRows > 0) {
-      res.json({ status: 'ok', mensaje: 'Agenda eliminada' });
-    } else {
-      res.status(404).json({ error: 'Agenda no encontrada' });
+    if (!agendaEncontrada) {
+      return res.status(404).json({ 
+        status: 'error', 
+        mensaje: 'Agenda no encontrada' 
+      });
     }
 
+    await req.apiClient.eliminarAgenda(agendaEncontrada.idAgenda);
+    
+    res.json({ status: 'ok', mensaje: 'Agenda eliminada' });
+
   } catch (error) {
-    console.error('Error al eliminar agenda:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('❌ Error al eliminar agenda:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      mensaje: 'Error interno del servidor' 
+    });
   }
 });
 
-// Eliminar agenda box
 router.post('/agenda/eliminar-agenda-box', async (req, res) => {
   try {
     const { medico_id, fecha, hora, box_id } = req.body;
     
+    if (!medico_id || !fecha || !hora || !box_id) {
+      return res.status(400).json({ 
+        status: 'error', 
+        mensaje: 'Faltan datos requeridos' 
+      });
+    }
+    
     const [hora_inicio, hora_fin] = hora.split(' - ');
     
-    const result = await db.query(`
-      DELETE FROM agenda 
-      WHERE idmedico = ? AND fecha = ? AND horainicio = ? AND horafin = ? AND idbox = ?
-    `, [medico_id, fecha, hora_inicio, hora_fin, box_id]);
+    const agendas = await req.apiClient.obtenerAgendaPorBox(box_id);
+    const agendaEncontrada = agendas.find(a => 
+      a.fecha === fecha && 
+      a.horaInicio === hora_inicio && 
+      a.horaFin === hora_fin &&
+      a.idMedico === parseInt(medico_id)
+    );
 
-    if (result.affectedRows > 0) {
-      res.json({ status: 'ok' });
-    } else {
-      res.json({ status: 'error', mensaje: 'Agendamiento no encontrado.' });
+    if (!agendaEncontrada) {
+      return res.json({ 
+        status: 'error', 
+        mensaje: 'Agendamiento no encontrado.' 
+      });
     }
 
+    await req.apiClient.eliminarAgenda(agendaEncontrada.idAgenda);
+    
+    console.log('⚠️ Eliminación de agenda pendiente de implementar endpoint en Lambda');
+    res.json({ 
+      status: 'ok',
+      mensaje: 'Agenda eliminada',
+      warning: 'Funcionalidad parcialmente implementada'
+    });
+
   } catch (error) {
-    console.error('Error al eliminar agenda:', error);
-    res.json({ status: 'error', mensaje: 'Error interno del servidor.' });
+    console.error('❌ Error al eliminar agenda:', error);
+    res.json({ 
+      status: 'error', 
+      mensaje: 'Error interno del servidor.',
+      detalle: error.message 
+    });
   }
 });
 

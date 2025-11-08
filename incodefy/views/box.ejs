@@ -20,7 +20,7 @@
             <%- include('navbar') %>
 
             <div class="main">
-                <!-- Botón flotante: Consultas en curso -->
+                <!--  
                 <% if (canWrite) { %>
                     <a href="/en-curso"
                         class="fab-consultas"
@@ -31,6 +31,7 @@
                         <i class="fas fa-stethoscope" aria-hidden="true"></i>
                     </a>
                 <% } %>
+                -->
 
                 <!-- Botón flotante: Volver arriba -->
                 <button id="backToTop"
@@ -127,7 +128,7 @@
                                 <h3><%= box.nombre %></h3>
                                 <div id="info-box-<%= box.id %>" class="info-box">
                                     <div class="contenido-box oculto">
-                                        <p><%= t('box.next_appointment_placeholder') %></p>
+                                        <p></p>
                                     </div>
                                     <div class="estado-bar <%= box.estado.replace(/\s+/g, '-').toLowerCase() %>">
                                         <%= box.estado %>
@@ -153,6 +154,7 @@
     <script>
         window.translations = {
             nextAppointment: "<%= t('box.next_appointment') %>",
+            notNextAppointment: "<%= t('box.no_next_consultations') %>",
             doctor: "<%= t('common.doctor') %>",
             specialty: "<%= t('common.specialty') %>",
             time: "<%= t('common.hour') || t('common.start_time') %>",

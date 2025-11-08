@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { obtenerConsultasEnCurso, actualizarEstadoAgenda } = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
+
+router.use(requireAuth);
+router.use(attachApiClient);
 
 const ESTADO_REALIZADA_ID = 1;
 const ESTADO_PENDIENTE_ID = 2;
@@ -18,11 +22,12 @@ function nowLocal() {
 router.get('/en-curso', checkPermission('box.write'), (req, res) => {
   res.render('consultas_en_curso', { 
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {}
+    personalization: req.session.user?.personalization || {},
+    t: req.t,           // ← AGREGAR ESTO
+    i18n: req.i18n      // ← Y ESTO
   });
 });
 
-// 2. API: obtener consultas en curso
 router.get('/consultas/en-curso/api', async (req, res) => {
   try {
     const { ahora, full } = nowLocal();
@@ -31,7 +36,9 @@ router.get('/consultas/en-curso/api', async (req, res) => {
 
     const estadosPermitidos = [ESTADO_PENDIENTE_ID, ESTADO_REALIZADA_ID];
 
-    const consultas = await obtenerConsultasEnCurso(hora_actual, estadosPermitidos);
+    const consultas = await req.apiClient.obtenerConsultasEnCurso(hora_actual, estadosPermitidos);
+
+    console.log("Consultas: ", consultas)
 
     const data = consultas.map((a) => {
       const estadoKey = a.estado_id === ESTADO_REALIZADA_ID ? 'confirmed' : 'pending';
@@ -72,7 +79,7 @@ router.post('/consultas/en-curso/toggle', async (req, res) => {
       return res.status(400).json({ error: 'Parámetros inválidos' });
     }
 
-    const result = await actualizarEstadoAgenda(id, to);
+    const result = await req.apiClient.actualizarEstadoAgenda(id, to);
 
     if (result.success) {
       res.json({ ok: true, idagenda: id, nuevo_estado_id: to });

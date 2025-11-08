@@ -1,72 +1,107 @@
 // routes/notificaciones.js
 const express = require('express');
 const router = express.Router();
-const { obtenerNotificaciones, obtenerMedicoNombre, obtenerBoxNombre } = require("../db");
+const requireAuth = require('../middleware/requireAuth');
+const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
 
-// Página de historial
+router.use(requireAuth);
+router.use(attachApiClient);
+
 router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), (req, res) => {
   res.render('historial_notificaciones', {
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {}
+    personalization: req.session.user?.personalization || {},
+    user: req.session.user
   });
 });
 
-// API de notificaciones
 router.get('/notificaciones-usuario', async (req, res) => {
   try {
-    // 1. Obtener todas las notificaciones desde DynamoDB
-    const notificaciones = await obtenerNotificaciones();
+    console.log('📡 Obteniendo notificaciones del usuario:', req.session.user.email);
 
-    // 2. Obtener todos los médicos y boxes para mapeo eficiente (realizamos una consulta para cada uno cuando los necesitemos)
+    const notificaciones = await req.apiClient.obtenerNotificaciones();
+
+    console.log(notificaciones)
+    
+    console.log(`✅ ${notificaciones.length} notificaciones obtenidas`);
+
     const data = await Promise.all(notificaciones.map(async (n) => {
       let detalleProcesado = [];
-      let mensajeTraducido = n.descripcion; // Usar mensaje original por defecto
+      let mensajeTraducido = n.descripcion;
 
       try {
-        // Intentar traducir el mensaje principal
         const match = n.descripcion.match(/(\d+)/);
         const count = match ? parseInt(match[1], 10) : 0;
         if (count > 0) {
           mensajeTraducido = req.t('notifications.import_success', { count });
         }
 
-        const detalleOriginal = JSON.parse(n.detalle);
+        const detalleOriginal = typeof n.detalle === 'string' 
+          ? JSON.parse(n.detalle) 
+          : n.detalle;
+        
         if (Array.isArray(detalleOriginal)) {
           detalleProcesado = await Promise.all(detalleOriginal.map(async (consulta) => {
-            const medicoNombre = await obtenerMedicoNombre(consulta.medico) || req.t('common.unknown_doctor');
-            const boxNombre = await obtenerBoxNombre(consulta.box) || req.t('common.unknown_box');
-            
-            let estadoTraducido = req.t('common.pending'); // Por defecto
-            if (consulta.estado) {
-              const estadoKey = consulta.estado.toLowerCase().replace(/\s+/g, '_');
-              estadoTraducido = req.t(`notifications.${estadoKey}`, req.t('common.pending'));
-            }
+            try {
+              
+              let estadoTraducido = req.t('common.pending');
+              if (consulta.estado) {
+                const estadoKey = consulta.estado.toLowerCase().replace(/\s+/g, '_');
+                estadoTraducido = req.t(`notifications.${estadoKey}`, req.t('common.pending'));
+              }
 
-            return {
-              ...consulta,
-              medico: medicoNombre,
-              box: boxNombre,
-              estado: estadoTraducido,
-              tipoconsulta: req.t(`common.${(consulta.tipoconsulta || 'medical').toLowerCase()}`)
-            };
+              const tipoConsulta = consulta.tipoconsulta;
+              const normalizedTipo = String(tipoConsulta || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+              const tipoConsultaTraducido = normalizedTipo === 'medica'
+                ? req.t('common.medical')
+                : req.t('common.non_medical');
+
+              return {
+                fecha: consulta.fecha,
+                horaInicio: consulta.horaInicio || consulta.horainicio,
+                horaFin: consulta.horaFin || consulta.horafin,
+                medico: consulta.medico,
+                box: consulta.box,
+                estado: estadoTraducido,
+                tipoconsulta: tipoConsultaTraducido
+              };
+            } catch (consultaErr) {
+              console.error('❌ Error procesando consulta individual:', consultaErr);
+              return {
+                fecha: consulta.fecha || '',
+                horaInicio: consulta.horaInicio || consulta.horainicio || '',
+                horaFin: consulta.horaFin || consulta.horafin || '',
+                medico: req.t('common.unknown_doctor'),
+                box: req.t('common.unknown_box'),
+                estado: req.t('common.pending'),
+                tipoconsulta: req.t('common.medical')
+              };
+            }
           }));
         }
       } catch (e) {
-        // Si hay un error, mantener los valores originales
-        detalleProcesado = n.detalle;
+        console.error('❌ Error procesando notificación:', e);
+        detalleProcesado = typeof n.detalle === 'string' ? n.detalle : JSON.stringify(n.detalle);
       }
 
       return {
-        fecha: n.fecha ? n.fecha.toISOString().slice(0, 19).replace('T', ' ') : '',
+        id: n.id || n.idNotificacion,
+        fecha: n.fecha ? new Date(n.fecha).toISOString().slice(0, 19).replace('T', ' ') : '',
         mensaje: mensajeTraducido,
-        detalle: detalleProcesado
+        detalle: detalleProcesado,
+        tipo: n.tipo || 'info',
+        leida: n.leida || false
       };
     }));
 
+    console.log(`✅ ${data.length} notificaciones procesadas correctamente`);
+
     res.json({ 
       notificaciones: data,
-      // Enviar cabeceras traducidas para la tabla del modal
       headers: {
         date: req.t('common.date'),
         start_time: req.t('common.start_time'),
@@ -78,9 +113,12 @@ router.get('/notificaciones-usuario', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Error al cargar notificaciones:', err);
-    res.status(500).json({ error: 'Error al cargar notificaciones' });
+    console.error('❌ Error al cargar notificaciones:', err);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ 
+      error: 'Error al cargar notificaciones',
+      message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
-
 module.exports = router;

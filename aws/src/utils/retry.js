@@ -4,7 +4,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// backoff exponencial + jitter
 async function retryWithJitter(fn, { maxAttempts = 3, baseDelayMs = 200 } = {}) {
   let lastError;
 
@@ -15,14 +14,11 @@ async function retryWithJitter(fn, { maxAttempts = 3, baseDelayMs = 200 } = {}) 
       lastError = err;
 
       if (attempt === maxAttempts) {
-        // ya no hay más intentos
         break;
       }
 
-      // backoff exponencial
       const backoff = baseDelayMs * Math.pow(2, attempt - 1);
 
-      // jitter aleatorio entre 0 y baseDelayMs
       const jitter = Math.floor(Math.random() * baseDelayMs);
 
       const delay = backoff + jitter;
