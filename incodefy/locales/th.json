@@ -1,52 +1,52 @@
 {
   "colors": {
-    "blue": "Blue",
-    "red": "Red",
-    "green": "Green",
-    "purple": "Purple",
-    "orange": "Orange"
+    "blue": "น้ำเงิน",
+    "red": "แดง",
+    "green": "เขียว",
+    "purple": "ม่วง",
+    "orange": "ส้ม"
   },
   "font_scales": {
-    "small": "Small",
-    "medium": "Medium",
-    "large": "Large"
+    "small": "เล็ก",
+    "medium": "กลาง",
+    "large": "ใหญ่"
   },
   "languages": {
-    "es": "Spanish",
-    "en": "English",
-    "pt": "Portuguese",
-    "it": "Italian",
-    "zh": "Chinese",
-    "hi": "Hindi",
-    "ar": "Arabic",
-    "bn": "Bengali",
-    "ru": "Russian",
-    "ja": "Japanese",
-    "pa": "Punjabi",
-    "de": "German",
-    "jv": "Javanese",
-    "ko": "Korean",
-    "fr": "French",
-    "te": "Telugu",
-    "mr": "Marathi",
-    "tr": "Turkish",
-    "ta": "Tamil",
-    "vi": "Vietnamese",
-    "ur": "Urdu",
-    "nl": "Dutch",
-    "pl": "Polish",
-    "th": "Thai",
-    "fa": "Persian"
+    "es": "สเปน",
+    "en": "อังกฤษ",
+    "pt": "โปรตุเกส",
+    "it": "อิตาลี",
+    "zh": "จีน",
+    "hi": "ฮินดี",
+    "ar": "อาหรับ",
+    "bn": "เบงกาลี",
+    "ru": "รัสเซีย",
+    "ja": "ญี่ปุ่น",
+    "pa": "ปัญจาบ",
+    "de": "เยอรมัน",
+    "jv": "ชวา",
+    "ko": "เกาหลี",
+    "fr": "ฝรั่งเศส",
+    "te": "เตลูกู",
+    "mr": "มราฐี",
+    "tr": "ตุรกี",
+    "ta": "ทมิฬ",
+    "vi": "เวียดนาม",
+    "ur": "อูรดู",
+    "nl": "ดัตช์",
+    "pl": "โปแลนด์",
+    "th": "ไทย",
+    "fa": "เปอร์เซีย"
   },
   "profile": {
     "title": "My Profile - Customization",
     "header": "My Profile",
     "subtitle": "Customize your interface appearance",
     "theme": {
-      "title": "Theme",
+      "title": "ธีม",
       "mode": "Mode:",
-      "light": "Light",
-      "dark": "Dark",
+      "light": "สว่าง",
+      "dark": "มืด",
       "primary_color": "Main color:"
     },
     "font": {
@@ -54,7 +54,7 @@
       "scale": "Text scale:"
     },
     "language": {
-      "title": "Language",
+      "title": "ภาษา",
       "interface_language": "Interface language:"
     },
     "buttons": {
@@ -71,20 +71,20 @@
     }
   },
   "navbar": {
-    "dashboard": "Dashboard",
-    "agenda": "Schedule",
-    "box": "Box",
-    "notifications": "Notifications",
-    "profile": "Profile",
-    "logout": "Logout"
+    "dashboard": "แดชบอร์ด",
+    "agenda": "ตารางเวลา",
+    "box": "ห้อง",
+    "notifications": "การแจ้งเตือน",
+    "profile": "โปรไฟล์",
+    "logout": "ออกจากระบบ"
   },
   "box": {
-    "title": "Box Status",
+    "title": "สถานะห้อง",
     "in_progress_aria": "View in-progress appointments",
     "in_progress_title": "In-progress appointments",
     "back_to_top_aria": "Back to top",
     "back_to_top_title": "Back to top",
-    "header": "Box Status",
+    "header": "สถานะห้อง",
     "filters": {
       "filter_corridor": "Filter by corridor...",
       "filter_box": "Filter by box...",
@@ -106,12 +106,12 @@
     "copyright": "© 2025 Incodefy. Medical Agenda System - All rights reserved."
   },
   "login": {
-    "title": "Login",
-    "email": "Email",
-    "password": "Password",
-    "remember_me": "Remember me",
+    "title": "เข้าสู่ระบบ",
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "remember_me": "จดจำฉัน",
     "forgot_password": "Forgot your password?",
-    "login_button": "Login",
+    "login_button": "เข้าสู่ระบบ",
     "show_password": "Show password"
   },
   "dashboard": {
@@ -122,9 +122,9 @@
       "date_range": "Date range",
       "from": "From",
       "to": "To",
-      "specialties": "Specialties",
+      "specialties": "ความเชี่ยวชาญ",
       "select_all": "Select All",
-      "boxes": "Boxes",
+      "boxes": "ห้องต่างๆ",
       "reset": "Reset"
     },
     "kpi": {
@@ -151,37 +151,37 @@
     "loading": "Loading data..."
   },
   "specialties": {
-    "cardiologia": "Cardiology",
-    "pediatria": "Pediatrics",
+    "cardiologia": "โรคหัวใจ",
+    "pediatria": "กุมารเวชกรรม",
     "ginecologia": "Gynecology",
     "traumatologia": "Traumatology",
-    "dermatologia": "Dermatology",
-    "neurologia": "Neurology"
+    "dermatologia": "โรคผิวหนัง",
+    "neurologia": "โรคระบบประสาท"
   },
   "days": {
-    "monday": "Monday",
-    "tuesday": "Tuesday",
-    "wednesday": "Wednesday",
-    "thursday": "Thursday",
-    "friday": "Friday",
-    "saturday": "Saturday",
-    "sunday": "Sunday"
+    "monday": "จันทร์",
+    "tuesday": "อังคาร",
+    "wednesday": "พุธ",
+    "thursday": "พฤหัสบดี",
+    "friday": "ศุกร์",
+    "saturday": "เสาร์",
+    "sunday": "อาทิตย์"
   },
   "agenda": {
-    "title": "Agenda",
+    "title": "วาระ",
     "main_title": "Agenda System",
     "main_subtitle": "Manage your medical agenda efficiently",
     "management": {
       "title": "Agenda Management",
       "description": "View and manage your medical appointments",
-      "box": "Box",
-      "doctor": "Doctor"
+      "box": "ห้อง",
+      "doctor": "แพทย์"
     },
     "data": {
       "title": "Data Management",
       "description": "Export and import consultation information",
-      "import": "Import",
-      "export": "Export"
+      "import": "นำเข้า",
+      "export": "ส่งออก"
     },
     "no_permissions": {
       "title": "No permissions available",
@@ -205,8 +205,8 @@
     "instrument_categories_aria": "Instrument categories"
   },
   "notifications": {
-    "history_title": "Notification History",
-    "history_header": "Notification History",
+    "history_title": "ประวัติการแจ้งเตือน",
+    "history_header": "ประวัติการแจ้งเตือน",
     "history_subheader": "Stay up to date with all system activities and updates",
     "view_details_aria": "View notification details",
     "attended": "Attended",
@@ -232,14 +232,14 @@
       "select_time_placeholder": "-- Select time --"
     },
     "table": {
-      "hour": "Time",
-      "monday": "Monday",
-      "tuesday": "Tuesday",
-      "wednesday": "Wednesday",
-      "thursday": "Thursday",
-      "friday": "Friday",
-      "saturday": "Saturday",
-      "sunday": "Sunday"
+      "hour": "เวลา",
+      "monday": "จันทร์",
+      "tuesday": "อังคาร",
+      "wednesday": "พุธ",
+      "thursday": "พฤหัสบดี",
+      "friday": "ศุกร์",
+      "saturday": "เสาร์",
+      "sunday": "อาทิตย์"
     },
     "drag_to_unschedule": "Drag here to unschedule",
     "toast": {
@@ -251,22 +251,22 @@
     }
   },
   "common": {
-    "hour": "Time",
-    "specialty": "Specialty",
-    "import": "Import",
-    "export": "Export",
+    "hour": "เวลา",
+    "specialty": "ความเชี่ยวชาญ",
+    "import": "นำเข้า",
+    "export": "ส่งออก",
     "data_management": "Data Management",
     "view_details": "View details",
     "import_success": "Import completed successfully",
     "import_details": "Import Details",
-    "close": "Close",
+    "close": "ปิด",
     "import_table_caption": "Medical consultations import details",
-    "date": "Date",
-    "start_time": "Start Time",
-    "end_time": "End Time",
+    "date": "วันที่",
+    "start_time": "เวลาเริ่มต้น",
+    "end_time": "เวลาสิ้นสุด",
     "consult_type": "Consult Type",
-    "status": "Status",
-    "pending": "Pending",
+    "status": "สถานะ",
+    "pending": "รอดำเนินการ",
     "confirmed": "Confirmed",
     "total_in_progress": "Total in Progress",
     "no_results": "No results found",
@@ -277,17 +277,17 @@
     "filters_title": "Filters",
     "select_all": "Select All",
     "select_corridor": "Select Corridor",
-    "select_box": "Select Box",
+    "select_box": "เลือกห้อง",
     "select_specialty": "Select Specialty",
     "select_doctor": "Select Doctor",
     "select_date": "Select Date",
-    "select_time": "Time",
+    "select_time": "เวลา",
     "select_type": "Select type",
     "medical": "Medical",
     "non_medical": "Non-medical",
-    "confirm_appointment": "Confirm Appointment",
-  "unconfirm_appointment": "Unconfirm",
-    "appointments": "Appointments",
+    "confirm_appointment": "ยืนยันนัดหมาย",
+    "unconfirm_appointment": "Unconfirm",
+    "appointments": "การนัดหมาย",
     "appointments_management": "Appointments Management",
     "appointments_management_desc": "View and manage your medical appointments",
     "corridor": "Corridor",
@@ -304,7 +304,7 @@
     "boxes_waiting": "Waiting",
     "boxes_in_use": "In Use",
     "boxes_disabled": "Disabled",
-    "no_notifications": "No notifications",
+    "no_notifications": "ไม่มีการแจ้งเตือน",
     "no_notifications_desc": "When you have new notifications, they will appear here.",
     "error_loading_notifications": "Error loading notifications",
     "try_again_later": "Please try again later.",
@@ -351,8 +351,8 @@
     "medical_instruments": "Medical",
     "furniture": "Furniture",
     "no_items_in_category": "No items in this category.",
-    "doctor": "Doctor",
-    "box": "Box",
+    "doctor": "แพทย์",
+    "box": "ห้อง",
     "unknown_doctor": "Unknown doctor",
     "unknown_box": "Unknown box"
   }

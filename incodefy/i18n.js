@@ -13,8 +13,34 @@ i18next
     },
     // Idioma por defecto si no se detecta ninguno
     fallbackLng: 'es',
-    // Lista de idiomas soportados
-    supportedLngs: ['es', 'en'],
+    // Lista de idiomas soportados (25 más populares del mundo)
+    supportedLngs: [
+      'es', // Español
+      'en', // Inglés
+      'pt', // Portugués
+      'it', // Italiano
+      'zh', // Chino (Mandarín)
+      'hi', // Hindi
+      'ar', // Árabe
+      'bn', // Bengalí
+      'ru', // Ruso
+      'ja', // Japonés
+      'pa', // Panyabí
+      'de', // Alemán
+      'jv', // Javanés
+      'ko', // Coreano
+      'fr', // Francés
+      'te', // Telugu
+      'mr', // Maratí
+      'tr', // Turco
+      'ta', // Tamil
+      'vi', // Vietnamita
+      'ur', // Urdu
+      'nl', // Neerlandés (Holandés)
+      'pl', // Polaco
+      'th', // Tailandés
+      'fa'  // Persa (Farsi)
+    ],
     // Opciones para el detector de idioma (aunque lo sobreescribiremos)
     detection: {
       order: ['querystring', 'cookie', 'header'],

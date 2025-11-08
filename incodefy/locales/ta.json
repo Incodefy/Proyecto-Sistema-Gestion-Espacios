@@ -1,52 +1,52 @@
 {
   "colors": {
-    "blue": "Blue",
-    "red": "Red",
-    "green": "Green",
-    "purple": "Purple",
-    "orange": "Orange"
+    "blue": "நீலம்",
+    "red": "சிவப்பு",
+    "green": "பச்சை",
+    "purple": "ஊதா",
+    "orange": "ஆரஞ்சு"
   },
   "font_scales": {
-    "small": "Small",
-    "medium": "Medium",
-    "large": "Large"
+    "small": "சிறிய",
+    "medium": "நடுத்தர",
+    "large": "பெரிய"
   },
   "languages": {
-    "es": "Spanish",
-    "en": "English",
-    "pt": "Portuguese",
-    "it": "Italian",
-    "zh": "Chinese",
-    "hi": "Hindi",
-    "ar": "Arabic",
-    "bn": "Bengali",
-    "ru": "Russian",
-    "ja": "Japanese",
-    "pa": "Punjabi",
-    "de": "German",
-    "jv": "Javanese",
-    "ko": "Korean",
-    "fr": "French",
-    "te": "Telugu",
-    "mr": "Marathi",
-    "tr": "Turkish",
-    "ta": "Tamil",
-    "vi": "Vietnamese",
-    "ur": "Urdu",
-    "nl": "Dutch",
-    "pl": "Polish",
-    "th": "Thai",
-    "fa": "Persian"
+    "es": "ஸ்பானிஷ்",
+    "en": "ஆங்கிலம்",
+    "pt": "போர்த்துகீசியம்",
+    "it": "இத்தாலியன்",
+    "zh": "சீனம்",
+    "hi": "இந்தி",
+    "ar": "அரபிக்",
+    "bn": "வங்காளம்",
+    "ru": "ரஷ்யன்",
+    "ja": "ஜப்பானியம்",
+    "pa": "பஞ்சாபி",
+    "de": "ஜெர்மன்",
+    "jv": "ஜாவானீஸ்",
+    "ko": "கொரியன்",
+    "fr": "பிரெஞ்சு",
+    "te": "தெலுங்கு",
+    "mr": "மராத்தி",
+    "tr": "துருக்கி",
+    "ta": "தமிழ்",
+    "vi": "வியட்நாமீஸ்",
+    "ur": "உருது",
+    "nl": "டச்சு",
+    "pl": "போலிஷ்",
+    "th": "தாய்",
+    "fa": "பாரசீக"
   },
   "profile": {
     "title": "My Profile - Customization",
     "header": "My Profile",
     "subtitle": "Customize your interface appearance",
     "theme": {
-      "title": "Theme",
+      "title": "தீம்",
       "mode": "Mode:",
-      "light": "Light",
-      "dark": "Dark",
+      "light": "வெளிச்சம்",
+      "dark": "இருள்",
       "primary_color": "Main color:"
     },
     "font": {
@@ -54,7 +54,7 @@
       "scale": "Text scale:"
     },
     "language": {
-      "title": "Language",
+      "title": "மொழி",
       "interface_language": "Interface language:"
     },
     "buttons": {
@@ -71,20 +71,20 @@
     }
   },
   "navbar": {
-    "dashboard": "Dashboard",
-    "agenda": "Schedule",
-    "box": "Box",
-    "notifications": "Notifications",
-    "profile": "Profile",
-    "logout": "Logout"
+    "dashboard": "டாஷ்போர்டு",
+    "agenda": "அட்டவணை",
+    "box": "அறை",
+    "notifications": "அறிவிப்புகள்",
+    "profile": "சுயவிவரம்",
+    "logout": "வெளியேறு"
   },
   "box": {
-    "title": "Box Status",
+    "title": "அறை நிலை",
     "in_progress_aria": "View in-progress appointments",
     "in_progress_title": "In-progress appointments",
     "back_to_top_aria": "Back to top",
     "back_to_top_title": "Back to top",
-    "header": "Box Status",
+    "header": "அறை நிலை",
     "filters": {
       "filter_corridor": "Filter by corridor...",
       "filter_box": "Filter by box...",
@@ -106,12 +106,12 @@
     "copyright": "© 2025 Incodefy. Medical Agenda System - All rights reserved."
   },
   "login": {
-    "title": "Login",
-    "email": "Email",
-    "password": "Password",
-    "remember_me": "Remember me",
+    "title": "உள்நுழை",
+    "email": "மின்னஞ்சல்",
+    "password": "கடவுச்சொல்",
+    "remember_me": "என்னை நினைவில் வைத்திரு",
     "forgot_password": "Forgot your password?",
-    "login_button": "Login",
+    "login_button": "உள்நுழை",
     "show_password": "Show password"
   },
   "dashboard": {
@@ -122,9 +122,9 @@
       "date_range": "Date range",
       "from": "From",
       "to": "To",
-      "specialties": "Specialties",
+      "specialties": "சிறப்புகள்",
       "select_all": "Select All",
-      "boxes": "Boxes",
+      "boxes": "அறைகள்",
       "reset": "Reset"
     },
     "kpi": {
@@ -151,37 +151,37 @@
     "loading": "Loading data..."
   },
   "specialties": {
-    "cardiologia": "Cardiology",
-    "pediatria": "Pediatrics",
+    "cardiologia": "இருதய மருத்துவம்",
+    "pediatria": "குழந்தை மருத்துவம்",
     "ginecologia": "Gynecology",
     "traumatologia": "Traumatology",
-    "dermatologia": "Dermatology",
-    "neurologia": "Neurology"
+    "dermatologia": "தோல் மருத்துவம்",
+    "neurologia": "நரம்பியல்"
   },
   "days": {
-    "monday": "Monday",
-    "tuesday": "Tuesday",
-    "wednesday": "Wednesday",
-    "thursday": "Thursday",
-    "friday": "Friday",
-    "saturday": "Saturday",
-    "sunday": "Sunday"
+    "monday": "திங்கள்",
+    "tuesday": "செவ்வாய்",
+    "wednesday": "புதன்",
+    "thursday": "வியாழன்",
+    "friday": "வெள்ளி",
+    "saturday": "சனி",
+    "sunday": "ஞாயிறு"
   },
   "agenda": {
-    "title": "Agenda",
+    "title": "நிகழ்ச்சி நிரல்",
     "main_title": "Agenda System",
     "main_subtitle": "Manage your medical agenda efficiently",
     "management": {
       "title": "Agenda Management",
       "description": "View and manage your medical appointments",
-      "box": "Box",
-      "doctor": "Doctor"
+      "box": "அறை",
+      "doctor": "மருத்துவர்"
     },
     "data": {
       "title": "Data Management",
       "description": "Export and import consultation information",
-      "import": "Import",
-      "export": "Export"
+      "import": "இறக்குமதி செய்",
+      "export": "ஏற்றுமதி செய்"
     },
     "no_permissions": {
       "title": "No permissions available",
@@ -205,8 +205,8 @@
     "instrument_categories_aria": "Instrument categories"
   },
   "notifications": {
-    "history_title": "Notification History",
-    "history_header": "Notification History",
+    "history_title": "அறிவிப்பு வரலாறு",
+    "history_header": "அறிவிப்பு வரலாறு",
     "history_subheader": "Stay up to date with all system activities and updates",
     "view_details_aria": "View notification details",
     "attended": "Attended",
@@ -232,14 +232,14 @@
       "select_time_placeholder": "-- Select time --"
     },
     "table": {
-      "hour": "Time",
-      "monday": "Monday",
-      "tuesday": "Tuesday",
-      "wednesday": "Wednesday",
-      "thursday": "Thursday",
-      "friday": "Friday",
-      "saturday": "Saturday",
-      "sunday": "Sunday"
+      "hour": "நேரம்",
+      "monday": "திங்கள்",
+      "tuesday": "செவ்வாய்",
+      "wednesday": "புதன்",
+      "thursday": "வியாழன்",
+      "friday": "வெள்ளி",
+      "saturday": "சனி",
+      "sunday": "ஞாயிறு"
     },
     "drag_to_unschedule": "Drag here to unschedule",
     "toast": {
@@ -251,22 +251,22 @@
     }
   },
   "common": {
-    "hour": "Time",
-    "specialty": "Specialty",
-    "import": "Import",
-    "export": "Export",
+    "hour": "நேரம்",
+    "specialty": "சிறப்பு",
+    "import": "இறக்குமதி செய்",
+    "export": "ஏற்றுமதி செய்",
     "data_management": "Data Management",
     "view_details": "View details",
     "import_success": "Import completed successfully",
     "import_details": "Import Details",
-    "close": "Close",
+    "close": "மூடு",
     "import_table_caption": "Medical consultations import details",
-    "date": "Date",
-    "start_time": "Start Time",
-    "end_time": "End Time",
+    "date": "தேதி",
+    "start_time": "தொடக்க நேரம்",
+    "end_time": "முடிவு நேரம்",
     "consult_type": "Consult Type",
-    "status": "Status",
-    "pending": "Pending",
+    "status": "நிலை",
+    "pending": "நிலুவையில்",
     "confirmed": "Confirmed",
     "total_in_progress": "Total in Progress",
     "no_results": "No results found",
@@ -277,17 +277,17 @@
     "filters_title": "Filters",
     "select_all": "Select All",
     "select_corridor": "Select Corridor",
-    "select_box": "Select Box",
+    "select_box": "அறையைத் தேர்ந்தெடுக்கவும்",
     "select_specialty": "Select Specialty",
     "select_doctor": "Select Doctor",
     "select_date": "Select Date",
-    "select_time": "Time",
+    "select_time": "நேரம்",
     "select_type": "Select type",
     "medical": "Medical",
     "non_medical": "Non-medical",
-    "confirm_appointment": "Confirm Appointment",
-  "unconfirm_appointment": "Unconfirm",
-    "appointments": "Appointments",
+    "confirm_appointment": "சந்திப்பை உறுதிப்படுத்து",
+    "unconfirm_appointment": "Unconfirm",
+    "appointments": "சந்திப்புகள்",
     "appointments_management": "Appointments Management",
     "appointments_management_desc": "View and manage your medical appointments",
     "corridor": "Corridor",
@@ -304,7 +304,7 @@
     "boxes_waiting": "Waiting",
     "boxes_in_use": "In Use",
     "boxes_disabled": "Disabled",
-    "no_notifications": "No notifications",
+    "no_notifications": "அறிவிப்புகள் இல்லை",
     "no_notifications_desc": "When you have new notifications, they will appear here.",
     "error_loading_notifications": "Error loading notifications",
     "try_again_later": "Please try again later.",
@@ -351,8 +351,8 @@
     "medical_instruments": "Medical",
     "furniture": "Furniture",
     "no_items_in_category": "No items in this category.",
-    "doctor": "Doctor",
-    "box": "Box",
+    "doctor": "மருத்துவர்",
+    "box": "அறை",
     "unknown_doctor": "Unknown doctor",
     "unknown_box": "Unknown box"
   }
