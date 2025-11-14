@@ -150,6 +150,8 @@ router.post('/login', async (req, res) => {
           'Content-Type': 'application/json'
         }
       });
+
+      console.log("permisos: ", req.session.user.permissions)
       
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json();

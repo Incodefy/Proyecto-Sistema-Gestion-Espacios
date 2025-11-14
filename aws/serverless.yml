@@ -7,7 +7,7 @@ provider:
   region: ${env:AWS_REGION, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   
-  role: ${env:AWS_ROLE, 'arn:aws:iam::837538831487:role/LabRole'}
+  role: ${env:AWS_ROLE, 'arn:aws:iam::160419694445:role/LabRole'}
   
   tags:
     Project: HospitalPadreHurtado
@@ -328,6 +328,84 @@ functions:
           path: /admin/activity-stats
           authorizer:
             name: cognitoJwt
+
+  # === FUNCIONES DE CONFIGURACIÓN DE ESPACIOS ===
+  guardarConfiguracionEspacios:
+    handler: src/handlers/espacios/configuracion.guardarConfiguracion
+    events:
+      - httpApi:
+          method: POST
+          path: /api/espacios/configuracion
+          authorizer:
+            name: cognitoJwt
+    timeout: 30
+    description: Guarda la configuración de nomenclatura y espacios
+
+  obtenerConfiguracionEspacios:
+    handler: src/handlers/espacios/configuracion.obtenerConfiguracion
+    events:
+      - httpApi:
+          method: GET
+          path: /api/espacios/configuracion
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Obtiene la configuración de nomenclatura de espacios
+
+  listarEspacios:
+    handler: src/handlers/espacios/configuracion.listarEspacios
+    events:
+      - httpApi:
+          method: GET
+          path: /api/espacios/lista
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Lista todos los espacios de un grupo
+
+  asignarGrupoActivo:
+    handler: src/handlers/espacios/configuracion.asignarGrupoActivo
+    events:
+      - httpApi:
+          method: PUT
+          path: /api/espacios/asignar-grupo
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Asigna un grupo de espacios como activo
+
+  obtenerGrupoActivo:
+    handler: src/handlers/espacios/configuracion.obtenerGrupoActivo
+    events:
+      - httpApi:
+          method: GET
+          path: /api/espacios/grupo-activo
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Obtiene el grupo de espacios activo del usuario
+
+  eliminarConfiguracionEspacios:
+    handler: src/handlers/espacios/configuracion.eliminarConfiguracion
+    events:
+      - httpApi:
+          method: DELETE
+          path: /api/espacios/configuracion
+          authorizer:
+            name: cognitoJwt
+    timeout: 30
+    description: Elimina una configuración completa de espacios
+
+  listarGruposUsuario:
+    handler: src/handlers/espacios/configuracion.listarGruposUsuario
+    events:
+      - httpApi:
+          method: GET
+          path: /api/espacios/grupos-usuario
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Lista todos los grupos a los que pertenece el usuario
   
   # === FUNCIONES DB ===
   dbProxy:

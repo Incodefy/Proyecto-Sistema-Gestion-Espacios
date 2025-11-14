@@ -163,13 +163,17 @@ app.use('/', requireAuth, notificacionesRoutes);
 const calendarioRouter = require('./routes/calendario');
 app.use('/', requireAuth, calendarioRouter);
 
+// Configuración espacios
+const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
+app.use('/', requireAuth, onboardingEspaciosRouter);
+
 // Perfil
 app.get('/perfil', requireAuth, (req, res) => {
   res.render('perfil', {
     currentPath: req.path,
     personalization: req.session.user?.personalization || {},
     idToken: req.session.user?.idToken,
-    language: req.session.language || req.language // Usar idioma de sesión
+    language: req.session.language || req.language
   });
 });
 

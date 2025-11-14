@@ -63,68 +63,168 @@ async function verifyPermission(userEmail, requiredPermission) {
  * Asigna un rol a un usuario con idempotencia y resiliencia
  */
 module.exports.assignRole = async (event) => {
-  try {
-    const { user_email, role } = JSON.parse(event.body || "{}");
+  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [AssignRole] Inicio asignación | ${TRACE_ID} ===`);
 
-    if (!user_email || !role) {
-      return response(400, { ok: false, error: "user_email y role son obligatorios" });
+  try {
+    console.log(`[${TRACE_ID}] 🔎 Validando entrada...`);
+
+    // 1) PARSEO DEL BODY
+    let body = {};
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch (jsonErr) {
+      console.error(`[${TRACE_ID}] ❌ Error parseando JSON`, jsonErr);
+      return response(400, { ok: false, error: "JSON inválido en el body", trace_id: TRACE_ID });
     }
 
+    const { user_email, role } = body;
+
+    // 2) VALIDACIONES BÁSICAS
+    if (!user_email || !role) {
+      console.warn(`[${TRACE_ID}] ⚠️ Campos faltantes`);
+      return response(400, {
+        ok: false,
+        error: "user_email y role son obligatorios",
+        received: body,
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 3) VALIDACIÓN FORMATO EMAIL
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user_email)) {
+      console.warn(`[${TRACE_ID}] ⚠️ Formato de email inválido`);
+      return response(400, {
+        ok: false,
+        error: "Formato de email inválido",
+        user_email,
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 4) VALIDACIÓN DE ROL
     if (!PREDEFINED_ROLES[role]) {
+      console.warn(`[${TRACE_ID}] ⚠️ Rol no encontrado en PREDEFINED_ROLES`);
       return response(400, {
         ok: false,
         error: "Rol no válido",
         available_roles: Object.keys(PREDEFINED_ROLES),
+        trace_id: TRACE_ID
       });
     }
 
-    const idempotencyKey = `assignRole-${user_email}-${role}`;
-    if (await wasAlreadyProcessed(idempotencyKey)) {
-      console.log(`[Permissions] ⏭️ Asignación ya procesada: ${idempotencyKey}`);
-      return response(200, { ok: true, message: "Rol ya estaba asignado" });
+    // 5) VALIDAR TOKEN DEL ADMIN
+    const requesterEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    if (!requesterEmail) {
+      console.warn(`[${TRACE_ID}] ❌ No hay token válido en Authorization`);
+      return response(401, {
+        ok: false,
+        error: "Token inválido o ausente. Debes enviar Authorization: Bearer <token>",
+        trace_id: TRACE_ID
+      });
     }
 
+    console.log(`[${TRACE_ID}] 👤 Petición hecha por: ${requesterEmail}`);
+
+    // 6) VALIDAR QUE EL ADMIN TENGA permiso admin.users
+    const hasPermission = await verifyPermission(requesterEmail, "admin.users");
+    if (!hasPermission) {
+      console.warn(`[${TRACE_ID}] ❌ Usuario no tiene permiso admin.users`);
+      return response(403, {
+        ok: false,
+        error: "No tienes permiso para asignar roles",
+        required_permission: "admin.users",
+        requester: requesterEmail,
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 7) IDEMPOTENCIA
+    const timestamp = new Date().toISOString();
+    const idempotencyKey = `assignRole-${user_email}-${role}-${timestamp}`;
+
+    console.log(`[${TRACE_ID}] 🔁 Verificando idempotencia...`);
+    if (await wasAlreadyProcessed(idempotencyKey)) {
+      console.log(`[${TRACE_ID}] ⏭️ Asignación ya procesada`);
+      return response(200, {
+        ok: true,
+        message: "Rol ya estaba asignado",
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 8) PREPARAR ÍTEM PARA DYNAMO
     const permissions = PREDEFINED_ROLES[role];
     const item = {
       user_email,
       role,
       permissions,
-      assigned_at: new Date().toISOString(),
+      assigned_at: timestamp,
+      assigned_by: requesterEmail
     };
 
+    // 9) BREAKER
     if (!dynamoBreaker.shouldAllow()) {
-      console.warn("[Permissions] Circuit breaker activo (DynamoDB). Operación pausada.");
-      throw new Error("CircuitBreakerOpen");
+      console.warn(`[${TRACE_ID}] ⚠️ Circuit breaker activo`);
+      return response(503, {
+        ok: false,
+        error: "Circuit breaker activo, espere unos segundos",
+        trace_id: TRACE_ID
+      });
     }
 
-    await retryWithJitter(
-      async () => {
-        await docClient.send(new PutCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          Item: item,
-        }));
-        dynamoBreaker.reportSuccess();
-      },
-      { maxAttempts: 3, baseDelayMs: 400 }
-    );
+    // 10) ESCRITURA EN DYNAMO
+    console.log(`[${TRACE_ID}] 💾 Guardando en Dynamo...`);
 
+    try {
+      await retryWithJitter(
+        async () => {
+          await docClient.send(new PutCommand({
+            TableName: process.env.USER_ROLES_TABLE,
+            Item: item,
+          }));
+          dynamoBreaker.reportSuccess();
+        },
+        { maxAttempts: 3, baseDelayMs: 300 }
+      );
+    } catch (dynamoErr) {
+      console.error(`[${TRACE_ID}] ❌ Error al guardar en Dynamo`, dynamoErr);
+      return response(500, {
+        ok: false,
+        error: "Error guardando en DynamoDB",
+        details: dynamoErr.message,
+        table: process.env.USER_ROLES_TABLE,
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 11) MARCAR COMO PROCESADO
     await markAsProcessed(idempotencyKey);
-    console.log(`[Permissions] Rol asignado correctamente a ${user_email}: ${role}`);
+
+    console.log(`[${TRACE_ID}] ✅ Rol asignado correctamente`);
 
     return response(200, {
       ok: true,
       message: "Rol asignado correctamente",
-      user_email,
-      role,
+      assigned_to: user_email,
+      assigned_role: role,
       permissions,
+      trace_id: TRACE_ID
     });
 
   } catch (err) {
     dynamoBreaker.reportFailure();
-    console.error("[Permissions] ❌ Error asignando rol:", err.message);
-    return response(500, { ok: false, error: "Error interno del servidor" });
+    console.error(`[${TRACE_ID}] ❌ Error inesperado`, err);
+
+    return response(500, {
+      ok: false,
+      error: "Error interno del servidor",
+      details: err.message,
+      trace_id: TRACE_ID
+    });
   }
 };
+
 
 /**
  * DELETE /remove-role
@@ -202,33 +302,136 @@ module.exports.removeRole = async (event) => {
  * Obtiene los permisos del usuario autenticado
  */
 module.exports.getMyPermissions = async (event) => {
-  try {
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    if (!userEmail) return response(401, { ok: false, error: "Usuario no autenticado" });
+  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [getMyPermissions] Inicio | ${TRACE_ID} ===`);
 
-    const result = await retryWithJitter(
-      async () => {
-        const res = await docClient.send(new GetCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          Key: { user_email: userEmail }
-        }));
-        dynamoBreaker.reportSuccess();
-        return res;
-      },
-      { maxAttempts: 3, baseDelayMs: 300 }
+  try {
+    // 1) VALIDAR TOKEN
+    console.log(`[${TRACE_ID}] 🔍 Validando token...`);
+
+    const claims = event.requestContext?.authorizer?.jwt?.claims;
+    if (!claims) {
+      console.warn(`[${TRACE_ID}] ❌ No llegaron claims en el JWT (problema con authorizer Cognito)`);
+      return response(401, {
+        ok: false,
+        error: "Token inválido o malformado",
+        trace_id: TRACE_ID
+      });
+    }
+
+    const userEmail = claims.email;
+    if (!userEmail) {
+      console.warn(`[${TRACE_ID}] ❌ El token no tiene email`);
+      return response(401, {
+        ok: false,
+        error: "Token JWT no contiene el email",
+        trace_id: TRACE_ID
+      });
+    }
+
+    console.log(`[${TRACE_ID}] ✅ Usuario autenticado: ${userEmail}`);
+
+    // 2) VALIDAR QUE LA TABLA EXISTA
+    if (!process.env.USER_ROLES_TABLE) {
+      console.error(`[${TRACE_ID}] ❌ USER_ROLES_TABLE no está definido en environment`);
+      return response(500, {
+        ok: false,
+        error: "Tabla USER_ROLES_TABLE no configurada",
+        trace_id: TRACE_ID
+      });
+    }
+
+    console.log(`[${TRACE_ID}] 📄 Consultando DynamoDB: ${process.env.USER_ROLES_TABLE}`);
+
+    // 3) CONSULTA A DYNAMO
+    let result;
+    try {
+      result = await retryWithJitter(
+        async () => {
+          const res = await docClient.send(
+            new GetCommand({
+              TableName: process.env.USER_ROLES_TABLE,
+              Key: { user_email: userEmail }
+            })
+          );
+          dynamoBreaker.reportSuccess();
+          return res;
+        },
+        { maxAttempts: 3, baseDelayMs: 300 }
+      );
+    } catch (err) {
+      console.error(
+        `[${TRACE_ID}] ❌ Error al consultar DynamoDB`,
+        err.message
+      );
+      return response(500, {
+        ok: false,
+        error: "Error leyendo permisos en DynamoDB",
+        details: err.message,
+        trace_id: TRACE_ID
+      });
+    }
+
+    // 4) VALIDAR QUE EL FORMATO DEL ÍTEM SEA CORRECTO
+    if (result && result.Item) {
+      console.log(`[${TRACE_ID}] ✅ Registro encontrado en DynamoDB`);
+
+      if (result.Item.permissions && !Array.isArray(result.Item.permissions)) {
+        console.error(
+          `[${TRACE_ID}] ❌ El campo permissions NO es un array. Valor actual:`,
+          result.Item.permissions
+        );
+
+        return response(500, {
+          ok: false,
+          error: "El campo permissions tiene un formato incorrecto (debe ser array)",
+          received_permissions: result.Item.permissions,
+          trace_id: TRACE_ID
+        });
+      }
+    } else {
+      console.warn(`[${TRACE_ID}] ⚠️ Usuario sin registro en la tabla, retornando rol 'none'`);
+    }
+
+    // 5) ARMAR OBJETO DE PERMISOS
+    const userPermissions =
+      result.Item || {
+        user_email: userEmail,
+        role: "none",
+        permissions: []
+      };
+
+    console.log(
+      `[${TRACE_ID}] 🎟️ Permisos obtenidos:`,
+      userPermissions.permissions
     );
 
-    const userPermissions = result.Item || { user_email: userEmail, role: "none", permissions: [] };
+    // 6) GENERAR CONFIGURACIÓN PARA UI
     const uiConfig = generateUIConfig(userPermissions.permissions || []);
 
-    return response(200, { ok: true, ...userPermissions, ui_config: uiConfig });
+    console.log(`[${TRACE_ID}] ✅ Configuración UI generada`);
+
+    return response(200, {
+      ok: true,
+      trace_id: TRACE_ID,
+      ...userPermissions,
+      ui_config: uiConfig
+    });
 
   } catch (err) {
     dynamoBreaker.reportFailure();
-    console.error("[Permissions] Error obteniendo permisos:", err);
-    return response(500, { ok: false, error: "Error interno del servidor" });
+
+    console.error(`[${TRACE_ID}] ❌ Error inesperado en getMyPermissions`, err);
+
+    return response(500, {
+      ok: false,
+      error: "Error interno del servidor",
+      details: err.message,
+      trace_id: TRACE_ID
+    });
   }
 };
+
 
 /**
  * POST /check-permission
