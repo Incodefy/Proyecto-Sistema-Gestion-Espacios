@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Vista previa",
       "save": "Guardar cambios",
-      "reset": "Reiniciar cambios"
+      "reset": "Reiniciar cambios",
+      "cancel": "Cancelar"
     },
     "messages": {
       "saving": "Guardando...",
@@ -68,6 +69,13 @@
       "save_success": "Cambios guardados. La página se recargará...",
       "preview_disabled": "La vista previa está desactivada. Guarda los cambios para aplicarlos.",
       "unsaved": "Cambios sin guardar"
+    },
+    "workspace": {
+      "title": "Espacio de Trabajo",
+      "active_group": "Grupo Activo",
+      "loading": "Cargando información del grupo...",
+      "change_group": "Cambiar Grupo",
+      "select_group": "Seleccionar Grupo"
     }
   },
   "navbar": {

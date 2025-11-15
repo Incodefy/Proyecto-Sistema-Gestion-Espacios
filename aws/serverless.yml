@@ -4,10 +4,8 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs20.x
-  region: ${env:AWS_REGION, 'us-east-1'}
+  region: ${env:AWS_REGION, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
-  
-  role: ${env:AWS_ROLE, 'arn:aws:iam::160419694445:role/LabRole'}
   
   tags:
     Project: HospitalPadreHurtado
@@ -72,6 +70,7 @@ provider:
         - Ref: PersonalizationTopic
         - Ref: SystemNotificationsTopic
     
+    # === ACTIVITY LOGS TABLE ===
     - Effect: Allow
       Action:
         - dynamodb:PutItem
@@ -82,15 +81,18 @@ provider:
         - Fn::GetAtt: [ActivityLogsTable, Arn]
         - Fn::Sub: '${ActivityLogsTable.Arn}/index/*'
     
+    # === PARAMETERS TABLE ===
     - Effect: Allow
       Action:
         - dynamodb:PutItem
         - dynamodb:GetItem
         - dynamodb:Query
         - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
       Resource:
         - Fn::GetAtt: [ParametersTable, Arn]
     
+    # === USER ROLES TABLE - PERMISOS COMPLETOS ===
     - Effect: Allow
       Action:
         - dynamodb:GetItem
@@ -99,10 +101,13 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:Query
         - dynamodb:Scan
+        - dynamodb:BatchGetItem
+        - dynamodb:BatchWriteItem
       Resource:
         - Fn::GetAtt: [UserRolesTable, Arn]
         - Fn::Sub: '${UserRolesTable.Arn}/index/*'
     
+    # === PERMISSIONS TABLE - SOLO LECTURA ===
     - Effect: Allow
       Action:
         - dynamodb:GetItem
@@ -111,6 +116,7 @@ provider:
       Resource:
         - Fn::GetAtt: [PermissionsTable, Arn]
 
+    # === SQS PERMISSIONS ===
     - Effect: Allow
       Action:
         - sqs:ReceiveMessage
@@ -121,10 +127,12 @@ provider:
         - Fn::GetAtt: [PersonalizationQueue, Arn]
         - Fn::GetAtt: [SystemNotificationsQueue, Arn]
 
+    # === PROCESSED MESSAGES TABLE - IDEMPOTENCIA ===
     - Effect: Allow
       Action:
         - dynamodb:PutItem
         - dynamodb:GetItem
+        - dynamodb:UpdateItem
       Resource:
         - Fn::GetAtt: [ProcessedMessagesTable, Arn]
     
@@ -162,6 +170,7 @@ provider:
         - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasEnCurso'
         - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-eliminarAgenda'
     
+    # === TABLAS DE DATOS: CATALOGO, AGENDA, BOX-INSTRUMENTO, NOTIFICACION ===
     - Effect: Allow
       Action:
         - dynamodb:GetItem
@@ -170,6 +179,8 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:Query
         - dynamodb:Scan
+        - dynamodb:BatchGetItem
+        - dynamodb:BatchWriteItem
       Resource:
         - Fn::GetAtt: [CatalogoTable, Arn]
         - Fn::Sub: '${CatalogoTable.Arn}/index/*'

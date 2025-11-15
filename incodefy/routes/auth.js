@@ -194,8 +194,52 @@ router.post('/login', async (req, res) => {
       idioma: req.session.user.idioma
     });
 
-    req.flash('success', `¡Bienvenido ${req.session.user.nombre}!`);
-    res.redirect('/dashboard');
+    // Verificar si el usuario tiene un grupo activo
+    try {
+      console.log('🔍 Verificando grupo activo del usuario...');
+      
+      const ApiClient = require('../apiClient');
+      const apiClient = new ApiClient(tokens.IdToken);
+      
+      const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
+      
+      if (grupoActivoResponse && grupoActivoResponse.ok && grupoActivoResponse.grupo_activo) {
+        // Usuario tiene grupo activo, cachear en sesión y ir al dashboard
+        req.session.grupoActivo = grupoActivoResponse.grupo_activo;
+        req.session.grupoActivoVerificado = true;
+        req.session.grupoActivoVerificadoEn = Date.now();
+        
+        console.log(`✅ Grupo activo encontrado: ${grupoActivoResponse.grupo_activo.grupo_id}, redirigiendo a dashboard`);
+        req.flash('success', `¡Bienvenido ${req.session.user.nombre}!`);
+        res.redirect('/dashboard');
+      } else {
+        // Usuario no tiene grupo activo, ir a onboarding
+        req.session.grupoActivo = null;
+        req.session.grupoActivoVerificado = true;
+        req.session.grupoActivoVerificadoEn = Date.now();
+        
+        console.log('⚠️ Usuario sin grupo activo, redirigiendo a onboarding');
+        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
+        res.redirect('/onboarding-espacios');
+      }
+      
+    } catch (error) {
+      // Si hay error al verificar grupo (ej: 404), ir a onboarding
+      if (error.response?.status === 404) {
+        req.session.grupoActivo = null;
+        req.session.grupoActivoVerificado = true;
+        req.session.grupoActivoVerificadoEn = Date.now();
+        
+        console.log('ℹ️ No hay grupo activo (404), redirigiendo a onboarding');
+        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
+        res.redirect('/onboarding-espacios');
+      } else {
+        console.error('❌ Error verificando grupo activo:', error.message);
+        // Ir a onboarding como medida de seguridad
+        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
+        res.redirect('/onboarding-espacios');
+      }
+    }
 
   } catch (err) {
     console.error('❌ Error en login:', err);

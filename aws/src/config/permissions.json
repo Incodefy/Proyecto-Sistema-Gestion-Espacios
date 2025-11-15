@@ -19,7 +19,11 @@
     "notificaciones.read": "Ver Notificaciones",
     "notificaciones.historial": "Ver Historial de Notificaciones",
     
-    "admin.users": "Administrar Sistema"
+    "admin.users": "Administrar Sistema y Usuarios",
+    "admin.roles": "Administrar Roles",
+    "admin.permissions": "Administrar Permisos",
+    "admin.db": "Administrar Bases de Datos",
+    "admin.system": "Acceso de Sistema"
   },
   "PREDEFINED_ROLES": {
     "consulta": [
@@ -40,6 +44,12 @@
         "dashboard.read", "agenda.read", "medicos.read", 
         "notificaciones.read", "notificaciones.historial"
     ],
-    "admin": ["admin.users"]
+    "admin": [
+        "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
+        "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+        "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+        "data.import", "data.export", "medicos.read", 
+        "notificaciones.read", "notificaciones.historial"
+    ]
   }
 }

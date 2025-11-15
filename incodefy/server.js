@@ -109,6 +109,8 @@ const requireAuth = require('./middleware/requireAuth');
 const personalizationMiddleware = require('./middleware/personalization');
 const setLanguage = require('./middleware/setLanguage');
 const checkPermission = require('./middleware/checkPermission');
+const checkGrupoActivo = require('./middleware/checkGrupoActivo');
+const attachApiClient = require('./middleware/apiClient');
 
 // === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
 // Estos se ejecutarán en todas las rutas que vengan después de ellos.
@@ -118,14 +120,32 @@ app.use(setLanguage);
 
 // === RUTAS PÚBLICAS (sin autenticación) ===
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   console.log('Acceso a ruta raíz');
   console.log('Usuario autenticado:', req.session.user ? 'SÍ' : 'NO');
   
-  if (req.session.user && req.session.user.idToken) {
-    res.redirect('/dashboard');
-  } else {
-    res.redirect('/login');
+  if (!req.session.user || !req.session.user.idToken) {
+    return res.redirect('/login');
+  }
+
+  // Usuario autenticado - verificar si tiene grupo activo
+  try {
+    const ApiClient = require('./apiClient');
+    const apiClient = new ApiClient(req.session.user.idToken);
+    
+    const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
+    
+    if (grupoActivoResponse && grupoActivoResponse.ok && grupoActivoResponse.grupo_activo) {
+      // Tiene grupo activo - ir a dashboard
+      return res.redirect('/dashboard');
+    } else {
+      // No tiene grupo activo - ir a onboarding
+      return res.redirect('/onboarding-espacios');
+    }
+  } catch (error) {
+    // Si hay error al verificar (incluyendo 404), ir a onboarding
+    console.log('ℹ️ No hay grupo activo, redirigiendo a onboarding');
+    return res.redirect('/onboarding-espacios');
   }
 });
 
@@ -136,7 +156,7 @@ app.use('/', authRoutes);
 // === RUTAS PROTEGIDAS (requieren autenticación) ===
 
 // Agenda - protegida
-app.get('/agenda', requireAuth, checkPermission('agenda.read'), (req, res) => {
+app.get('/agenda', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
   const userPermissions = req.session.user?.permissions || [];
   
   res.render('agenda', {
@@ -151,16 +171,16 @@ app.get('/agenda', requireAuth, checkPermission('agenda.read'), (req, res) => {
 });
 
 // Rutas de importar y exportar
-app.get('/importar', requireAuth, checkPermission('data.import'), (req, res) => {
+app.get('/importar', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('data.import'), (req, res) => {
   res.render('importar', { currentPath: req.path });
 });
 
-app.get('/exportar', requireAuth, checkPermission('data.export'), (req, res) => {
+app.get('/exportar', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('data.export'), (req, res) => {
   res.render('exportar', { currentPath: req.path });
 });
 
 // Rutas de calendario
-app.get('/calendario/box', requireAuth, checkPermission('agenda.read'), (req, res) => {
+app.get('/calendario/box', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
   const userPermissions = req.session.user?.permissions || [];
   res.render('calendario-box', { 
     currentPath: req.path,
@@ -168,7 +188,7 @@ app.get('/calendario/box', requireAuth, checkPermission('agenda.read'), (req, re
   });
 });
 
-app.get('/calendario/medico', requireAuth, checkPermission('agenda.read'), (req, res) => {
+app.get('/calendario/medico', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
   const userPermissions = req.session.user?.permissions || [];
   res.render('calendario-medico', { 
     currentPath: req.path,
@@ -178,34 +198,34 @@ app.get('/calendario/medico', requireAuth, checkPermission('agenda.read'), (req,
 
 // Box routes
 const boxRoutes = require('./routes/box');
-app.use('/', requireAuth, boxRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, boxRoutes);
 
 // Detalle de box
 const detalleBoxRoutes = require('./routes/detalle_box');
-app.use('/', requireAuth, detalleBoxRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, detalleBoxRoutes);
 
 // Consultas en curso
 const consultasRoutes = require('./routes/consultas');
-app.use('/', requireAuth, consultasRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, consultasRoutes);
 
 // Dashboard
 const dashboardRoutes = require('./routes/dashboard');
-app.use('/', requireAuth, dashboardRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, dashboardRoutes);
 
 // Historial notificaciones
 const notificacionesRoutes = require('./routes/notificaciones');
-app.use('/', requireAuth, notificacionesRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, notificacionesRoutes);
 
 // Calendario agenda
 const calendarioRouter = require('./routes/calendario');
-app.use('/', requireAuth, calendarioRouter);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, calendarioRouter);
 
-// Configuración espacios
+// Configuración espacios (NO requiere grupo activo - es el onboarding)
 const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
-app.use('/', requireAuth, onboardingEspaciosRouter);
+app.use('/', requireAuth, attachApiClient, onboardingEspaciosRouter);
 
-// Perfil
-app.get('/perfil', requireAuth, (req, res) => {
+// Perfil (NO requiere grupo activo)
+app.get('/perfil', requireAuth, attachApiClient, (req, res) => {
   res.render('perfil', {
     currentPath: req.path,
     personalization: req.session.user?.personalization || {},
