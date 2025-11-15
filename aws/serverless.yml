@@ -282,7 +282,7 @@ functions:
             name: cognitoJwt
     timeout: 15
     description: Assign role to user (admin only)
-
+    
   removeRole:
     handler: src/handlers/permissions/permissions.removeRole
     events:

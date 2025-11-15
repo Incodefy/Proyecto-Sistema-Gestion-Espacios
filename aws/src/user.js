@@ -14,8 +14,8 @@ const {
 const fetch = require("node-fetch");
 const https = require("https");
 
-const USER_POOL_ID = 'us-east-2_cqVh7rpUS';
-const API_BASE_URL = 'https://nyl2n2pr6l.execute-api.us-east-2.amazonaws.com';
+const USER_POOL_ID = 'us-east-2_VGnJ3QB3M';
+const API_BASE_URL = 'https://lqkt2hy861.execute-api.us-east-2.amazonaws.com';
 
 const ADMIN_EMAIL = 'admin@gmail.com';
 const ADMIN_PASSWORD = 'Admin123!';
@@ -140,19 +140,28 @@ async function createUser(email, password) {
 /**
  * Asigna un rol a un usuario
  */
-async function assignRole(userEmail, role, adminToken) {
+async function assignRole(userEmail, role, adminToken, isBootstrap = false) {
   try {
     console.log(`📌 Asignando rol '${role}' a ${userEmail}...`);
 
     const url = `${API_BASE_URL}/admin/assign-role`;
     console.log(`   📡 Conectando a: ${url}`);
 
+    const headers = {
+      "content-type": "application/json"
+    };
+
+    // Agregar header según el modo
+    if (isBootstrap) {
+      headers["x-bootstrap-email"] = userEmail;
+      console.log(`   🚀 Usando bootstrap mode para primer admin`);
+    } else if (adminToken) {
+      headers["Authorization"] = adminToken;
+    }
+
     const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Authorization": adminToken
-      },
+      headers,
       body: JSON.stringify({ user_email: userEmail, role }),
       agent: httpsAgent,
       timeout: 15000
@@ -261,10 +270,12 @@ async function run() {
     let adminLogin;
     let adminEmail = ADMIN_EMAIL;
     let adminPassword = ADMIN_PASSWORD;
+    let isBootstrap = false;
     
     // Si es el primer admin, intentar con sus propias credenciales
     if (role === "admin" && email === ADMIN_EMAIL) {
       console.log("   ℹ️  Intentando crear el primer admin (bootstrap mode)...\n");
+      isBootstrap = true;
       adminEmail = email;
       adminPassword = password;
     }
@@ -272,14 +283,28 @@ async function run() {
     try {
       adminLogin = await login(adminEmail, adminPassword);
     } catch (err) {
-      throw new Error(`No se pudo autenticar como admin: ${err.message}`);
+      // Si es bootstrap y falla el login, probablemente es porque el usuario acaba de ser creado
+      if (isBootstrap && (err.message.includes("Login fallido") || err.message.includes("Respuesta API"))) {
+        console.log("   ⚠️  No se pudo autenticar (es normal en bootstrap)...\n");
+        console.log("   🚀 Usando modo bootstrap con header especial...\n");
+        // En bootstrap mode, NO usamos Bearer token
+        // Usaremos un header especial que el Lambda reconoce
+        adminLogin = null;
+      } else {
+        throw new Error(`No se pudo autenticar como admin: ${err.message}`);
+      }
     }
 
-    const adminToken = `Bearer ${adminLogin.idToken}`;
-    console.log("✅ Admin autenticado correctamente\n");
+    let adminToken = null;
+    if (adminLogin) {
+      adminToken = `Bearer ${adminLogin.idToken}`;
+      console.log("✅ Admin autenticado correctamente\n");
+    } else {
+      console.log("✅ Modo bootstrap activado\n");
+    }
 
     // === PASO 3: ASIGNAR ROL ===
-    const result = await assignRole(email, role, adminToken);
+    const result = await assignRole(email, role, adminToken, isBootstrap);
     console.log("");
 
     // === RESUMEN FINAL ===

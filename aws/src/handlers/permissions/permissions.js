@@ -225,9 +225,6 @@ async function verifyPermission(userEmail, requiredPermission) {
     return false;
   }
 }
-    return false;
-  }
-}
 
 /**
  * POST /assign-role
