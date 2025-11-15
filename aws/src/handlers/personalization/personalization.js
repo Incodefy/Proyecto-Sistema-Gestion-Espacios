@@ -6,7 +6,11 @@ const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/l
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
+const { validate } = require("../../utils/validation");
+const { successResponse, errorResponse, unauthorizedResponse, validationErrorResponse } = require("../../utils/response");
+const { createLogger } = require("../../utils/logger");
 
+const logger = createLogger({ handler: 'personalization' });
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const snsClient = new SNSClient({});
@@ -40,7 +44,7 @@ async function publishPersonalizationEvent(eventType, data) {
     };
 
     if (!snsBreaker.shouldAllow()) {
-      console.warn("⚠️ Circuit breaker abierto para SNS, evento no enviado:", eventType);
+      logger.warn("Circuit breaker abierto para SNS", { eventType });
       throw new Error("CircuitBreakerOpen");
     }
 
@@ -56,12 +60,12 @@ async function publishPersonalizationEvent(eventType, data) {
       { maxAttempts: 3, baseDelayMs: 400 }
     );
 
-    console.log(`📨 Evento SNS publicado correctamente: ${eventType}`);
+    logger.info("Evento SNS publicado", { eventType, eventId });
     return true;
 
   } catch (error) {
     snsBreaker.reportFailure();
-    console.error(`❌ Error publicando evento SNS (${eventType}):`, error.message);
+    logger.error("Error publicando evento SNS", error, { eventType });
     return false;
   }
 }
@@ -71,13 +75,19 @@ async function publishPersonalizationEvent(eventType, data) {
  * Obtener parámetros globales y específicos del usuario
  */
 module.exports.getPersonalization = async (event) => {
+  const endTrace = logger.startTrace('getPersonalization');
+
   try {
     const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
     const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
     
     if (!userSub) {
-      return response(401, { ok: false, error: "Usuario no autenticado" });
+      logger.warn("Intento sin usuario autenticado");
+      endTrace();
+      return unauthorizedResponse("Usuario no autenticado");
     }
+
+    logger.info("Obteniendo personalización", { userSub, userEmail });
 
     const result = await docClient.send(new QueryCommand({
       TableName: process.env.PARAMETERS_TABLE,
@@ -109,8 +119,14 @@ module.exports.getPersonalization = async (event) => {
       parametersCount: Object.keys(userParameters).length
     });
 
-    return response(200, {
-      ok: true,
+    logger.info("Personalización obtenida", { 
+      userSub, 
+      userParamsCount: Object.keys(userParameters).length,
+      totalParams: Object.keys(finalParameters).length
+    });
+    endTrace();
+
+    return successResponse({
       user_sub: userSub,
       email: userEmail,
       global_parameters: globalParameters,
@@ -120,12 +136,9 @@ module.exports.getPersonalization = async (event) => {
     });
 
   } catch (err) {
-    console.error("Error obteniendo personalización:", err);
-    return response(500, { 
-      ok: false, 
-      error: "Error interno del servidor",
-      details: err.message 
-    });
+    logger.error("Error obteniendo personalización", err);
+    endTrace();
+    return errorResponse("Error interno del servidor", 500, { details: err.message });
   }
 };
 
@@ -136,21 +149,24 @@ const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20
  * Establecer parámetros específicos del usuario
  */
 module.exports.setPersonalization = async (event) => {
+  const endTrace = logger.startTrace('setPersonalization');
+
   try {
     const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
     const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
     
     if (!userSub) {
-      return response(401, { ok: false, error: "Usuario no autenticado" });
+      logger.warn("Intento sin usuario autenticado");
+      endTrace();
+      return unauthorizedResponse("Usuario no autenticado");
     }
 
     const { parameters } = JSON.parse(event.body || "{}");
 
     if (!parameters || typeof parameters !== 'object') {
-      return response(400, { 
-        ok: false, 
-        error: "parameters es obligatorio y debe ser un objeto" 
-      });
+      logger.warn("Parámetros inválidos en setPersonalization", { received: typeof parameters });
+      endTrace();
+      return errorResponse("parameters es obligatorio y debe ser un objeto", 400);
     }
 
     const paramsHash = require('crypto')
@@ -163,16 +179,17 @@ module.exports.setPersonalization = async (event) => {
     const idempotencyKey = `setPersonalization-${userSub}-${paramsHash}-${timestamp}`;
     
     if (await wasAlreadyProcessed(idempotencyKey)) {
-      console.log(`[Personalization] ⏭️ Actualización ya procesada: ${idempotencyKey}`);
+      logger.info("Actualización ya procesada (idempotencia)", { idempotencyKey });
       
       // Retornar el estado actual
       const currentState = await module.exports.getPersonalization(event);
-      return response(200, {
-        ok: true,
+      const currentBody = JSON.parse(currentState.body);
+      endTrace();
+      
+      return successResponse({
         message: "Parámetros ya estaban actualizados",
-        final_parameters: JSON.parse(currentState.body).final_parameters,
-        already_processed: true,
-        idempotencyKey: idempotencyKey
+        final_parameters: currentBody.data.final_parameters,
+        already_processed: true
       });
     }
 
@@ -192,7 +209,9 @@ module.exports.setPersonalization = async (event) => {
     }
 
     if (errors.length > 0) {
-      return response(400, { ok: false, errors });
+      logger.warn("Validación fallida en parámetros", { errors });
+      endTrace();
+      return validationErrorResponse(errors);
     }
 
     const previousResult = await retryWithJitter(
@@ -220,7 +239,7 @@ module.exports.setPersonalization = async (event) => {
 
     for (const [key, value] of Object.entries(validParameters)) {
       if (!dynamoBreaker.shouldAllow()) {
-        console.warn("⚠️ Circuit breaker abierto (DynamoDB), escritura omitida temporalmente.");
+        logger.warn("Circuit breaker abierto - escritura pausada");
         throw new Error("CircuitBreakerOpen");
       }
 
@@ -259,22 +278,24 @@ module.exports.setPersonalization = async (event) => {
     });
 
     const updatedResult = await module.exports.getPersonalization(event);
-    const finalParameters = JSON.parse(updatedResult.body).final_parameters;
+    const updatedBody = JSON.parse(updatedResult.body);
 
-    return response(200, {
-      ok: true,
+    logger.info("Parámetros de personalización actualizados", { 
+      userSub, 
+      updatedCount: savedParameters.length 
+    });
+    endTrace();
+
+    return successResponse({
       message: "Parámetros de personalización actualizados",
       saved_parameters: savedParameters,
-      final_parameters: finalParameters
+      final_parameters: updatedBody.data.final_parameters
     });
 
   } catch (err) {
-    console.error("Error en setPersonalization:", err);
-    return response(500, { 
-      ok: false, 
-      error: "Error interno del servidor",
-      details: err.message
-    });
+    logger.error("Error en setPersonalization", err);
+    endTrace();
+    return errorResponse("Error interno del servidor", 500, { details: err.message });
   }
 };
 
@@ -295,17 +316,4 @@ function validateParameter(key, value) {
     default:
       return true;
   }
-}
-
-/**
- * Respuesta HTTP estandarizada
- */
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(body)
-  };
 }

@@ -1,35 +1,31 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerEspecialidadMasDemandada' });
 
 module.exports.handler = async (event) => {
-  console.log('=== INICIO obtenerEspecialidadMasDemandada ===');
-  console.log('Event completo:', JSON.stringify(event, null, 2));
-
+  const endTrace = logger.startTrace('obtenerEspecialidadMasDemandada');
   let filtros = null;
 
   if (event.body) {
     try {
       filtros = JSON.parse(event.body);
-      console.log('Filtros recibidos:', JSON.stringify(filtros, null, 2));
     } catch (err) {
-      console.error('Error parseando body:', err);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Body inválido. Debe ser JSON." })
-      };
+      logger.warn('Invalid JSON body', { error: err.message });
+      endTrace();
+      return errorResponse('Body inválido. Debe ser JSON.', 400);
     }
   }
 
   const tableName = process.env.DB_AGENDA;
   
   if (!tableName) {
-    console.error('ERROR: DB_AGENDA no está definido');
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Configuración de tabla no encontrada" })
-    };
+    logger.error('DB_AGENDA environment variable not set');
+    endTrace();
+    return errorResponse('Configuración de tabla no encontrada', 500);
   }
 
   const params = {
@@ -47,15 +43,11 @@ module.exports.handler = async (event) => {
       '#fecha': 'fecha'
     };
     
-    console.log('✅ Filtro de fecha aplicado:', {
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin
+    logger.info('Date filter applied', {
+      fecha_inicio: filtros.fechaInicio,
+      fecha_fin: filtros.fechaFin
     });
-  } else {
-    console.log('⚠️ Sin filtros - obteniendo todos los registros');
   }
-
-  console.log('Parámetros de Scan:', JSON.stringify(params, null, 2));
 
   try {
     let allItems = [];
@@ -67,33 +59,18 @@ module.exports.handler = async (event) => {
         params.ExclusiveStartKey = lastEvaluatedKey;
       }
 
-      console.log(`Ejecutando scan #${++scanCount}...`);
       const data = await client.send(new ScanCommand(params));
-      
-      console.log(`Scan #${scanCount} completado:`, {
-        itemsEncontrados: data.Items?.length || 0,
-        scannedCount: data.ScannedCount
-      });
+      scanCount++;
 
       allItems = allItems.concat(data.Items || []);
       lastEvaluatedKey = data.LastEvaluatedKey;
 
     } while (lastEvaluatedKey);
 
-    console.log('✅ Total de items encontrados:', allItems.length);
-
     if (allItems.length === 0) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          nombre: null, 
-          consultas: 0
-        })
-      };
+      logger.info('No items found');
+      endTrace();
+      return successResponse({ nombre: null, consultas: 0 });
     }
 
     const especialidadCounts = {};
@@ -106,20 +83,10 @@ module.exports.handler = async (event) => {
       especialidadCounts[especialidad] = (especialidadCounts[especialidad] || 0) + 1;
     });
 
-    console.log('📊 Conteo de especialidades:', especialidadCounts);
-
     if (Object.keys(especialidadCounts).length === 0) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          nombre: null, 
-          consultas: 0
-        })
-      };
+      logger.info('No especialidades found');
+      endTrace();
+      return successResponse({ nombre: null, consultas: 0 });
     }
 
     const maxEspecialidad = Object.entries(especialidadCounts)
@@ -130,20 +97,22 @@ module.exports.handler = async (event) => {
       consultas: maxEspecialidad[1]
     };
 
-    console.log('✅ Especialidad más demandada:', response);
+    logger.info('Most demanded especialidad calculated', {
+      total_items: allItems.length,
+      scan_iterations: scanCount,
+      especialidad: response.nombre,
+      consultas: response.consultas
+    });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify(response)
-    };
+    endTrace();
+    return successResponse(response);
 
   } catch (err) {
-    console.error("❌ Error obteniendo especialidad más demandada:", err);
-    console.error("Stack trace:", err.stack);
+    logger.error('Error getting especialidad más demandada', err);
+    endTrace();
+    return errorResponse('Error obteniendo especialidad más demandada', 500);
+  }
+};
 
     return {
       statusCode: 500,

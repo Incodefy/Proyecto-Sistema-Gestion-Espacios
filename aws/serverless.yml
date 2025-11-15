@@ -38,7 +38,9 @@ provider:
   httpApi:
     cors:
       allowedOrigins:
-        - '*'
+        # IMPORTANTE: Reemplazar con los dominios reales en producción
+        - 'http://localhost:3000'
+        - 'https://tu-dominio-produccion.com'
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -48,7 +50,8 @@ provider:
         - PUT
         - DELETE
         - OPTIONS
-      allowCredentials: false
+      allowCredentials: true
+      maxAge: 3600
     authorizers:
       cognitoJwt:
         type: jwt
@@ -125,11 +128,39 @@ provider:
       Resource:
         - Fn::GetAtt: [ProcessedMessagesTable, Arn]
     
+    # Lambda InvokeFunction - Solo para funciones específicas de DB
     - Effect: Allow
       Action:
         - lambda:InvokeFunction
       Resource:
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-*'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerPasillos'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxes'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorFecha'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEspecialidades'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicos'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorBox'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorMedico'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorId'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-verificarConflictoBox'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-verificarConflictoMedico'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEstadoNoAtendido'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-insertarAgenda'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-actualizarEstadoAgenda'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerInstrumentosPorBox'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxYPasillo'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorBoxYFecha'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerNotificaciones'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicoNombre'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxNombre'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerTotalConsultas'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxesDisponibles'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEspecialidadMasDemandada'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasPorEspecialidad'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasPorDia'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerRendimientoMedicos'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicosPorEspecialidades'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasEnCurso'
+        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-eliminarAgenda'
     
     - Effect: Allow
       Action:

@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const db = require('./db');
 const fetch = require('node-fetch');
+const cors = require('cors');
 
 // === i18next configuración para internacionalización ===
 const i18next = require('./i18n');
@@ -16,21 +17,57 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// === Configuración de CORS restrictiva ===
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir solicitudes sin origin (como aplicaciones móviles o Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'La política CORS no permite el acceso desde este origen.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // === Middlewares de base ===
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// === Configuración de Sesión ===
+// === Configuración de Sesión Segura ===
 const session = require('express-session');
 const flash = require('connect-flash');
 
+// Validación de SESSION_SECRET obligatoria en producción
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET es obligatorio en producción');
+}
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('⚠️  ADVERTENCIA: SESSION_SECRET no está configurado. Usando valor por defecto INSEGURO.');
+}
+
+const sessionSecret = process.env.SESSION_SECRET || 'default-insecure-secret-change-me';
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'clave-secreta',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
+  name: 'sessionId', // Nombre personalizado en lugar de 'connect.sid'
   cookie: {
+    httpOnly: true, // Previene acceso por JavaScript del cliente
+    secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+    sameSite: 'lax', // Protección CSRF
     maxAge: 24 * 60 * 60 * 1000 // 24 horas
   }
 }));
@@ -232,7 +269,9 @@ app.post('/api/personalization', requireAuth, async (req, res) => {
           // Guardar cookie persistente en el navegador (30 días)
           res.cookie('i18next', newLang, {
             maxAge: 30 * 24 * 60 * 60 * 1000,
-            httpOnly: true
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
           });
         }
       }

@@ -41,6 +41,8 @@ async function insertEspecialidades() {
       Item: {
         PK: { S: `ESP#${especialidad.idEspecialidad}` },
         SK: { S: '#' },
+        GSI1PK: { S: 'TIPO#ESPECIALIDAD' },  // ✅ Para TipoEntidadIndex
+        GSI1SK: { S: especialidad.nombre },  // ✅ Ordenar por nombre
         idEspecialidad: { N: String(especialidad.idEspecialidad) },
         nombre: { S: especialidad.nombre }
       }
@@ -58,6 +60,8 @@ async function insertMedicos() {
       Item: {
         PK: { S: `MEDICO#${medico.idMedico}` },
         SK: { S: '#' },
+        GSI1PK: { S: 'TIPO#MEDICO' },  // ✅ Para TipoEntidadIndex
+        GSI1SK: { S: medico.nombre },   // ✅ Ordenar por nombre
         idMedico: { N: String(medico.idMedico) },
         nombre: { S: medico.nombre },
         idEspecialidad: { N: String(medico.idEspecialidad) },

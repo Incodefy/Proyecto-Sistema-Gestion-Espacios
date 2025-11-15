@@ -1,79 +1,82 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require("../../utils/response");
+const { createLogger } = require("../../utils/logger");
 
+const logger = createLogger({ handler: 'verificarConflictoBox' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 module.exports.handler = async (event) => {
-    const { box_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters;
+    const endTrace = logger.startTrace('verificarConflictoBox');
+    const { box_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
 
     if (!box_id || !fecha || !hora_inicio || !hora_fin) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Faltan parámetros obligatorios: box_id, fecha, hora_inicio, hora_fin." })
-        };
+        logger.warn("Parámetros faltantes", { box_id, fecha, hora_inicio, hora_fin });
+        endTrace();
+        return errorResponse("Faltan parámetros obligatorios: box_id, fecha, hora_inicio, hora_fin", 400);
     }
 
     const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!fechaRegex.test(fecha)) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Fecha debe tener formato YYYY-MM-DD." })
-        };
+        logger.warn("Formato de fecha inválido", { fecha });
+        endTrace();
+        return errorResponse("Fecha debe tener formato YYYY-MM-DD", 400);
     }
 
     const horaRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
     if (!horaRegex.test(hora_inicio) || !horaRegex.test(hora_fin)) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Las horas deben tener el formato HH:mm." })
-        };
+        logger.warn("Formato de hora inválido", { hora_inicio, hora_fin });
+        endTrace();
+        return errorResponse("Las horas deben tener el formato HH:mm", 400);
     }
 
     const [horaInicioH, horaInicioM] = hora_inicio.split(":").map(Number);
     const [horaFinH, horaFinM] = hora_fin.split(":").map(Number);
     if (horaInicioH > horaFinH || (horaInicioH === horaFinH && horaInicioM >= horaFinM)) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "La hora de inicio no puede ser mayor o igual a la hora de fin." })
-        };
+        logger.warn("Hora de inicio mayor o igual a hora de fin", { hora_inicio, hora_fin });
+        endTrace();
+        return errorResponse("La hora de inicio no puede ser mayor o igual a la hora de fin", 400);
     }
 
-    const params = {
-        TableName: process.env.DB_AGENDA,
-        KeyConditionExpression: 'PK = :pk AND SK BETWEEN :hora_inicio AND :hora_fin',
-        ExpressionAttributeValues: {
-            ':pk': `BOX#${box_id}#DATE#${fecha}`,
-            ':hora_inicio': hora_inicio,
-            ':hora_fin': hora_fin
-        }
-    };
-
     try {
+        logger.info("Verificando conflicto de box", { box_id, fecha, hora_inicio, hora_fin });
+        
+        const params = {
+            TableName: process.env.DB_AGENDA,
+            KeyConditionExpression: 'PK = :pk AND SK BETWEEN :hora_inicio AND :hora_fin',
+            ExpressionAttributeValues: {
+                ':pk': `BOX#${box_id}#DATE#${fecha}`,
+                ':hora_inicio': hora_inicio,
+                ':hora_fin': hora_fin
+            }
+        };
+
         const data = await client.send(new QueryCommand(params));
 
         const conflictos = data.Items.filter(agenda => {
             const agendaHoraInicio = agenda.horaInicio;
             const agendaHoraFin = agenda.horaFin;
-
-        return (hora_inicio < agendaHoraFin && hora_fin > agendaHoraInicio);
+            return (hora_inicio < agendaHoraFin && hora_fin > agendaHoraInicio);
         });
 
-        if (conflictos.length > 0) {
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ conflicto: true, conflictos })
-        };
-        } else {
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ conflicto: false })
-        };
-        }
+        const hasConflicto = conflictos.length > 0;
+        
+        logger.info("Verificación de conflicto completada", { 
+            box_id, 
+            fecha, 
+            conflicto: hasConflicto,
+            conflictosCount: conflictos.length
+        });
+        endTrace();
+
+        return successResponse({ 
+            conflicto: hasConflicto, 
+            conflictos: hasConflicto ? conflictos : undefined 
+        });
+        
     } catch (err) {
-        console.error("Error verificando conflicto de box:", err);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "Error verificando conflicto de box" })
-        };
+        logger.error("Error verificando conflicto de box", err, { box_id, fecha });
+        endTrace();
+        return errorResponse("Error verificando conflicto de box", 500, { details: err.message });
     }
 };

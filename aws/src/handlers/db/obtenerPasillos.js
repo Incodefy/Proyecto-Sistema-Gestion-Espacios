@@ -1,19 +1,25 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerPasillos' });
 
 module.exports.handler = async () => {
+  const endTrace = logger.startTrace('obtenerPasillos');
+
   const params = {
     TableName: process.env.DB_CATALOGO,
-    FilterExpression: "begins_with(PK, :pk)",
+    IndexName: "TipoEntidadIndex",
+    KeyConditionExpression: "GSI1PK = :tipo",
     ExpressionAttributeValues: {
-      ":pk": "PASILLO#"
+      ":tipo": "TIPO#PASILLO"
     }
   };
 
   try {
-    const data = await client.send(new ScanCommand(params));
+    const data = await client.send(new QueryCommand(params));
 
     const itemsOrdenados = (data.Items || []).sort((a, b) => {
       if (a.idBox < b.idBox) return -1;
@@ -21,15 +27,12 @@ module.exports.handler = async () => {
       return 0;
     });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify(itemsOrdenados)
-    };
+    logger.info('Pasillos retrieved', { count: itemsOrdenados.length });
+    endTrace();
+    return successResponse(itemsOrdenados, 200, { count: itemsOrdenados.length });
   } catch (err) {
-    console.error(err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error obteniendo pasillos" })
-    };
+    logger.error('Error retrieving pasillos', err);
+    endTrace();
+    return errorResponse('Error obteniendo pasillos', 500);
   }
 };

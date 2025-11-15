@@ -1,24 +1,32 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerEstadoNoAtendido' });
 
 module.exports.handler = async () => {
+    const endTrace = logger.startTrace('obtenerEstadoNoAtendido');
+
     const params = {
         TableName: process.env.DB_CATALOGO,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
-        ":pk": "ESTADO#2"
+            ":pk": "ESTADO#2"
         }
     };
 
     try {
         const data = await client.send(new QueryCommand(params));
-        return data.Items?.[0]?.idEstado || null;
+        const estadoId = data.Items?.[0]?.idEstado || null;
+        
+        logger.info('Estado no atendido retrieved', { estado_id: estadoId });
+        endTrace();
+        return successResponse({ idEstado: estadoId });
     } catch (err) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "Error obteniendo estado 'no atendido'" })
-        };
+        logger.error('Error retrieving estado no atendido', err);
+        endTrace();
+        return errorResponse('Error obteniendo estado \'no atendido\'', 500);
     }
 };

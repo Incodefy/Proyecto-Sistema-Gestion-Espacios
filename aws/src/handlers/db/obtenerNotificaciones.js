@@ -1,9 +1,14 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerNotificaciones' });
 
 module.exports.handler = async () => {
+  const endTrace = logger.startTrace('obtenerNotificaciones');
+
   const params = {
     TableName: process.env.DB_NOTIFICACION,
     Limit: 50
@@ -16,17 +21,13 @@ module.exports.handler = async () => {
 
     items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify(items)
-    };
+    logger.info('Notificaciones retrieved', { count: items.length });
+    endTrace();
+    return successResponse(items, 200, { count: items.length });
 
   } catch (err) {
-    console.error("Error obteniendo notificaciones:", err);
-
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error obteniendo notificaciones" })
-    };
+    logger.error('Error retrieving notificaciones', err);
+    endTrace();
+    return errorResponse('Error obteniendo notificaciones', 500);
   }
 };

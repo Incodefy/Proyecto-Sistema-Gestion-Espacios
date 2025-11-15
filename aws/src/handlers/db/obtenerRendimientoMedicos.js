@@ -1,35 +1,31 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerRendimientoMedicos' });
 
 module.exports.handler = async (event) => {
-  console.log('=== INICIO obtenerRendimientoMedicos ===');
-  console.log('Event completo:', JSON.stringify(event, null, 2));
-
+  const endTrace = logger.startTrace('obtenerRendimientoMedicos');
   let filtros = null;
 
   if (event.body) {
     try {
       filtros = JSON.parse(event.body);
-      console.log('Filtros recibidos:', JSON.stringify(filtros, null, 2));
     } catch (err) {
-      console.error('Error parseando body:', err);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Body inválido. Debe ser JSON." })
-      };
+      logger.warn('Invalid JSON body', { error: err.message });
+      endTrace();
+      return errorResponse('Body inválido. Debe ser JSON.', 400);
     }
   }
 
   const tableName = process.env.DB_AGENDA;
   
   if (!tableName) {
-    console.error('ERROR: DB_AGENDA no está definido');
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Configuración de tabla no encontrada" })
-    };
+    logger.error('DB_AGENDA environment variable not set');
+    endTrace();
+    return errorResponse('Configuración de tabla no encontrada', 500);
   }
 
   const params = {
@@ -47,15 +43,11 @@ module.exports.handler = async (event) => {
       '#fecha': 'fecha'
     };
     
-    console.log('✅ Filtro de fecha aplicado:', {
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin
+    logger.info('Date filter applied', {
+      fecha_inicio: filtros.fechaInicio,
+      fecha_fin: filtros.fechaFin
     });
-  } else {
-    console.log('⚠️ Sin filtros - obteniendo todos los registros');
   }
-
-  console.log('Parámetros de Scan:', JSON.stringify(params, null, 2));
 
   try {
     let allItems = [];
@@ -67,20 +59,13 @@ module.exports.handler = async (event) => {
         params.ExclusiveStartKey = lastEvaluatedKey;
       }
 
-      console.log(`Ejecutando scan #${++scanCount}...`);
       const data = await client.send(new ScanCommand(params));
-      
-      console.log(`Scan #${scanCount} completado:`, {
-        itemsEncontrados: data.Items?.length || 0,
-        scannedCount: data.ScannedCount
-      });
+      scanCount++;
 
       allItems = allItems.concat(data.Items || []);
       lastEvaluatedKey = data.LastEvaluatedKey;
 
     } while (lastEvaluatedKey);
-
-    console.log('✅ Total de items encontrados:', allItems.length);
 
     const rendimientoMedicos = {};
 
@@ -89,7 +74,6 @@ module.exports.handler = async (event) => {
       const especialidad = item.especialidadNombre;
 
       if (!medico) {
-        console.log('⚠️ Item sin medicoNombre:', item);
         return;
       }
 
@@ -103,8 +87,6 @@ module.exports.handler = async (event) => {
       rendimientoMedicos[medico].consultas += 1;
     });
 
-    console.log('📊 Rendimiento de médicos:', rendimientoMedicos);
-
     const topMedicos = Object.entries(rendimientoMedicos)
       .sort((a, b) => b[1].consultas - a[1].consultas)
       .slice(0, 10)
@@ -114,31 +96,19 @@ module.exports.handler = async (event) => {
         especialidad: info.especialidad
       }));
 
-    console.log('✅ Top 10 médicos:', topMedicos);
+    logger.info('Top medicos calculated', {
+      total_items: allItems.length,
+      scan_iterations: scanCount,
+      unique_medicos: Object.keys(rendimientoMedicos).length,
+      top_count: topMedicos.length
+    });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify(topMedicos)
-    };
+    endTrace();
+    return successResponse(topMedicos, 200, { total: allItems.length });
 
   } catch (err) {
-    console.error("❌ Error obteniendo rendimiento de médicos:", err);
-    console.error("Stack trace:", err.stack);
-
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: "Error obteniendo rendimiento de médicos",
-        message: err.message
-      })
-    };
+    logger.error('Error getting rendimiento médicos', err);
+    endTrace();
+    return errorResponse('Error obteniendo rendimiento de médicos', 500);
   }
 };

@@ -1,88 +1,93 @@
-const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+/**
+ * DB Proxy Handler - Enruta peticiones a funciones Lambda específicas
+ * Refactorizado para mejor mantenibilidad y separación de responsabilidades
+ */
 
-const lambda = new LambdaClient();
+const { findTargetFunction, getFullFunctionName, listAvailableRoutes } = require('./dbProxy/routeMapper');
+const { invokeLambda } = require('./dbProxy/lambdaInvoker');
 
 module.exports.handler = async (event) => {
   console.log('=== INICIO dbProxy ===');
-  console.log('Event completo:', JSON.stringify(event, null, 2));
   
+  // Log solo en modo debug para no saturar CloudWatch
+  if (process.env.DEBUG === 'true') {
+    console.log('Event completo:', JSON.stringify(event, null, 2));
+  }
+
+  // Extraer información de la petición
   const path = event.path || event.rawPath; // HTTP API v2 usa rawPath
-  console.log('Path recibido:', path);
+  const method = event.requestContext?.http?.method || event.httpMethod || 'GET';
   
-  let target = null;
+  console.log(`📍 Petición: ${method} ${path}`);
 
-  if (path.includes("pasillos")) target = "obtenerPasillos";
-  if (path.includes("boxes"))    target = "obtenerBoxes";
-  if (path.includes("agenda")) target = "obtenerAgendaPorFecha";
-  if (path.includes("especialidades"))    target = "obtenerEspecialidades";
-  if (path.includes("medicos"))    target = "obtenerMedicos";
-  if (path.includes("agenda-box")) target = "obtenerAgendaPorBox";
-  if (path.includes("agenda-medico")) target = "obtenerAgendaPorMedico";
-  if (path.includes("agenda-id")) target = "obtenerAgendaPorId";
-  if (path.includes("conflicto-box")) target = "verificarConflictoBox";
-  if (path.includes("conflicto-medico")) target = "verificarConflictoMedico";
-  if (path.includes("estado-no-atendido")) target = "obtenerEstadoNoAtendido";
-  if (path.includes("insertar-agenda")) target = "insertarAgenda";
-  if (path.includes("nuevo-estado-agenda")) target = "actualizarEstadoAgenda";
-  if (path.includes("instrumentos-box")) target = "obtenerInstrumentosPorBox";
-  if (path.includes("box-pasillo")) target = "obtenerBoxYPasillo";
-  if (path.includes("agenda-box-fecha")) target = "obtenerAgendaPorBoxYFecha";
-  if (path.includes("notificaciones")) target = "obtenerNotificaciones";
-  if (path.includes("medico-nombre")) target = "obtenerMedicoNombre";
-  if (path.includes("box-nombre")) target = "obtenerBoxNombre";
-  if (path.includes("total-consultas")) target = "obtenerTotalConsultas";
-  if (path.includes("boxes-disponibles")) target = "obtenerBoxesDisponibles";
-  if (path.includes("especialidad-mas-demandada")) target = "obtenerEspecialidadMasDemandada";
-  if (path.includes("consultas-especialidad")) target = "obtenerConsultasPorEspecialidad";
-  if (path.includes("consultas-dia")) target = "obtenerConsultasPorDia";
-  if (path.includes("rendimiento-medicos")) target = "obtenerRendimientoMedicos";
-  if (path.includes("medicos-especialidades")) target = "obtenerMedicosPorEspecialidades";
-  if (path.includes("consultas-en-curso")) target = "obtenerConsultasEnCurso";
-  if (path.includes("eliminar-agenda")) target = "eliminarAgenda";
-
-  console.log('Target identificado:', target);
-
-  if (!target) {
-    console.log('ERROR: Ruta no válida');
-    return { 
-      statusCode: 400, 
-      body: JSON.stringify({ error: "Ruta no válida", path: path }) 
+  // Validar que la ruta existe
+  if (!path) {
+    console.error('❌ No se recibió un path válido');
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ 
+        error: "Path no válido",
+        availableRoutes: listAvailableRoutes()
+      })
     };
   }
 
-  const functionName = `${process.env.SERVICE_NAME}-${process.env.STAGE}-${target}`;
-  console.log('Nombre función Lambda a invocar:', functionName);
-  console.log('Variables de entorno:', {
-    SERVICE_NAME: process.env.SERVICE_NAME,
-    STAGE: process.env.STAGE,
-    DB_CATALOGO: process.env.DB_CATALOGO
-  });
+  // Buscar la función Lambda correspondiente
+  const targetFunction = findTargetFunction(path, method);
 
+  if (!targetFunction) {
+    console.error(`❌ No se encontró función para: ${method} ${path}`);
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ 
+        error: "Ruta no encontrada",
+        path: path,
+        method: method,
+        hint: "Verifica que la ruta esté registrada en routeMapper.js",
+        availableRoutes: listAvailableRoutes()
+      })
+    };
+  }
+
+  // Obtener el nombre completo de la función Lambda
+  let fullFunctionName;
   try {
-    const command = new InvokeCommand({
-      FunctionName: functionName,
-      Payload: Buffer.from(JSON.stringify(event))
-    });
-
-    console.log('Invocando Lambda...');
-    const response = await lambda.send(command);
-    console.log('Respuesta de Lambda recibida:', {
-      StatusCode: response.StatusCode,
-      PayloadLength: response.Payload.length
-    });
-
-    const result = JSON.parse(Buffer.from(response.Payload).toString());
-    console.log('Resultado parseado:', JSON.stringify(result, null, 2));
-
-    return result;
+    fullFunctionName = getFullFunctionName(targetFunction);
   } catch (error) {
-    console.error('ERROR al invocar Lambda:', error);
+    console.error('❌ Error obteniendo nombre de función:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
-        error: "Error invocando función", 
-        message: error.message,
-        functionName: functionName
+      body: JSON.stringify({
+        error: "Error de configuración",
+        message: error.message
+      })
+    };
+  }
+
+  console.log(`🎯 Target: ${targetFunction} -> ${fullFunctionName}`);
+
+  // Invocar la función Lambda
+  try {
+    const result = await invokeLambda(fullFunctionName, event);
+    console.log(`✅ dbProxy completado exitosamente para ${targetFunction}`);
+    return result;
+
+  } catch (error) {
+    console.error(`❌ Error en dbProxy para ${targetFunction}:`, error);
+    
+    // Si el error ya tiene formato de respuesta HTTP, retornarlo
+    if (error.statusCode && error.body) {
+      return error;
+    }
+
+    // Crear respuesta de error genérica
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: "Error procesando la petición",
+        message: error.message || 'Error desconocido',
+        path: path,
+        targetFunction: targetFunction
       })
     };
   }

@@ -233,7 +233,10 @@ router.get('/logout', (req, res) => {
     if (err) {
       console.error('Error al destruir sesión:', err);
     }
-    res.clearCookie('connect.sid');
+    // Limpiar la cookie de sesión (nombre personalizado 'sessionId')
+    res.clearCookie('sessionId');
+    // También limpiar cookie de idioma si existe
+    res.clearCookie('i18next');
     res.redirect('/login');
   });
 });

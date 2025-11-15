@@ -1,16 +1,19 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse, notFoundResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerBoxNombre' });
 
 module.exports.handler = async (event) => {
+  const endTrace = logger.startTrace('obtenerBoxNombre');
   const boxId = event.queryStringParameters?.boxId;
 
   if (!boxId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Debe enviar ?boxId=valor" })
-    };
+    logger.warn('Missing boxId parameter');
+    endTrace();
+    return errorResponse('Debe enviar ?boxId=valor', 400);
   }
 
   const params = {
@@ -25,22 +28,18 @@ module.exports.handler = async (event) => {
     const data = await client.send(new GetCommand(params));
 
     if (!data.Item) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: `Box ${boxId} no encontrado` })
-      };
+      logger.info('Box not found', { box_id: boxId });
+      endTrace();
+      return notFoundResponse(`Box ${boxId} no encontrado`);
     }
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ nombre: data.Item.nombre || null })
-    };
+    logger.info('Box name retrieved', { box_id: boxId });
+    endTrace();
+    return successResponse({ nombre: data.Item.nombre || null });
 
   } catch (err) {
-    console.error("Error obteniendo box:", err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error obteniendo box" })
-    };
+    logger.error('Error retrieving box name', err, { box_id: boxId });
+    endTrace();
+    return errorResponse('Error obteniendo box', 500);
   }
 };

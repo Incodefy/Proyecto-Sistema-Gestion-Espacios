@@ -1,0 +1,45 @@
+{
+  "languages": [
+    "es",
+    "en",
+    "pt",
+    "it",
+    "zh",
+    "hi",
+    "ar",
+    "bn",
+    "ru",
+    "ja",
+    "pa",
+    "de",
+    "jv",
+    "ko",
+    "fr",
+    "te",
+    "mr",
+    "tr",
+    "ta",
+    "vi",
+    "ur",
+    "nl",
+    "pl",
+    "th",
+    "fa"
+  ],
+  "themeModes": [
+    "light",
+    "dark"
+  ],
+  "themeColors": [
+    "#1a3c7c",
+    "#d53232ff",
+    "#059669",
+    "#7c3aed",
+    "#ea580c"
+  ],
+  "fontSizes": [
+    "pequeno",
+    "mediano",
+    "grande"
+  ]
+}

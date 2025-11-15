@@ -1,82 +1,54 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { validate } = require("../../utils/validation");
+const { successResponse, errorResponse, validationErrorResponse } = require("../../utils/response");
+const { createLogger } = require("../../utils/logger");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'insertarAgenda' });
 
 module.exports.handler = async (event) => {
+  const endTrace = logger.startTrace('insert-agenda');
+  
   if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Debe enviar un body con la agenda." })
-    };
+    logger.warn('Missing request body');
+    endTrace({ success: false, reason: 'no_body' });
+    return errorResponse('Debe enviar un body con la agenda', 400);
   }
 
   let agendaInput;
   try {
     agendaInput = JSON.parse(event.body);
   } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "El body debe ser un JSON válido." })
-    };
+    logger.error('Invalid JSON in body', err);
+    endTrace({ success: false, reason: 'invalid_json' });
+    return errorResponse('El body debe ser un JSON válido', 400);
+  }
+
+  // Validar con AJV
+  const validation = validate(agendaInput, 'insertarAgenda');
+  if (!validation.valid) {
+    logger.warn('Validation failed', { errors: validation.errors });
+    endTrace({ success: false, reason: 'validation' });
+    return validationErrorResponse(validation.errors);
   }
 
   const {
-    idAgenda,
-    idBox,
-    boxNombre,
-    idMedico,
-    medicoNombre,
-    idEspecialidad,
-    especialidadNombre,
-    idEstado,
-    estadoNombre,
-    fecha,
-    horaInicio,
-    horaFin,
-    tipoConsulta
-  } = agendaInput;
-
-  const required = {
     idAgenda, idBox, boxNombre, idMedico, medicoNombre,
     idEspecialidad, especialidadNombre, idEstado, estadoNombre,
     fecha, horaInicio, horaFin, tipoConsulta
-  };
+  } = validation.data;
 
-  for (const [key, value] of Object.entries(required)) {
-    if (value === undefined || value === null || value === "") {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: `El campo '${key}' es obligatorio.` })
-      };
-    }
-  }
-
-  const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!fechaRegex.test(fecha)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "La fecha debe tener formato YYYY-MM-DD." })
-    };
-  }
-
-  const horaRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-  if (!horaRegex.test(horaInicio) || !horaRegex.test(horaFin)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Las horas deben estar en formato HH:mm." })
-    };
-  }
-
-  const [hI, mI] = horaInicio.split(":").map(Number);
+  // Validación adicional: horaInicio < horaFin
+  const [hI, mI] = horaInicio.replace('HORA#', '').split(":").map(Number);
   const [hF, mF] = horaFin.split(":").map(Number);
   if (hI > hF || (hI === hF && mI >= mF)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "horaInicio debe ser menor que horaFin." })
-    };
+    logger.warn('Invalid time range', { horaInicio, horaFin });
+    endTrace({ success: false, reason: 'invalid_time_range' });
+    return errorResponse('horaInicio debe ser menor que horaFin', 400);
   }
 
+  // Normalizar horaInicio (eliminar prefijo HORA# si existe)
   const skHora = String(horaInicio).startsWith("HORA#")
     ? String(horaInicio).split("#")[1]
     : String(horaInicio);
@@ -84,7 +56,6 @@ module.exports.handler = async (event) => {
   const item = {
     PK: `BOX#${idBox}#DATE#${fecha}`,
     SK: skHora,
-
     idAgenda: Number(idAgenda),
     idBox: Number(idBox),
     boxNombre,
@@ -98,7 +69,6 @@ module.exports.handler = async (event) => {
     horaInicio: skHora,
     horaFin,
     tipoConsulta,
-
     GSI1PK: `MEDICO#${idMedico}#DATE#${fecha}`,
     GSI1SK: skHora,
     GSI2PK: `DATE#${fecha}`,
@@ -113,28 +83,29 @@ module.exports.handler = async (event) => {
 
   try {
     await client.send(new PutCommand(params));
+    
+    logger.info('Agenda inserted successfully', { 
+      idAgenda, 
+      fecha, 
+      medico: medicoNombre,
+      box: boxNombre 
+    });
+    endTrace({ success: true });
 
-    return {
-      statusCode: 201,
-      body: JSON.stringify({
-        mensaje: "Agenda insertada correctamente",
-        item
-      })
-    };
+    return successResponse({
+      mensaje: "Agenda insertada correctamente",
+      item
+    }, 201);
 
   } catch (err) {
-    console.error("Error insertando agenda:", err);
-
     if (err.name === "ConditionalCheckFailedException") {
-      return {
-        statusCode: 409,
-        body: JSON.stringify({ error: "Ya existe una agenda en ese horario para ese box." })
-      };
+      logger.warn('Duplicate agenda detected', { fecha, box: idBox, hora: skHora });
+      endTrace({ success: false, reason: 'duplicate' });
+      return errorResponse('Ya existe una agenda en ese horario para ese box', 409);
     }
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error insertando agenda" })
-    };
+    logger.error('Failed to insert agenda', err, { idAgenda, fecha });
+    endTrace({ success: false, error: err.message });
+    return errorResponse('Error insertando agenda', 500);
   }
 };

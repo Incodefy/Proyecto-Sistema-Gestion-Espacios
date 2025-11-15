@@ -1,35 +1,31 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerConsultasPorDia' });
 
 module.exports.handler = async (event) => {
-  console.log('=== INICIO obtenerConsultasPorDia ===');
-  console.log('Event completo:', JSON.stringify(event, null, 2));
-
+  const endTrace = logger.startTrace('obtenerConsultasPorDia');
   let filtros = null;
 
   if (event.body) {
     try {
       filtros = JSON.parse(event.body);
-      console.log('Filtros recibidos:', JSON.stringify(filtros, null, 2));
     } catch (err) {
-      console.error('Error parseando body:', err);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Body inválido. Debe ser JSON." })
-      };
+      logger.warn('Invalid JSON body', { error: err.message });
+      endTrace();
+      return errorResponse('Body inválido. Debe ser JSON.', 400);
     }
   }
 
   const tableName = process.env.DB_AGENDA;
   
   if (!tableName) {
-    console.error('ERROR: DB_AGENDA no está definido');
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Configuración de tabla no encontrada" })
-    };
+    logger.error('DB_AGENDA environment variable not set');
+    endTrace();
+    return errorResponse('Configuración de tabla no encontrada', 500);
   }
 
   const params = {
@@ -47,15 +43,11 @@ module.exports.handler = async (event) => {
       '#fecha': 'fecha'
     };
     
-    console.log('✅ Filtro de fecha aplicado:', {
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin
+    logger.info('Date filter applied', {
+      fecha_inicio: filtros.fechaInicio,
+      fecha_fin: filtros.fechaFin
     });
-  } else {
-    console.log('⚠️ Sin filtros - obteniendo todos los registros');
   }
-
-  console.log('Parámetros de Scan:', JSON.stringify(params, null, 2));
 
   try {
     let allItems = [];
@@ -67,27 +59,19 @@ module.exports.handler = async (event) => {
         params.ExclusiveStartKey = lastEvaluatedKey;
       }
 
-      console.log(`Ejecutando scan #${++scanCount}...`);
       const data = await client.send(new ScanCommand(params));
-      
-      console.log(`Scan #${scanCount} completado:`, {
-        itemsEncontrados: data.Items?.length || 0,
-        scannedCount: data.ScannedCount
-      });
+      scanCount++;
 
       allItems = allItems.concat(data.Items || []);
       lastEvaluatedKey = data.LastEvaluatedKey;
 
     } while (lastEvaluatedKey);
 
-    console.log('✅ Total de items encontrados:', allItems.length);
-
     // Inicializar array de 7 días (Domingo=0, Lunes=1, ..., Sábado=6)
     const consultasPorDia = Array(7).fill(0);
 
     allItems.forEach(item => {
       if (!item.fecha) {
-        console.log('⚠️ Item sin fecha:', item);
         return;
       }
 
@@ -97,35 +81,18 @@ module.exports.handler = async (event) => {
       }
     });
 
-    console.log('📊 Consultas por día:', consultasPorDia);
-    console.log('📊 Desglose: Dom:', consultasPorDia[0], 'Lun:', consultasPorDia[1], 
-                'Mar:', consultasPorDia[2], 'Mié:', consultasPorDia[3], 
-                'Jue:', consultasPorDia[4], 'Vie:', consultasPorDia[5], 
-                'Sáb:', consultasPorDia[6]);
+    logger.info('Consultas por día calculated', {
+      total_items: allItems.length,
+      scan_iterations: scanCount,
+      results: consultasPorDia
+    });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify(consultasPorDia)
-    };
+    endTrace();
+    return successResponse(consultasPorDia, 200, { total: allItems.length });
 
   } catch (err) {
-    console.error("❌ Error obteniendo consultas por día:", err);
-    console.error("Stack trace:", err.stack);
-
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: "Error obteniendo consultas por día",
-        message: err.message
-      })
-    };
+    logger.error('Error getting consultas por día', err);
+    endTrace();
+    return errorResponse('Error obteniendo consultas por día', 500);
   }
 };

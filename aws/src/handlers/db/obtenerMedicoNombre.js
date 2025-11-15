@@ -1,16 +1,19 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse, notFoundResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerMedicoNombre' });
 
 module.exports.handler = async (event) => {
+  const endTrace = logger.startTrace('obtenerMedicoNombre');
   const medicoId = event.queryStringParameters?.medicoId;
 
   if (!medicoId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Debe enviar ?medicoId=valor" })
-    };
+    logger.warn('Missing medicoId parameter');
+    endTrace();
+    return errorResponse('Debe enviar ?medicoId=valor', 400);
   }
 
   const params = {
@@ -25,22 +28,18 @@ module.exports.handler = async (event) => {
     const data = await client.send(new GetCommand(params));
 
     if (!data.Item) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: `Médico ${medicoId} no encontrado` })
-      };
+      logger.info('Medico not found', { medico_id: medicoId });
+      endTrace();
+      return notFoundResponse(`Médico ${medicoId} no encontrado`);
     }
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ nombre: data.Item.nombre || null })
-    };
+    logger.info('Medico name retrieved', { medico_id: medicoId });
+    endTrace();
+    return successResponse({ nombre: data.Item.nombre || null });
 
   } catch (err) {
-    console.error("Error obteniendo médico:", err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error obteniendo médico" })
-    };
+    logger.error('Error retrieving medico name', err, { medico_id: medicoId });
+    endTrace();
+    return errorResponse('Error obteniendo médico', 500);
   }
 };

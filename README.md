@@ -2,6 +2,37 @@
 
 Sistema integral de gestión hospitalaria desarrollado con Node.js, Express, AWS Cognito y arquitectura serverless.
 
+## 🔐 Mejoras de Seguridad y Calidad (Etapas 1-3)
+
+> ✅ **Deuda técnica resuelta** - Noviembre 2025
+
+### Etapa 1: Seguridad y Mejores Prácticas ✅
+- ✅ **Session Secret segura** - Obligatoria desde variables de entorno
+- ✅ **Cookies HttpOnly/Secure/SameSite** - Protección contra XSS y CSRF
+- ✅ **CORS restrictivo** - Lista blanca de orígenes permitidos
+- ✅ **IAM restrictivo** - Eliminados wildcards, permisos mínimos
+- ✅ **dbProxy modularizado** - Mejor mantenibilidad y seguridad
+
+### Etapa 2: Testing e Infraestructura ✅
+- ✅ **Tests unitarios** - Jest con coverage >70%
+- ✅ **Tablas DynamoDB en Terraform** - 9 tablas con IaC
+- ✅ **Validación JWT con JWKS** - Verificación criptográfica
+- ✅ **Validación Joi** - Esquemas centralizados
+
+### Etapa 3: Monitoreo y Chaos Engineering ✅
+- ✅ **Dashboards CloudWatch** - SLO/SLI tracking
+- ✅ **Alarmas multi-nivel** - Warning, Critical, Emergency
+- ✅ **Experimentos de caos automatizados** - Gremlin integration
+- ✅ **Error budget tracking** - Políticas de consumo
+
+📚 **Documentación completa:**
+- [Etapa 1: Seguridad](./SECURITY-IMPROVEMENTS-STAGE-1.md)
+- [Etapa 2: Testing e Infraestructura](./ETAPA-2-TESTING-INFRA.md)
+- [Etapa 3: Monitoreo y Chaos Engineering](./ETAPA-3-MONITORING-CHAOS.md)
+- [Definiciones SLO/SLI](./SLO-SLI-DEFINITIONS.md)
+
+🚀 **Instalación rápida:** Ver [INSTALACION-RAPIDA.md](./INSTALACION-RAPIDA.md)
+
 ## 🚀 Estado del Proyecto
 
 ![CI Pipeline](https://github.com/felivazpro/Proyecto-Hospital-Padre-Hurtado/workflows/CI%20Pipeline/badge.svg)
@@ -19,6 +50,7 @@ Sistema integral de gestión hospitalaria desarrollado con Node.js, Express, AWS
 - ✅ Internacionalización (i18n) - Español/Inglés
 - ✅ Dashboard interactivo
 - ✅ Arquitectura serverless con AWS Lambda
+- ✅ **Seguridad reforzada** (Session, CORS, IAM)
 
 ## 🏗️ Arquitectura
 
@@ -26,7 +58,8 @@ Sistema integral de gestión hospitalaria desarrollado con Node.js, Express, AWS
 ┌─────────────────────────────────────────────────┐
 │                   Frontend                       │
 │          Node.js + Express + EJS                 │
-│              (Puerto 3000)                       │
+│       (Puerto 3000 - CORS Restrictivo)           │
+│     ✅ Cookies HttpOnly/Secure/SameSite          │
 └──────────────────┬──────────────────────────────┘
                    │
                    ▼
@@ -42,6 +75,7 @@ Sistema integral de gestión hospitalaria desarrollado con Node.js, Express, AWS
 │  - Login/Refresh/Me                              │
 │  - Permisos y Roles                              │
 │  - Personalización                               │
+│  ✅ IAM con permisos mínimos (sin wildcards)     │
 └──────────────────┬──────────────────────────────┘
                    │
                    ▼
@@ -49,6 +83,7 @@ Sistema integral de gestión hospitalaria desarrollado con Node.js, Express, AWS
 │            DynamoDB + MySQL                      │
 │    (Configuración + Datos relacionales)         │
 └─────────────────────────────────────────────────┘
+```
 ```
 
 ## 📁 Estructura del Proyecto

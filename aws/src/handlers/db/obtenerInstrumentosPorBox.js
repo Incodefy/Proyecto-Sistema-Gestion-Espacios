@@ -1,16 +1,19 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse } = require('../../utils/response');
+const { createLogger } = require('../../utils/logger');
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const logger = createLogger({ handler: 'obtenerInstrumentosPorBox' });
 
 module.exports.handler = async (event) => {
+    const endTrace = logger.startTrace('obtenerInstrumentosPorBox');
     const boxId = event.queryStringParameters?.boxId;
 
     if (!boxId) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "boxId es requerido" })
-        };
+        logger.warn('Missing boxId parameter');
+        endTrace();
+        return errorResponse('boxId es requerido', 400);
     }
 
     const params = {
@@ -23,15 +26,13 @@ module.exports.handler = async (event) => {
 
     try {
         const result = await client.send(new QueryCommand(params));
-        return {
-            statusCode: 200,
-            body: JSON.stringify(result.Items || [])
-        };
+        
+        logger.info('Instrumentos retrieved for box', { box_id: boxId, count: result.Items?.length || 0 });
+        endTrace();
+        return successResponse(result.Items || [], 200, { count: result.Items?.length || 0 });
     } catch (err) {
-        console.error("Error Dynamo:", err);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "Error obteniendo instrumentos por box" })
-        };
+        logger.error('Error retrieving instrumentos by box', err, { box_id: boxId });
+        endTrace();
+        return errorResponse('Error obteniendo instrumentos por box', 500);
     }
 };

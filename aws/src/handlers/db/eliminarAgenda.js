@@ -1,27 +1,25 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { successResponse, errorResponse, notFoundResponse } = require("../../utils/response");
+const { createLogger } = require("../../utils/logger");
 
+const logger = createLogger({ handler: 'eliminarAgenda' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 module.exports.handler = async (event) => {
-    console.log('=== INICIO eliminarAgenda ===');
-    console.log('Event:', JSON.stringify(event, null, 2));
-
+    const endTrace = logger.startTrace('eliminarAgenda');
     const tableName = process.env.DB_AGENDA;
-    
-    // Obtener agendaId de query parameters
     const agendaId = event.queryStringParameters?.agendaId;
     
     if (!agendaId) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ 
-                error: "agendaId es requerido" 
-            })
-        };
+        logger.warn("Intento de eliminación sin agendaId");
+        endTrace();
+        return errorResponse("agendaId es requerido", 400);
     }
 
     try {
+        logger.info("Eliminando agenda", { agendaId });
+        
         const getParams = {
             TableName: tableName,
             Key: {
@@ -33,12 +31,9 @@ module.exports.handler = async (event) => {
         const agenda = await client.send(new GetCommand(getParams));
         
         if (!agenda.Item) {
-            return {
-                statusCode: 404,
-                body: JSON.stringify({ 
-                    error: "Agenda no encontrada" 
-                })
-            };
+            logger.warn("Agenda no encontrada para eliminación", { agendaId });
+            endTrace();
+            return notFoundResponse("Agenda no encontrada");
         }
 
         const deleteParams = {
@@ -51,27 +46,16 @@ module.exports.handler = async (event) => {
 
         await client.send(new DeleteCommand(deleteParams));
         
-        console.log('✅ Agenda eliminada exitosamente');
+        logger.info("Agenda eliminada exitosamente", { agendaId, pk: agenda.Item.PK });
+        endTrace();
 
-        return {
-            statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            body: JSON.stringify({ 
-                success: true,
-                message: "Agenda eliminada correctamente" 
-            })
-        };
+        return successResponse({ 
+            message: "Agenda eliminada correctamente",
+            agendaId
+        });
     } catch (err) {
-        console.error('❌ ERROR eliminando agenda:', err);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ 
-                error: "Error eliminando agenda",
-                message: err.message
-            })
-        };
+        logger.error("Error eliminando agenda", err, { agendaId });
+        endTrace();
+        return errorResponse("Error eliminando agenda", 500, { details: err.message });
     }
 };
