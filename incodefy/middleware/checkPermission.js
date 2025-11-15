@@ -10,7 +10,7 @@ const checkPermission = (requiredPermission) => {
     const userPermissions = req.session.user.permissions || [];
 
     console.log('Permisos: ', userPermissions);
-    
+
     if (userPermissions.includes('admin.users') || userPermissions.includes(requiredPermission)) {
       return next();
     }

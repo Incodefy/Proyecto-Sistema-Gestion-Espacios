@@ -16,24 +16,100 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 // === Cargar la configuración de permisos desde el archivo JSON definido en config.js ===
-const permissionsPath = path.resolve(config.roles.available_permissions_path);
-if (!fs.existsSync(permissionsPath)) {
-  throw new Error(`Archivo de permisos no encontrado: ${permissionsPath}`);
+let AVAILABLE_PERMISSIONS = {};
+let PREDEFINED_ROLES = {};
+
+try {
+  // Intentar cargar desde path relativo
+  const permissionsPath = path.resolve(config.roles.available_permissions_path);
+  console.log(`[Init] Intentando cargar permisos desde: ${permissionsPath}`);
+  
+  if (!fs.existsSync(permissionsPath)) {
+    console.warn(`[Init] ⚠️ Archivo no encontrado en: ${permissionsPath}`);
+    throw new Error(`Archivo de permisos no encontrado: ${permissionsPath}`);
+  }
+  
+  const permissionsData = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'));
+  AVAILABLE_PERMISSIONS = permissionsData.AVAILABLE_PERMISSIONS;
+  PREDEFINED_ROLES = permissionsData.PREDEFINED_ROLES;
+  
+  console.log(`[Init] ✅ Permisos cargados correctamente`);
+  console.log(`[Init] Roles disponibles: ${Object.keys(PREDEFINED_ROLES).join(', ')}`);
+  
+} catch (err) {
+  console.error(`[Init] ❌ Error cargando permisos:`, err);
+  console.error(`[Init] Stack:`, err.stack);
+  
+  // Fallback: definir permisos por defecto en código
+  console.warn(`[Init] ⚠️ Usando permisos por defecto codificados`);
+  
+  AVAILABLE_PERMISSIONS = {
+    "dashboard.read": "Ver Dashboard",
+    "dashboard.write": "Modificar Dashboard",
+    "agenda.read": "Ver Agenda",
+    "agenda.write": "Gestionar Agenda",
+    "box.read": "Ver Box",
+    "box.write": "Gestionar Box",
+    "box.detalle.read": "Ver Detalle de Box",
+    "box.detalle.write": "Modificar Detalle de Box",
+    "data.import": "Importar Datos",
+    "data.export": "Exportar Datos",
+    "medicos.read": "Ver Médicos",
+    "notificaciones.read": "Ver Notificaciones",
+    "notificaciones.historial": "Ver Historial de Notificaciones",
+    "admin.users": "Administrar Sistema y Usuarios",
+    "admin.roles": "Administrar Roles",
+    "admin.permissions": "Administrar Permisos",
+    "admin.db": "Administrar Bases de Datos",
+    "admin.system": "Acceso de Sistema"
+  };
+  
+  PREDEFINED_ROLES = {
+    "consulta": [
+      "dashboard.read", "agenda.read", "box.read", "box.detalle.read",
+      "medicos.read", "notificaciones.read", "notificaciones.historial"
+    ],
+    "operador": [
+      "dashboard.read", "agenda.read", "agenda.write", "box.read", "box.write",
+      "box.detalle.read", "medicos.read", "notificaciones.read"
+    ],
+    "gestor": [
+      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+      "data.import", "data.export", "medicos.read",
+      "notificaciones.read", "notificaciones.historial"
+    ],
+    "medico": [
+      "dashboard.read", "agenda.read", "medicos.read",
+      "notificaciones.read", "notificaciones.historial"
+    ],
+    "admin": [
+      "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
+      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+      "data.import", "data.export", "medicos.read",
+      "notificaciones.read", "notificaciones.historial"
+    ]
+  };
 }
-const permissionsData = JSON.parse(fs.readFileSync(permissionsPath, 'utf-8'));
-const { AVAILABLE_PERMISSIONS, PREDEFINED_ROLES } = permissionsData;
 
 /**
  * Verifica si un usuario tiene un permiso específico
- * (renombrada desde checkPermission para evitar colisión de exports)
+ * También verifica si es el primer usuario en el sistema (admin bootstrap)
  */
 async function verifyPermission(userEmail, requiredPermission) {
+  const TRACE = `[Perms-${Date.now()}]`;
+  
   try {
+    console.log(`${TRACE} 🔐 Verificando permiso '${requiredPermission}' para ${userEmail}`);
+    
     if (!dynamoBreaker.shouldAllow()) {
-      console.warn("[Permissions] Circuit breaker activo (lectura DynamoDB).");
+      console.warn(`${TRACE} Circuit breaker activo (lectura DynamoDB).`);
       throw new Error("CircuitBreakerOpen");
     }
 
+    // Primero, intentar obtener el usuario de DynamoDB
+    console.log(`${TRACE} 📍 Buscando usuario en DynamoDB...`);
     const result = await retryWithJitter(
       async () => {
         const res = await docClient.send(new GetCommand({
@@ -46,14 +122,102 @@ async function verifyPermission(userEmail, requiredPermission) {
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    if (!result.Item) return false;
-    const userPermissions = result.Item.permissions || [];
+    // Si existe el usuario en DynamoDB, verificar permisos normalmente
+    if (result.Item) {
+      console.log(`${TRACE} ✅ Usuario encontrado en DynamoDB`);
+      const userPermissions = result.Item.permissions || [];
+      console.log(`${TRACE} 📋 Permisos del usuario: ${userPermissions.join(', ')}`);
 
-    if (userPermissions.includes("admin.users")) return true;
-    return userPermissions.includes(requiredPermission);
+      if (userPermissions.includes("admin.users")) {
+        console.log(`${TRACE} ✅ Tiene admin.users (super permisos)`);
+        return true;
+      }
+      
+      const hasPermission = userPermissions.includes(requiredPermission);
+      console.log(`${TRACE} ${hasPermission ? '✅' : '❌'} Tiene permiso '${requiredPermission}': ${hasPermission}`);
+      return hasPermission;
+    }
+
+    console.log(`${TRACE} ❌ Usuario NO encontrado en DynamoDB`);
+
+    // === BOOTSTRAP MODE ===
+    // Si el permiso requerido es admin.users y el usuario no existe en DynamoDB,
+    // permitir el PRIMER admin del sistema
+    if (requiredPermission === "admin.users") {
+      console.log(`${TRACE} 🔍 Bootstrap check: ¿Hay otros admins en el sistema?`);
+      
+      // Intentar query a RoleIndex
+      let adminCheckResult = null;
+      let queryError = null;
+      
+      try {
+        console.log(`${TRACE} 📡 Consultando RoleIndex para buscar admins existentes...`);
+        
+        const adminCheck = await retryWithJitter(
+          async () => {
+            try {
+              const res = await docClient.send(new QueryCommand({
+                TableName: process.env.USER_ROLES_TABLE,
+                IndexName: 'RoleIndex',
+                KeyConditionExpression: 'role = :r',
+                ExpressionAttributeValues: { ':r': 'admin' },
+                Limit: 1
+              }));
+              dynamoBreaker.reportSuccess();
+              return res;
+            } catch (queryErr) {
+              console.error(`${TRACE} Error en query command:`, queryErr.message);
+              throw queryErr;
+            }
+          },
+          { maxAttempts: 2, baseDelayMs: 100 }
+        );
+        
+        adminCheckResult = adminCheck;
+        console.log(`${TRACE} 📊 Query exitosa, admins encontrados: ${adminCheck.Items ? adminCheck.Items.length : 0}`);
+        
+      } catch (err) {
+        queryError = err;
+        console.error(`${TRACE} ⚠️ Error en query a RoleIndex: ${err.message}`);
+        // Intentar un escaneo completo de la tabla como fallback
+        console.log(`${TRACE} 🔄 Intentando escaneo directo de la tabla...`);
+        try {
+          const scanRes = await docClient.send(new QueryCommand({
+            TableName: process.env.USER_ROLES_TABLE,
+            KeyConditionExpression: 'attribute_not_exists(user_email)',
+            Limit: 1
+          }));
+          console.log(`${TRACE} Scan result: ${JSON.stringify(scanRes)}`);
+        } catch (e) {
+          console.log(`${TRACE} Scan también falló, puede ser que la tabla esté vacía`);
+        }
+      }
+
+      // Evaluar resultado del query
+      if (adminCheckResult !== null) {
+        if (!adminCheckResult.Items || adminCheckResult.Items.length === 0) {
+          console.log(`${TRACE} ✅✅✅ BOOTSTRAP MODE ACTIVADO: No existen admins, permitiendo al primer admin`);
+          return true;
+        } else {
+          console.log(`${TRACE} ❌ Ya existen ${adminCheckResult.Items.length} admin(s) en el sistema`);
+          return false;
+        }
+      }
+      
+      // Fallback: Si el query falló pero parece que es el primer usuario
+      if (queryError) {
+        console.log(`${TRACE} ⚠️ No se pudo verificar admins, pero la tabla podría estar vacía`);
+        console.log(`${TRACE} ℹ️  Permitiendo bootstrap (si esto es incorrecto, el DynamoDB tiene admins que no se pudieron leer)`);
+        // PERMITIR bootstrap si el query falla (asumir que la tabla está vacía)
+        return true;
+      }
+    }
+
+    return false;
+
   } catch (err) {
     dynamoBreaker.reportFailure();
-    console.error("[Permissions] Error verificando permiso:", err);
+    console.error(`${TRACE} ❌ Error inesperado en verifyPermission:`, err);
     return false;
   }
 }
@@ -68,6 +232,16 @@ module.exports.assignRole = async (event) => {
 
   try {
     console.log(`[${TRACE_ID}] 🔎 Validando entrada...`);
+
+    // 0) VALIDAR QUE LA TABLA EXISTA
+    if (!process.env.USER_ROLES_TABLE) {
+      console.error(`[${TRACE_ID}] ❌ USER_ROLES_TABLE no está definido en environment`);
+      return response(500, {
+        ok: false,
+        error: "Tabla USER_ROLES_TABLE no configurada",
+        trace_id: TRACE_ID
+      });
+    }
 
     // 1) PARSEO DEL BODY
     let body = {};
@@ -130,9 +304,11 @@ module.exports.assignRole = async (event) => {
     const hasPermission = await verifyPermission(requesterEmail, "admin.users");
     if (!hasPermission) {
       console.warn(`[${TRACE_ID}] ❌ Usuario no tiene permiso admin.users`);
+      console.warn(`[${TRACE_ID}] ℹ️ El usuario solo puede asignar roles si es admin o es el primer admin del sistema`);
       return response(403, {
         ok: false,
-        error: "No tienes permiso para asignar roles",
+        error: "No tienes permiso para asignar roles. Solo administradores pueden asignar roles.",
+        details: "Para que un usuario pueda asignar roles, debe tener el permiso 'admin.users'. El primer admin del sistema se puede crear automáticamente.",
         required_permission: "admin.users",
         requester: requesterEmail,
         trace_id: TRACE_ID
@@ -153,12 +329,17 @@ module.exports.assignRole = async (event) => {
       });
     }
 
-    // 8) PREPARAR ÍTEM PARA DYNAMO
-    const permissions = PREDEFINED_ROLES[role];
+    // 8) PREPARAR ÍTEM PARA DYNAMO - PERMISOS COMO ARRAY
+    const permissions = Array.isArray(PREDEFINED_ROLES[role]) 
+      ? PREDEFINED_ROLES[role] 
+      : Object.values(PREDEFINED_ROLES[role] || {});
+    
+    console.log(`[${TRACE_ID}] 📋 Permisos a asignar:`, permissions);
+
     const item = {
       user_email,
       role,
-      permissions,
+      permissions: permissions,  // Asegurar que sea un array
       assigned_at: timestamp,
       assigned_by: requesterEmail
     };
@@ -174,7 +355,7 @@ module.exports.assignRole = async (event) => {
     }
 
     // 10) ESCRITURA EN DYNAMO
-    console.log(`[${TRACE_ID}] 💾 Guardando en Dynamo...`);
+    console.log(`[${TRACE_ID}] 💾 Guardando en Dynamo: ${process.env.USER_ROLES_TABLE}...`);
 
     try {
       await retryWithJitter(

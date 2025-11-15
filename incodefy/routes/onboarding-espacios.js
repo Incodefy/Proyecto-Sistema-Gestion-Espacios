@@ -18,9 +18,9 @@ router.get('/onboarding-espacios', async (req, res) => {
 
     try {
       // Intentar obtener el grupo activo
-      const grupoActivoResponse = await req.apiClient.get('/api/espacios/grupo-activo');
-      if (grupoActivoResponse.data && grupoActivoResponse.data.ok) {
-        grupoActivo = grupoActivoResponse.data.grupo_activo;
+      const grupoActivoResponse = await req.apiClient.obtenerGrupoActivo();
+      if (grupoActivoResponse && grupoActivoResponse.ok) {
+        grupoActivo = grupoActivoResponse.grupo_activo;
       }
     } catch (err) {
       // Si no hay grupo activo, es normal en onboarding
@@ -29,9 +29,9 @@ router.get('/onboarding-espacios', async (req, res) => {
 
     try {
       // Obtener todas las configuraciones
-      const configResponse = await req.apiClient.get('/api/espacios/configuracion');
-      if (configResponse.data && configResponse.data.ok) {
-        configuracionExistente = configResponse.data.configuracion;
+      const configResponse = await req.apiClient.obtenerConfiguracionEspacios();
+      if (configResponse && configResponse.ok) {
+        configuracionExistente = configResponse.configuracion;
       }
     } catch (err) {
       console.log('No hay configuraciones previas');
@@ -111,21 +111,15 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     });
 
     // Llamar a Lambda
-    const response = await req.apiClient.post('/api/espacios/configuracion', {
-      nomenclatura,
-      espacios,
-      grupo_id
-    });
+    const response = await req.apiClient.guardarConfiguracionEspacios(nomenclatura, espacios, grupo_id);
 
     console.log(`[${TRACE_ID}] ✅ Lambda respondió exitosamente`);
 
     // Si todo salió bien y no hay grupo activo, asignar este como activo
-    if (response.data && response.data.ok && response.data.data.grupo_id) {
+    if (response && response.ok && response.data.grupo_id) {
       try {
         console.log(`[${TRACE_ID}] 🔄 Asignando grupo como activo...`);
-        await req.apiClient.put('/api/espacios/asignar-grupo', {
-          grupo_id: response.data.data.grupo_id
-        });
+        await req.apiClient.asignarGrupoActivo(response.data.grupo_id);
         console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo`);
       } catch (activateErr) {
         console.warn(`[${TRACE_ID}] ⚠️ No se pudo activar el grupo automáticamente`, activateErr.message);
@@ -136,9 +130,9 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     res.json({
       ok: true,
       message: 'Configuración guardada correctamente',
-      data: response.data.data,
+      data: response.data,
       trace_id: TRACE_ID,
-      lambda_trace_id: response.data.trace_id
+      lambda_trace_id: response.trace_id
     });
 
   } catch (error) {
@@ -169,15 +163,13 @@ router.get('/api/espacios/configuracion', async (req, res) => {
 
     console.log(`[${TRACE_ID}] 🔍 Obteniendo configuración${grupo_id ? ` para grupo: ${grupo_id}` : ''}`);
 
-    const response = await req.apiClient.get('/api/espacios/configuracion', {
-      params: { grupo_id }
-    });
+    const response = await req.apiClient.obtenerConfiguracionEspacios(grupo_id);
 
     console.log(`[${TRACE_ID}] ✅ Configuración obtenida`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 
@@ -214,15 +206,13 @@ router.get('/api/espacios/lista', async (req, res) => {
 
     console.log(`[${TRACE_ID}] 📋 Listando espacios del grupo: ${grupo_id}`);
 
-    const response = await req.apiClient.get('/api/espacios/lista', {
-      params: { grupo_id }
-    });
+    const response = await req.apiClient.listarEspacios(grupo_id);
 
-    console.log(`[${TRACE_ID}] ✅ Espacios obtenidos: ${response.data.total}`);
+    console.log(`[${TRACE_ID}] ✅ Espacios obtenidos: ${response.total}`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 
@@ -259,15 +249,13 @@ router.put('/api/espacios/asignar-grupo', async (req, res) => {
 
     console.log(`[${TRACE_ID}] 🎯 Asignando grupo activo: ${grupo_id}`);
 
-    const response = await req.apiClient.put('/api/espacios/asignar-grupo', {
-      grupo_id
-    });
+    const response = await req.apiClient.asignarGrupoActivo(grupo_id);
 
     console.log(`[${TRACE_ID}] ✅ Grupo asignado exitosamente`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 
@@ -294,13 +282,13 @@ router.get('/api/espacios/grupo-activo', async (req, res) => {
   try {
     console.log(`[${TRACE_ID}] 🔍 Obteniendo grupo activo`);
 
-    const response = await req.apiClient.get('/api/espacios/grupo-activo');
+    const response = await req.apiClient.obtenerGrupoActivo();
 
     console.log(`[${TRACE_ID}] ✅ Grupo activo obtenido`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 
@@ -346,15 +334,13 @@ router.delete('/api/espacios/configuracion', async (req, res) => {
 
     console.log(`[${TRACE_ID}] 🗑️ Eliminando configuración: ${grupo_id}`);
 
-    const response = await req.apiClient.delete('/api/espacios/configuracion', {
-      params: { grupo_id }
-    });
+    const response = await req.apiClient.eliminarConfiguracionEspacios(grupo_id);
 
     console.log(`[${TRACE_ID}] ✅ Configuración eliminada`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 
@@ -392,11 +378,9 @@ router.get('/api/espacios/estadisticas', async (req, res) => {
     console.log(`[${TRACE_ID}] 📊 Obteniendo estadísticas para: ${grupo_id}`);
 
     // Obtener la lista de espacios
-    const espaciosResponse = await req.apiClient.get('/api/espacios/lista', {
-      params: { grupo_id }
-    });
+    const espaciosResponse = await req.apiClient.listarEspacios(grupo_id);
 
-    const espacios = espaciosResponse.data.espacios || [];
+    const espacios = espaciosResponse.espacios || [];
     
     // Calcular estadísticas básicas
     const espaciosGenerales = espacios.filter(e => e.tipo && !e.pertenece_a);
@@ -441,13 +425,13 @@ router.get('/api/espacios/grupos-usuario', async (req, res) => {
   try {
     console.log(`[${TRACE_ID}] 📋 Obteniendo grupos del usuario`);
 
-    const response = await req.apiClient.get('/api/espacios/grupos-usuario');
+    const response = await req.apiClient.listarGruposUsuario();
 
-    console.log(`[${TRACE_ID}] ✅ Grupos obtenidos: ${response.data.total}`);
+    console.log(`[${TRACE_ID}] ✅ Grupos obtenidos: ${response.total}`);
 
     res.json({
       ok: true,
-      ...response.data,
+      ...response,
       trace_id: TRACE_ID
     });
 

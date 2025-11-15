@@ -228,6 +228,61 @@ class ApiClient {
     });
     return response.data;
   }
+
+  // ============ CONFIGURACIÓN DE ESPACIOS (ONBOARDING) ============
+  async guardarConfiguracionEspacios(nomenclatura, espacios, grupo_id) {
+    const response = await this.client.post('/api/espacios/configuracion', {
+      nomenclatura,
+      espacios,
+      grupo_id
+    });
+    return response.data;
+  }
+
+  async obtenerConfiguracionEspacios(grupo_id) {
+    const response = await this.client.get('/api/espacios/configuracion', {
+      params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async listarEspacios(grupo_id) {
+    const response = await this.client.get('/api/espacios/lista', {
+      params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async asignarGrupoActivo(grupo_id) {
+    const response = await this.client.put('/api/espacios/asignar-grupo', {
+      grupo_id
+    });
+    return response.data;
+  }
+
+  async obtenerGrupoActivo() {
+    const response = await this.client.get('/api/espacios/grupo-activo');
+    return response.data;
+  }
+
+  async eliminarConfiguracionEspacios(grupo_id) {
+    const response = await this.client.delete('/api/espacios/configuracion', {
+      params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async obtenerEstadisticasEspacios(grupo_id) {
+    const response = await this.client.get('/api/espacios/estadisticas', {
+      params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async listarGruposUsuario() {
+    const response = await this.client.get('/api/espacios/grupos-usuario');
+    return response.data;
+  }
 }
 
 module.exports = ApiClient;
