@@ -251,7 +251,7 @@ module.exports.assignRole = async (event) => {
       return validationErrorResponse(errors);
     }
 
-    const { user_email, role } = data;
+    const { userEmail: user_email, roleName: role } = data;
 
     // 2) VALIDAR ROL
     if (!PREDEFINED_ROLES[role]) {
@@ -260,25 +260,61 @@ module.exports.assignRole = async (event) => {
       return errorResponse("Rol no válido", 400, { available_roles: Object.keys(PREDEFINED_ROLES) });
     }
 
-    // 3) VALIDAR TOKEN DEL ADMIN
-    const requesterEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    // 3) BOOTSTRAP MODE: Permitir header especial para el primer admin
+    const bootstrapEmail = event.headers?.['x-bootstrap-email'] || event.headers?.['X-Bootstrap-Email'];
+    let requesterEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    
+    // Si hay header de bootstrap y es el primer admin del sistema
+    if (bootstrapEmail && role === 'admin' && user_email === bootstrapEmail) {
+      logger.info("🚀 Bootstrap mode detectado", { bootstrapEmail, user_email });
+      
+      // Verificar que no existan otros admins
+      try {
+        const adminCheck = await docClient.send(new QueryCommand({
+          TableName: process.env.USER_ROLES_TABLE,
+          IndexName: 'RoleIndex',
+          KeyConditionExpression: 'role = :r',
+          ExpressionAttributeValues: { ':r': 'admin' },
+          Limit: 1
+        }));
+        
+        if (adminCheck.Items && adminCheck.Items.length > 0) {
+          logger.warn("❌ Bootstrap denegado: Ya existen admins en el sistema");
+          endTrace();
+          return forbiddenResponse("Ya existe al menos un admin en el sistema. Usa autenticación normal.");
+        }
+        
+        logger.info("✅ Bootstrap permitido: No hay admins en el sistema");
+        requesterEmail = bootstrapEmail; // Usar el email del bootstrap como requester
+        
+      } catch (err) {
+        logger.warn("⚠️ No se pudo verificar admins existentes, permitiendo bootstrap", { error: err.message });
+        requesterEmail = bootstrapEmail;
+      }
+    }
+    
+    // 4) VALIDAR TOKEN DEL ADMIN (si no es bootstrap)
     if (!requesterEmail) {
-      logger.warn("Intento sin token válido");
+      logger.warn("Intento sin token válido ni bootstrap");
       endTrace();
       return unauthorizedResponse("Token inválido o ausente. Debes enviar Authorization: Bearer <token>");
     }
 
     logger.info("Solicitud de asignación de rol", { requesterEmail, targetUser: user_email, role });
 
-    // 4) VALIDAR PERMISO admin.users
-    const hasPermission = await verifyPermission(requesterEmail, "admin.users");
-    if (!hasPermission) {
-      logger.warn("Usuario sin permiso admin.users", { requester: requesterEmail });
-      endTrace();
-      return forbiddenResponse("No tienes permiso para asignar roles", { required_permission: "admin.users" });
+    // 5) VALIDAR PERMISO admin.users (skip para bootstrap del primer admin)
+    if (requesterEmail !== bootstrapEmail) {
+      const hasPermission = await verifyPermission(requesterEmail, "admin.users");
+      if (!hasPermission) {
+        logger.warn("Usuario sin permiso admin.users", { requester: requesterEmail });
+        endTrace();
+        return forbiddenResponse("No tienes permiso para asignar roles", { required_permission: "admin.users" });
+      }
+      } else {
+      logger.info("✅ Skipping permission check for bootstrap mode");
     }
 
-    // 5) IDEMPOTENCIA
+    // 6) IDEMPOTENCIA
     const timestamp = new Date().toISOString();
     const idempotencyKey = `assignRole-${user_email}-${role}-${timestamp}`;
 
@@ -288,7 +324,7 @@ module.exports.assignRole = async (event) => {
       return successResponse({ message: "Rol ya estaba asignado" });
     }
 
-    // 6) PREPARAR ÍTEM
+    // 7) PREPARAR ÍTEM
     const permissions = PREDEFINED_ROLES[role];
     const item = {
       user_email,
@@ -298,14 +334,14 @@ module.exports.assignRole = async (event) => {
       assigned_by: requesterEmail
     };
 
-    // 7) CIRCUIT BREAKER
+    // 8) CIRCUIT BREAKER
     if (!dynamoBreaker.shouldAllow()) {
       logger.warn("Circuit breaker activo - asignación pausada");
       endTrace();
       return errorResponse("Circuit breaker activo, espere unos segundos", 503);
     }
 
-    // 8) ESCRITURA EN DYNAMO
+    // 9) ESCRITURA EN DYNAMO
     logger.debug("Guardando rol en DynamoDB", { table: process.env.USER_ROLES_TABLE, user_email, role });
 
     try {
@@ -325,7 +361,7 @@ module.exports.assignRole = async (event) => {
       return errorResponse("Error guardando en DynamoDB", 500, { details: dynamoErr.message });
     }
 
-    // 9) MARCAR COMO PROCESADO
+    // 10) MARCAR COMO PROCESADO
     await markAsProcessed(idempotencyKey);
 
     logger.info("Rol asignado correctamente", { user_email, role, requesterEmail });
@@ -335,12 +371,14 @@ module.exports.assignRole = async (event) => {
       message: "Rol asignado correctamente",
       assigned_to: user_email,
       assigned_role: role,
-      permissions
+      permissions,
+      assigned_by: requesterEmail,
+      assigned_at: timestamp
     });
 
   } catch (err) {
     dynamoBreaker.reportFailure();
-    logger.error("Error inesperado en assignRole", err);
+    logger.error("Error inesperado en assignRole", { error: err.message, stack: err.stack });
     endTrace();
     return errorResponse("Error interno del servidor", 500, { details: err.message });
   }

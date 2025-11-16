@@ -42,6 +42,7 @@ provider:
       allowedHeaders:
         - Content-Type
         - Authorization
+        - x-bootstrap-email
       allowedMethods:
         - GET
         - POST
@@ -282,6 +283,16 @@ functions:
             name: cognitoJwt
     timeout: 15
     description: Assign role to user (admin only)
+  
+  # Bootstrap endpoint sin authorizer para crear el primer admin
+  assignRoleBootstrap:
+    handler: src/handlers/permissions/permissions.assignRole
+    events:
+      - httpApi:
+          method: POST
+          path: /bootstrap/assign-role
+    timeout: 15
+    description: Bootstrap endpoint to create first admin (no auth required)
     
   removeRole:
     handler: src/handlers/permissions/permissions.removeRole
@@ -545,9 +556,8 @@ functions:
 #   - serverless-offline
 
 package:
-  individually: true
+  individually: false
   patterns:
-    - '!node_modules/**'
     - '!**/*.md'
     - '!**/*.test.*'
     - '!.git/**'

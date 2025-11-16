@@ -11,11 +11,12 @@ const {
   UserNotFoundFault
 } = require("@aws-sdk/client-cognito-identity-provider");
 
-const fetch = require("node-fetch");
+// Node.js 18+ tiene fetch global, pero para versiones anteriores:
+const fetch = globalThis.fetch || require("node-fetch");
 const https = require("https");
 
-const USER_POOL_ID = 'us-east-2_VGnJ3QB3M';
-const API_BASE_URL = 'https://lqkt2hy861.execute-api.us-east-2.amazonaws.com';
+const USER_POOL_ID = 'us-east-2_MyxgSKtmy';
+const API_BASE_URL = 'https://zsq232pdg4.execute-api.us-east-2.amazonaws.com';
 
 const ADMIN_EMAIL = 'admin@gmail.com';
 const ADMIN_PASSWORD = 'Admin123!';
@@ -144,7 +145,9 @@ async function assignRole(userEmail, role, adminToken, isBootstrap = false) {
   try {
     console.log(`📌 Asignando rol '${role}' a ${userEmail}...`);
 
-    const url = `${API_BASE_URL}/admin/assign-role`;
+    // Usar endpoint diferente para bootstrap
+    const endpoint = isBootstrap ? '/bootstrap/assign-role' : '/admin/assign-role';
+    const url = `${API_BASE_URL}${endpoint}`;
     console.log(`   📡 Conectando a: ${url}`);
 
     const headers = {
@@ -162,7 +165,7 @@ async function assignRole(userEmail, role, adminToken, isBootstrap = false) {
     const res = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ user_email: userEmail, role }),
+      body: JSON.stringify({ userEmail, roleName: role }),
       agent: httpsAgent,
       timeout: 15000
     });
@@ -179,21 +182,25 @@ async function assignRole(userEmail, role, adminToken, isBootstrap = false) {
     const result = await res.json();
 
     // Debug: mostrar respuesta completa si hay error
-    if (!result.ok) {
+    if (!result.success) {
       console.error("Respuesta completa del API:", JSON.stringify(result, null, 2));
-      throw new Error(result.error || 'Error desconocido al asignar rol');
+      throw new Error(result.error?.message || result.error || 'Error desconocido al asignar rol');
     }
 
     console.log("✅ Rol asignado correctamente");
     
+    // Extraer datos de la respuesta
+    const data = result.data || result;
+    const permissions = data.permissions;
+    
     // Mostrar permisos de forma segura
-    if (result.permissions && Array.isArray(result.permissions)) {
-      console.log(`   Permisos (${result.permissions.length}): ${result.permissions.join(', ')}`);
+    if (permissions && Array.isArray(permissions)) {
+      console.log(`   Permisos (${permissions.length}): ${permissions.join(', ')}`);
     } else {
-      console.log(`   Permisos: ${JSON.stringify(result.permissions)}`);
+      console.log(`   Permisos: ${JSON.stringify(permissions)}`);
     }
 
-    return result;
+    return data;
 
   } catch (err) {
     if (err.code === 'ECONNREFUSED') {
