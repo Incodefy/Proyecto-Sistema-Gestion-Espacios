@@ -55,6 +55,21 @@ router.get('/onboarding-espacios', async (req, res) => {
   }
 });
 
+router.get('/api/grupos/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const response = await req.apiClient.obtenerGrupo(id);
+
+    if (!response.ok) return res.status(404).json(response);
+
+    return res.json(response);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Error consultando grupo" });
+  }
+});
+
 /**
  * POST /api/espacios/configuracion
  * Proxy para guardar la configuración de espacios en Lambda
@@ -111,7 +126,7 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     });
 
     // Llamar a Lambda
-    const response = await req.apiClient.guardarConfiguracionEspacios(nomenclatura, espacios, grupo_id);
+    const response = await req.apiClient.guardarEspacios(grupo_id, nomenclatura, espacios);
 
     console.log(`[${TRACE_ID}] ✅ Lambda respondió exitosamente`);
 
@@ -420,30 +435,56 @@ router.get('/api/espacios/estadisticas', async (req, res) => {
  * Lista todos los grupos a los que pertenece el usuario
  */
 router.get('/api/espacios/grupos-usuario', async (req, res) => {
-  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
   try {
-    console.log(`[${TRACE_ID}] 📋 Obteniendo grupos del usuario`);
-
     const response = await req.apiClient.listarGruposUsuario();
+    res.json(response);
+  } catch (error) {
+    console.error('Error listando grupos:', error);
+    res.status(500).json({ ok: false, error: 'Error al obtener grupos' });
+  }
+});
 
-    console.log(`[${TRACE_ID}] ✅ Grupos obtenidos: ${response.total}`);
+router.post('/api/grupos', async (req, res) => {
+  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [Express] POST /api/grupos | ${TRACE_ID} ===`);
+  
+  try {
+    const { nombre } = req.body; // Cambiado de 'name' a 'nombre'
+    console.log(`[${TRACE_ID}] 📥 Datos recibidos:`, { nombre });
+    
+    if (!nombre || !nombre.trim()) {
+      console.warn(`[${TRACE_ID}] ⚠️ Nombre no proporcionado`);
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Nombre del grupo es requerido',
+        trace_id: TRACE_ID
+      });
+    }
 
-    res.json({
+    console.log(`[${TRACE_ID}] 🔄 Llamando a Lambda para crear grupo...`);
+    const response = await req.apiClient.crearGrupo(nombre);
+
+    console.log(`[${TRACE_ID}] ✅ Respuesta de Lambda:`, response);
+
+    res.status(201).json({
       ok: true,
-      ...response,
-      trace_id: TRACE_ID
+      group_id: response.group_id,
+      trace_id: TRACE_ID,
+      lambda_trace_id: response.trace_id
     });
 
   } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error obteniendo grupos:`, error.message);
+    console.error(`[${TRACE_ID}] ❌ Error creando grupo:`, error.message);
+    console.error(`[${TRACE_ID}] Stack:`, error.stack);
     
     const lambdaError = error.response?.data;
     
     res.status(error.response?.status || 500).json({ 
-      ok: false,
-      error: lambdaError?.error || 'Error al obtener grupos',
-      trace_id: TRACE_ID
+      ok: false, 
+      error: lambdaError?.error || 'Error creando grupo',
+      details: lambdaError?.details || error.message,
+      trace_id: TRACE_ID,
+      lambda_trace_id: lambdaError?.trace_id
     });
   }
 });

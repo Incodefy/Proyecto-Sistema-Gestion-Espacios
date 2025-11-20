@@ -230,13 +230,28 @@ class ApiClient {
   }
 
   // ============ CONFIGURACIÓN DE ESPACIOS (ONBOARDING) ============
-  async guardarConfiguracionEspacios(nomenclatura, espacios, grupo_id) {
-    const response = await this.client.post('/api/espacios/configuracion', {
+  async crearGrupo(nombre) {    
+    try {
+      const response = await this.client.post('/groups', {
+        name: nombre
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Data:', error.response.data);
+        console.error('Headers:', error.response.headers);
+      }
+      throw error;
+    }
+  }
+
+  async guardarEspacios(grupo_id, nomenclatura, espacios) {
+    return this.client.post(`/groups/${grupo_id}/spaces`, {
+      grupo_id,
       nomenclatura,
-      espacios,
-      grupo_id
+      espacios
     });
-    return response.data;
   }
 
   async obtenerConfiguracionEspacios(grupo_id) {
@@ -280,9 +295,15 @@ class ApiClient {
   }
 
   async listarGruposUsuario() {
-    const response = await this.client.get('/api/espacios/grupos-usuario');
+    const response = await this.client.get('/groups');
     return response.data;
   }
+
+  async obtenerGrupo(grupoId) {
+    const response = await this.client.get(`/grupos/${grupoId}`);
+    return response.data;
+  }
+
 }
 
 module.exports = ApiClient;

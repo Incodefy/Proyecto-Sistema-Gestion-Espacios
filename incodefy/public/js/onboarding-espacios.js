@@ -12,28 +12,26 @@ class OnboardingEspacios {
     this.isLoading = false;
     this.gruposDisponibles = [];
     this.grupoSeleccionado = null;
+    this.groupName = '';
     
     this.init();
   }
 
   async init() {
-    this.step = 'loading';
-    this.render();
-    
-    // Cargar grupos disponibles
-    await this.cargarGruposUsuario();
-    
-    // Decidir qué paso mostrar
-    if (this.gruposDisponibles.length === 0) {
-      // No tiene grupos, ir directo a creación
-      this.step = 'creacion-nomenclatura';
-    } else {
-      // Tiene grupos, mostrar selección
-      this.step = 'seleccion-grupo';
+      this.step = "loading";
+      this.render();
+
+      await this.cargarGruposUsuario();
+
+      if (this.gruposDisponibles.length === 0) {
+        // No hay grupos → crear uno
+        this.step = "crear-grupo";
+        return this.render();
+      }
+
+      this.step = "seleccion-grupo";
+      this.render();
     }
-    
-    this.render();
-  }
 
   async cargarGruposUsuario() {
     try {
@@ -57,6 +55,9 @@ class OnboardingEspacios {
 
   render() {
     switch (this.step) {
+      case 'crear-grupo':
+        this.renderCrearGrupo();
+        break;
       case 'loading':
         this.renderLoading();
         break;
@@ -69,6 +70,94 @@ class OnboardingEspacios {
       case 'creacion-espacios':
         this.renderCreacionEspacios();
         break;
+    }
+  }
+
+  renderCrearGrupo() {
+    this.root.innerHTML = `
+      <div class="onboarding-container">
+        <div class="onboarding-card">
+
+          <h1 class="welcome-title">Crear un nuevo Grupo</h1>
+          <p class="welcome-subtitle">Este será el nombre que identificarà tu organización o equipo</p>
+
+          <div class="form-group">
+            <label class="form-label">Nombre del grupo</label>
+            <input 
+              type="text" 
+              id="inputGroupName"
+              class="form-input"
+              placeholder="Ej: Clínica Santa María, Centro Médico XYZ..."
+              value="${this.groupName}"
+            >
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn-secondary" id="btnCancelar">
+              <i class="fas fa-arrow-left"></i> Volver
+            </button>
+
+            <button class="btn-primary" id="btnCrearGrupo" ${!this.groupName.trim() ? 'disabled' : ''}>
+              Crear grupo <i class="fas fa-check"></i>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.getElementById('inputGroupName').addEventListener('input', e => {
+      this.groupName = e.target.value;
+      document.getElementById('btnCrearGrupo').disabled = !this.groupName.trim();
+    });
+
+    document.getElementById('btnCancelar').addEventListener('click', () => {
+      this.step = 'seleccion-grupo';
+      this.render();
+    });
+
+    document.getElementById('btnCrearGrupo').addEventListener('click', () => {
+      this.crearGrupo();
+    });
+  }
+
+  async crearGrupo() {
+    try {
+      this.isLoading = true;
+      this.renderLoading();
+
+      console.log("🔄 Creando grupo...");
+
+      const response = await fetch('/api/grupos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: this.groupName }) // Cambiado de 'name' a 'nombre'
+      });
+
+      console.log("📡 Respuesta recibida:", response.status);
+
+      const data = await response.json();
+      console.log("📦 Data:", data);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Error creando grupo');
+      }
+
+      console.log("✅ Grupo creado exitosamente:", data.group_id);
+
+      // Guardar el nuevo grupo como seleccionado
+      this.grupoSeleccionado = data.group_id;
+
+      // Pasar a crear nomenclatura
+      this.step = 'creacion-nomenclatura';
+      this.render();
+
+    } catch (err) {
+      console.error("❌ Error en crearGrupo:", err);
+      this.showErrorMessage(err.message);
+      this.isLoading = false;
+      this.step = 'crear-grupo';
+      this.render();
     }
   }
 
@@ -133,7 +222,7 @@ class OnboardingEspacios {
     });
 
     document.getElementById('btnCrearNuevoGrupo').addEventListener('click', () => {
-      this.step = 'creacion-nomenclatura';
+      this.step = 'crear-grupo';
       this.render();
     });
   }
@@ -143,37 +232,38 @@ class OnboardingEspacios {
     this.render();
 
     try {
-      const response = await fetch('/api/espacios/asignar-grupo', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ grupo_id: grupoId })
-      });
-
+      // 🔥 Obtener información real del grupo
+      const response = await fetch(`/api/grupos/${grupoId}`);
       const data = await response.json();
 
-      if (response.ok && data.ok) {
-        console.log('✅ Grupo asignado correctamente');
-        
-        // Mostrar mensaje de éxito y redirigir
-        this.showSuccessMessage({
-          data: {
-            grupo_id: grupoId
-          }
-        });
-        
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
-      } else {
-        throw new Error(data.error || 'Error al asignar grupo');
+      if (!data.ok || !data.group) {
+        throw new Error("No se pudo obtener la información del grupo");
       }
-    } catch (error) {
-      console.error('❌ Error asignando grupo:', error);
+
+      const grupo = data.group;
+      this.grupoSeleccionado = grupoId;
+
+      // 📌 Lógica de flujo
+      if (grupo.configured === true) {
+        return window.location.href = "/dashboard";
+      }
+
+      if (!grupo.nomenclatura) {
+        this.step = "creacion-nomenclatura";
+        return this.render();
+      }
+
+      this.generalSpaceName = grupo.nomenclatura.general;
+      this.specificSpaceName = grupo.nomenclatura.especifico;
+
+      this.step = "creacion-espacios";
+      return this.render();
+
+    } catch (err) {
+      console.error(err);
+      this.showErrorMessage(err.message);
       this.isLoading = false;
-      this.showErrorMessage(error.message);
-      this.step = 'seleccion-grupo';
+      this.step = "seleccion-grupo";
       this.render();
     }
   }
@@ -186,7 +276,7 @@ class OnboardingEspacios {
         <div class="onboarding-card">
           <div class="welcome-header">
             <h1 class="welcome-title">
-              ${tieneGrupos ? '✨ Crear Nuevo Grupo de Espacios' : 'Bienvenido a tu Sistema de Gestión'}
+              ${tieneGrupos ? 'Crear Nuevo Grupo de Espacios' : 'Bienvenido a tu Sistema de Gestión'}
             </h1>
             <p class="welcome-subtitle">
               ${tieneGrupos 
@@ -729,6 +819,7 @@ class OnboardingEspacios {
     this.render();
 
     const payload = {
+      grupo_id: this.grupoSeleccionado,
       nomenclatura: {
         general: this.generalSpaceName,
         especifico: this.specificSpaceName
@@ -742,8 +833,11 @@ class OnboardingEspacios {
     };
 
     console.log('💾 Guardando configuración...', payload);
+    console.log('📊 Total espacios:', payload.espacios.length);
+    console.log('📊 Total específicos:', payload.espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0));
 
     try {
+      console.log('🌐 Enviando petición a /api/espacios/configuracion...');
       const response = await fetch('/api/espacios/configuracion', {
         method: 'POST',
         headers: {
@@ -752,10 +846,14 @@ class OnboardingEspacios {
         body: JSON.stringify(payload)
       });
 
+      console.log('📥 Respuesta recibida, status:', response.status);
+      console.log('📥 Response ok:', response.ok);
+
       const data = await response.json();
+      console.log('📦 Data parseada:', data);
 
       if (response.ok && data.ok) {
-        console.log('✅ Configuración guardada:', data);
+        console.log('✅ Configuración guardada exitosamente:', data);
         
         // Mostrar mensaje de éxito
         this.showSuccessMessage(data);
@@ -765,10 +863,12 @@ class OnboardingEspacios {
           window.location.href = '/dashboard';
         }, 2000);
       } else {
+        console.error('❌ Respuesta no OK:', { ok: data.ok, error: data.error });
         throw new Error(data.error || 'Error al guardar la configuración');
       }
     } catch (error) {
-      console.error('❌ Error guardando configuración:', error);
+      console.error('❌ Error en saveConfiguration:', error.message);
+      console.error('❌ Stack:', error.stack);
       this.isLoading = false;
       this.showErrorMessage(error.message);
       this.render();
@@ -776,12 +876,15 @@ class OnboardingEspacios {
   }
 
   showSuccessMessage(data) {
+    const totalGenerales = data.total_generales ?? data.data?.espacios_creados?.generales;
+    const totalEspecificos = data.total_especificos ?? data.data?.espacios_creados?.especificos;
+
     const message = `
       <div class="success-message">
         <i class="fas fa-check-circle"></i>
         <h3>¡Configuración guardada exitosamente!</h3>
-        <p>Se han creado ${data.data.espacios_creados.generales} ${this.generalSpaceName.toLowerCase()}(s) 
-        con ${data.data.espacios_creados.especificos} ${this.specificSpaceName.toLowerCase()}(s)</p>
+        <p>Se han creado ${totalGenerales} ${this.generalSpaceName.toLowerCase()}(s) 
+        con ${totalEspecificos} ${this.specificSpaceName.toLowerCase()}(s)</p>
         <p class="redirect-info">Redirigiendo al dashboard...</p>
       </div>
     `;

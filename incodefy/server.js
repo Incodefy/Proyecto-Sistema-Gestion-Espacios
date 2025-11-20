@@ -153,6 +153,9 @@ app.get('/', async (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/', authRoutes);
 
+const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
+app.use('/', requireAuth, attachApiClient, onboardingEspaciosRouter);
+
 // === RUTAS PROTEGIDAS (requieren autenticación) ===
 
 // Agenda - protegida
@@ -221,8 +224,7 @@ const calendarioRouter = require('./routes/calendario');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, calendarioRouter);
 
 // Configuración espacios (NO requiere grupo activo - es el onboarding)
-const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
-app.use('/', requireAuth, attachApiClient, onboardingEspaciosRouter);
+
 
 // Perfil (NO requiere grupo activo)
 app.get('/perfil', requireAuth, attachApiClient, (req, res) => {

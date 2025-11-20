@@ -15,8 +15,8 @@ const {
 const fetch = globalThis.fetch || require("node-fetch");
 const https = require("https");
 
-const USER_POOL_ID = 'us-east-2_MyxgSKtmy';
-const API_BASE_URL = 'https://zsq232pdg4.execute-api.us-east-2.amazonaws.com';
+const USER_POOL_ID = 'us-east-2_gnkcLHPqX';
+const API_BASE_URL = 'https://rnkrwqf3ch.execute-api.us-east-2.amazonaws.com';
 
 const ADMIN_EMAIL = 'admin@gmail.com';
 const ADMIN_PASSWORD = 'Admin123!';
