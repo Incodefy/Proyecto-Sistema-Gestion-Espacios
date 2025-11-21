@@ -107,7 +107,7 @@ router.get('/agenda/calendario/:tipo', async (req, res) => {
       boxes,
       pasillos,
       especialidades,
-      personalization: req.session.user?.personalization || {},
+      personalization: res.locals.personalization || {},
       user: req.session.user
     });
 

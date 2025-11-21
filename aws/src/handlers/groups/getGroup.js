@@ -1,6 +1,7 @@
 const {
   DynamoDBDocumentClient,
-  GetCommand
+  GetCommand,
+  QueryCommand
 } = require("@aws-sdk/lib-dynamodb");
 
 const db = DynamoDBDocumentClient.from(
@@ -38,7 +39,18 @@ exports.handler = async (event) => {
 
     // Validar que el usuario es owner o miembro del grupo
     const isOwner = res.Item.owner_sub === userSub;
-    const isMember = Array.isArray(res.Item.members) && res.Item.members.includes(userSub);
+    
+    // Verificar si es miembro del grupo
+    let isMember = false;
+    try {
+      const memberCheck = await db.send(new GetCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        Key: { group_id: groupId, user_sub: userSub }
+      }));
+      isMember = !!memberCheck.Item;
+    } catch (memberErr) {
+      console.log("No se pudo verificar membresía:", memberErr);
+    }
 
     if (!isOwner && !isMember) {
       return {
@@ -49,7 +61,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, grupo: res.Item })
+      body: JSON.stringify({ ok: true, group: res.Item })
     };
 
   } catch (e) {

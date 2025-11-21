@@ -47,19 +47,21 @@ exports.handler = async (event) => {
     })
     );
 
-    // 2️⃣ Registrar al creador como miembro del grupo
+    // 2️⃣ Registrar al creador como miembro del grupo con rol owner
     await db.send(
     new PutCommand({
         TableName: process.env.GROUP_MEMBERS_TABLE,
         Item: {
             group_id: groupId,
-            nombre: body.name.trim(),
             user_sub: userSub,
             role: "owner",
-            added_at: now
+            added_at: now,
+            updated_by: userSub
         }
     })
     );
+    
+    console.log(`[${TRACE_ID}] 👑 Usuario asignado como owner del grupo`);
 
     console.log(`[${TRACE_ID}] ✅ Grupo creado exitosamente`);
 

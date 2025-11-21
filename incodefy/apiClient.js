@@ -246,12 +246,12 @@ class ApiClient {
     }
   }
 
-  async guardarEspacios(grupo_id, nomenclatura, espacios) {
-    return this.client.post(`/groups/${grupo_id}/spaces`, {
+  async guardarEspacios(grupo_id, espacios) {
+    const response = await this.client.post(`/groups/${grupo_id}/spaces`, {
       grupo_id,
-      nomenclatura,
       espacios
     });
+    return response.data;
   }
 
   async obtenerConfiguracionEspacios(grupo_id) {
@@ -301,6 +301,13 @@ class ApiClient {
 
   async obtenerGrupo(grupoId) {
     const response = await this.client.get(`/grupos/${grupoId}`);
+    return response.data;
+  }
+
+  async actualizarNomenclaturaGrupo(grupoId, nomenclatura) {
+    const response = await this.client.put(`/grupos/${grupoId}/nomenclatura`, {
+      nomenclatura
+    });
     return response.data;
   }
 

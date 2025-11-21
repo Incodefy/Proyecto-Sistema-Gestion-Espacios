@@ -11,7 +11,7 @@ router.use(attachApiClient);
 router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), (req, res) => {
   res.render('historial_notificaciones', {
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {},
+    personalization: res.locals.personalization || {},
     user: req.session.user
   });
 });

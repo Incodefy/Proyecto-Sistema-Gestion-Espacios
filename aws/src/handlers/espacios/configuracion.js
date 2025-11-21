@@ -51,7 +51,9 @@ module.exports.asignarGrupoActivo = async (event) => {
       });
     }
 
-    // Verificar que el grupo existe y pertenece al usuario
+    console.log(`[${TRACE_ID}] Verificando grupo: ${grupo_id}`);
+
+    // Verificar que el grupo existe en GROUPS_TABLE
     const verificacion = await retryWithJitter(
       async () => {
         if (!dynamoBreaker.shouldAllow()) {
@@ -59,10 +61,9 @@ module.exports.asignarGrupoActivo = async (event) => {
         }
         
         const res = await docClient.send(new GetCommand({
-          TableName: process.env.PARAMETERS_TABLE,
+          TableName: process.env.GROUPS_TABLE,
           Key: {
-            user_sub: userSub,
-            parameter_key: `espacios.nomenclatura.${grupo_id}`
+            group_id: grupo_id
           }
         }));
         
@@ -73,16 +74,44 @@ module.exports.asignarGrupoActivo = async (event) => {
     );
 
     if (!verificacion.Item) {
+      console.log(`[${TRACE_ID}] Grupo no encontrado en GROUPS_TABLE`);
       return response(404, {
         ok: false,
-        error: "Grupo no encontrado o no pertenece al usuario",
+        error: "Grupo no encontrado",
+        trace_id: TRACE_ID
+      });
+    }
+
+    // Verificar que el usuario es miembro o owner del grupo
+    const grupo = verificacion.Item;
+    const isOwner = grupo.owner_sub === userSub;
+    
+    // Verificar membresía
+    let isMember = false;
+    try {
+      const memberCheck = await docClient.send(new GetCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        Key: { group_id: grupo_id, user_sub: userSub }
+      }));
+      isMember = !!memberCheck.Item;
+    } catch (err) {
+      console.log(`[${TRACE_ID}] Error verificando membresía:`, err.message);
+    }
+
+    if (!isOwner && !isMember) {
+      console.log(`[${TRACE_ID}] Usuario no tiene acceso al grupo`);
+      return response(403, {
+        ok: false,
+        error: "No tienes acceso a este grupo",
         trace_id: TRACE_ID
       });
     }
 
     const timestamp = new Date().toISOString();
 
-    // Guardar el grupo activo
+    console.log(`[${TRACE_ID}] Guardando grupo activo: ${grupo_id}`);
+
+    // Guardar el grupo activo en PARAMETERS_TABLE
     await retryWithJitter(
       async () => {
         if (!dynamoBreaker.shouldAllow()) {
@@ -139,6 +168,7 @@ module.exports.asignarGrupoActivo = async (event) => {
  */
 module.exports.obtenerGrupoActivo = async (event) => {
   const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [ObtenerGrupoActivo] Inicio | ${TRACE_ID} ===`);
   
   try {
     const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -150,6 +180,8 @@ module.exports.obtenerGrupoActivo = async (event) => {
         trace_id: TRACE_ID 
       });
     }
+
+    console.log(`[${TRACE_ID}] Obteniendo grupo activo para user: ${userSub}`);
 
     const result = await retryWithJitter(
       async () => {
@@ -172,6 +204,7 @@ module.exports.obtenerGrupoActivo = async (event) => {
     );
 
     if (!result.Item) {
+      console.log(`[${TRACE_ID}] No hay grupo activo asignado`);
       return response(404, {
         ok: false,
         error: "No hay grupo activo asignado",
@@ -180,8 +213,9 @@ module.exports.obtenerGrupoActivo = async (event) => {
     }
 
     const grupoActivoId = result.Item.parameter_value.grupo_id;
+    console.log(`[${TRACE_ID}] Grupo activo encontrado: ${grupoActivoId}`);
 
-    // Obtener detalles del grupo
+    // Obtener detalles del grupo desde GROUPS_TABLE
     const grupoDetalles = await retryWithJitter(
       async () => {
         if (!dynamoBreaker.shouldAllow()) {
@@ -189,10 +223,9 @@ module.exports.obtenerGrupoActivo = async (event) => {
         }
         
         const res = await docClient.send(new GetCommand({
-          TableName: process.env.PARAMETERS_TABLE,
+          TableName: process.env.GROUPS_TABLE,
           Key: {
-            user_sub: userSub,
-            parameter_key: `espacios.nomenclatura.${grupoActivoId}`
+            group_id: grupoActivoId
           }
         }));
         
@@ -202,11 +235,26 @@ module.exports.obtenerGrupoActivo = async (event) => {
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
+    if (!grupoDetalles.Item) {
+      console.log(`[${TRACE_ID}] Grupo no encontrado en GROUPS_TABLE`);
+      return response(404, {
+        ok: false,
+        error: "Grupo activo no encontrado",
+        trace_id: TRACE_ID
+      });
+    }
+
+    const grupo = grupoDetalles.Item;
+
+    console.log(`[${TRACE_ID}] ✅ Grupo activo obtenido exitosamente`);
+
     return response(200, {
       ok: true,
       grupo_activo: {
         grupo_id: grupoActivoId,
-        nomenclatura: grupoDetalles.Item?.parameter_value || null,
+        nombre: grupo.nombre,
+        nomenclatura: grupo.nomenclatura || null,
+        configured: grupo.configured || false,
         asignado_en: result.Item.parameter_value.asignado_en
       },
       trace_id: TRACE_ID

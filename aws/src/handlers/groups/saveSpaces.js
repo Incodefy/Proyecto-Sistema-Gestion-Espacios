@@ -20,24 +20,23 @@ exports.handler = async (event) => {
     }
 
     const body = JSON.parse(event.body || "{}");
-    const { grupo_id, nomenclatura, espacios } = body;
+    const { grupo_id, espacios } = body;
 
-    if (!grupo_id || !nomenclatura || !espacios?.length) {
+    if (!grupo_id || !espacios?.length) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ ok: false, error: "Datos incompletos" })
+        body: JSON.stringify({ ok: false, error: "Datos incompletos: se requiere grupo_id y espacios" })
       };
     }
 
     const timestamp = new Date().toISOString();
 
-    // ⭐ Actualizar nomenclatura en GroupsTable
+    // ⭐ Marcar el grupo como configurado
     await db.send(new UpdateCommand({
       TableName: process.env.GROUPS_TABLE,
       Key: { group_id: grupo_id },
-      UpdateExpression: "SET nomenclatura = :nom, configured = :cfg, updated_at = :now",
+      UpdateExpression: "SET configured = :cfg, updated_at = :now",
       ExpressionAttributeValues: {
-        ":nom": nomenclatura,
         ":cfg": true,
         ":now": timestamp
       }

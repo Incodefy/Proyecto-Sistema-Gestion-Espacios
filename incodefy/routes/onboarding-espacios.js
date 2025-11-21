@@ -56,16 +56,40 @@ router.get('/onboarding-espacios', async (req, res) => {
 });
 
 router.get('/api/grupos/:id', async (req, res) => {
+  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const { id } = req.params;
+  const { asignar_activo } = req.query;
+
+  console.log(`\n=== [Express] GET /api/grupos/${id} | ${TRACE_ID} ===`);
 
   try {
     const response = await req.apiClient.obtenerGrupo(id);
 
-    if (!response.ok) return res.status(404).json(response);
+    if (!response.ok) {
+      console.warn(`[${TRACE_ID}] ⚠️ Grupo no encontrado o sin acceso`);
+      return res.status(404).json(response);
+    }
 
+    // Si se solicita asignar como activo y el grupo está configurado
+    if (asignar_activo === 'true' && response.group && response.group.configured === true) {
+      try {
+        console.log(`[${TRACE_ID}] 🔄 Asignando grupo como activo...`);
+        await req.apiClient.asignarGrupoActivo(id);
+        console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo`);
+        
+        // Invalidar cache del middleware
+        const checkGrupoActivo = require('../middleware/checkGrupoActivo');
+        checkGrupoActivo.invalidarCache(req);
+      } catch (assignErr) {
+        console.warn(`[${TRACE_ID}] ⚠️ No se pudo asignar grupo como activo:`, assignErr.message);
+        // No bloqueamos, continuamos
+      }
+    }
+
+    console.log(`[${TRACE_ID}] ✅ Grupo obtenido exitosamente`);
     return res.json(response);
   } catch (err) {
-    console.error(err);
+    console.error(`[${TRACE_ID}] ❌ Error consultando grupo:`, err.message);
     return res.status(500).json({ ok: false, error: "Error consultando grupo" });
   }
 });
@@ -79,14 +103,14 @@ router.post('/api/espacios/configuracion', async (req, res) => {
   console.log(`\n=== [Express] POST /api/espacios/configuracion | ${TRACE_ID} ===`);
 
   try {
-    const { nomenclatura, espacios, grupo_id } = req.body;
+    const { espacios, grupo_id } = req.body;
 
     // Validación básica en Express (antes de llamar Lambda)
-    if (!nomenclatura || !nomenclatura.general || !nomenclatura.especifico) {
-      console.warn(`[${TRACE_ID}] ⚠️ Validación fallida: nomenclatura incompleta`);
+    if (!grupo_id) {
+      console.warn(`[${TRACE_ID}] ⚠️ Validación fallida: grupo_id no proporcionado`);
       return res.status(400).json({ 
         ok: false,
-        error: 'Debe proporcionar la nomenclatura completa',
+        error: 'Debe proporcionar el grupo_id',
         trace_id: TRACE_ID
       });
     }
@@ -120,22 +144,27 @@ router.post('/api/espacios/configuracion', async (req, res) => {
 
     console.log(`[${TRACE_ID}] ✅ Validaciones pasadas, llamando a Lambda...`);
     console.log(`[${TRACE_ID}] 📊 Datos:`, {
-      nomenclatura,
+      grupo_id,
       total_espacios: espacios.length,
       total_especificos: espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0)
     });
 
-    // Llamar a Lambda
-    const response = await req.apiClient.guardarEspacios(grupo_id, nomenclatura, espacios);
+    // Llamar a Lambda (ya NO enviamos nomenclatura, solo espacios)
+    const response = await req.apiClient.guardarEspacios(grupo_id, espacios);
 
     console.log(`[${TRACE_ID}] ✅ Lambda respondió exitosamente`);
 
     // Si todo salió bien y no hay grupo activo, asignar este como activo
-    if (response && response.ok && response.data.grupo_id) {
+    if (response && response.ok && response.grupo_id) {
       try {
         console.log(`[${TRACE_ID}] 🔄 Asignando grupo como activo...`);
-        await req.apiClient.asignarGrupoActivo(response.data.grupo_id);
+        await req.apiClient.asignarGrupoActivo(response.grupo_id);
         console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo`);
+        
+        // Invalidar el cache del middleware checkGrupoActivo
+        const checkGrupoActivo = require('../middleware/checkGrupoActivo');
+        checkGrupoActivo.invalidarCache(req);
+        console.log(`[${TRACE_ID}] 🔄 Cache de grupo activo invalidado`);
       } catch (activateErr) {
         console.warn(`[${TRACE_ID}] ⚠️ No se pudo activar el grupo automáticamente`, activateErr.message);
         // No es crítico, continuamos
@@ -145,9 +174,11 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     res.json({
       ok: true,
       message: 'Configuración guardada correctamente',
-      data: response.data,
+      total_generales: response.total_generales,
+      total_especificos: response.total_especificos,
+      grupo_id: response.grupo_id,
       trace_id: TRACE_ID,
-      lambda_trace_id: response.trace_id
+      lambda_trace_id: response.trace
     });
 
   } catch (error) {
@@ -485,6 +516,53 @@ router.post('/api/grupos', async (req, res) => {
       details: lambdaError?.details || error.message,
       trace_id: TRACE_ID,
       lambda_trace_id: lambdaError?.trace_id
+    });
+  }
+});
+
+/**
+ * PUT /api/grupos/:groupId/nomenclatura
+ * Actualiza la nomenclatura de un grupo
+ */
+router.put('/api/grupos/:groupId/nomenclatura', async (req, res) => {
+  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const { groupId } = req.params;
+  console.log(`\n=== [Express] PUT /api/grupos/${groupId}/nomenclatura | ${TRACE_ID} ===`);
+  
+  try {
+    const { nomenclatura } = req.body;
+    console.log(`[${TRACE_ID}] 📥 Datos recibidos:`, { nomenclatura });
+    
+    if (!nomenclatura || !nomenclatura.general || !nomenclatura.especifico) {
+      console.warn(`[${TRACE_ID}] ⚠️ Nomenclatura incompleta`);
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Debe proporcionar la nomenclatura completa (general y específico)',
+        trace_id: TRACE_ID
+      });
+    }
+
+    console.log(`[${TRACE_ID}] 🔄 Actualizando nomenclatura del grupo...`);
+    const response = await req.apiClient.actualizarNomenclaturaGrupo(groupId, nomenclatura);
+
+    console.log(`[${TRACE_ID}] ✅ Nomenclatura actualizada`);
+
+    res.json({
+      ok: true,
+      message: 'Nomenclatura actualizada correctamente',
+      trace_id: TRACE_ID
+    });
+
+  } catch (error) {
+    console.error(`[${TRACE_ID}] ❌ Error actualizando nomenclatura:`, error.message);
+    
+    const lambdaError = error.response?.data;
+    
+    res.status(error.response?.status || 500).json({ 
+      ok: false, 
+      error: lambdaError?.error || 'Error actualizando nomenclatura',
+      details: lambdaError?.details || error.message,
+      trace_id: TRACE_ID
     });
   }
 });

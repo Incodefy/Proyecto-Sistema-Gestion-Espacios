@@ -73,7 +73,7 @@ async function construirFiltrosDynamoDB(fechaInicio, fechaFin) {
 router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => {
   res.render('dashboard', { 
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {},
+    personalization: res.locals.personalization || {},
     user: req.session.user
   });
 });

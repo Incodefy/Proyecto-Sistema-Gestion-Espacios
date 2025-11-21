@@ -232,8 +232,8 @@ class OnboardingEspacios {
     this.render();
 
     try {
-      // 🔥 Obtener información real del grupo
-      const response = await fetch(`/api/grupos/${grupoId}`);
+      // 🔥 Obtener información real del grupo y asignarlo como activo si está configurado
+      const response = await fetch(`/api/grupos/${grupoId}?asignar_activo=true`);
       const data = await response.json();
 
       if (!data.ok || !data.group) {
@@ -245,7 +245,12 @@ class OnboardingEspacios {
 
       // 📌 Lógica de flujo
       if (grupo.configured === true) {
-        return window.location.href = "/dashboard";
+        console.log('✅ Grupo configurado, redirigiendo al dashboard...');
+        // Usar replace para evitar que el usuario vuelva atrás al onboarding
+        setTimeout(() => {
+          window.location.replace("/dashboard");
+        }, 100);
+        return;
       }
 
       if (!grupo.nomenclatura) {
@@ -343,14 +348,15 @@ class OnboardingEspacios {
       btnContinue.disabled = !this.generalSpaceName.trim() || !this.specificSpaceName.trim();
     });
 
-    btnContinue.addEventListener('click', () => {
+    btnContinue.addEventListener('click', async () => {
       if (this.generalSpaceName.trim() && this.specificSpaceName.trim()) {
         console.log('✅ Nombres definidos:', {
           general: this.generalSpaceName,
           especifico: this.specificSpaceName
         });
-        this.step = 'creacion-espacios';
-        this.render();
+        
+        // Guardar nomenclatura en el backend antes de continuar
+        await this.guardarNomenclatura();
       }
     });
 
@@ -814,16 +820,95 @@ class OnboardingEspacios {
     this.render();
   }
 
+  async guardarNomenclatura() {
+    try {
+      console.log('🔄 Guardando nomenclatura...');
+      console.log('  - Grupo ID:', this.grupoSeleccionado);
+      console.log('  - General:', this.generalSpaceName);
+      console.log('  - Específico:', this.specificSpaceName);
+
+      if (!this.grupoSeleccionado) {
+        throw new Error('No hay un grupo seleccionado');
+      }
+
+      this.isLoading = true;
+      this.renderLoading();
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos
+
+      const response = await fetch(`/api/grupos/${this.grupoSeleccionado}/nomenclatura`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nomenclatura: {
+            general: this.generalSpaceName,
+            especifico: this.specificSpaceName
+          }
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('📥 Respuesta nomenclatura:', response.status);
+
+      const data = await response.json();
+      console.log('📦 Data nomenclatura:', data);
+
+      if (response.ok && data.ok) {
+        console.log('✅ Nomenclatura guardada exitosamente');
+        
+        // Ahora sí pasar a la creación de espacios
+        this.isLoading = false;
+        this.step = 'creacion-espacios';
+        this.render();
+      } else {
+        throw new Error(data.error || 'Error al guardar la nomenclatura');
+      }
+
+    } catch (error) {
+      console.error('❌ Error guardando nomenclatura:', error);
+      this.isLoading = false;
+      
+      let errorMessage = error.message;
+      if (error.name === 'AbortError') {
+        errorMessage = 'La operación tardó demasiado tiempo. Por favor, intenta nuevamente.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
+      }
+      
+      this.showErrorMessage(errorMessage);
+      this.render();
+    }
+  }
+
   async saveConfiguration() {
+    // Validación previa
+    console.log('🔍 Validando antes de guardar...');
+    console.log('  - grupoSeleccionado:', this.grupoSeleccionado);
+    console.log('  - espacios:', this.spaces.length);
+    
+    if (!this.grupoSeleccionado) {
+      console.error('❌ No hay grupo seleccionado');
+      this.showErrorMessage('No hay un grupo seleccionado');
+      return;
+    }
+
+    if (this.spaces.length === 0) {
+      console.error('❌ No hay espacios creados');
+      this.showErrorMessage('Debes crear al menos un espacio antes de guardar');
+      return;
+    }
+
     this.isLoading = true;
     this.render();
 
+    // Ya NO enviamos nomenclatura, solo los espacios
     const payload = {
       grupo_id: this.grupoSeleccionado,
-      nomenclatura: {
-        general: this.generalSpaceName,
-        especifico: this.specificSpaceName
-      },
       espacios: this.spaces.map(space => ({
         name: space.name,
         specificSpaces: space.specificSpaces.map(spec => ({
@@ -832,25 +917,40 @@ class OnboardingEspacios {
       }))
     };
 
-    console.log('💾 Guardando configuración...', payload);
+    console.log('💾 Guardando espacios...', payload);
     console.log('📊 Total espacios:', payload.espacios.length);
     console.log('📊 Total específicos:', payload.espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0));
 
     try {
       console.log('🌐 Enviando petición a /api/espacios/configuracion...');
+      
+      // Crear un timeout para la petición
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+      
       const response = await fetch('/api/espacios/configuracion', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+      
       console.log('📥 Respuesta recibida, status:', response.status);
       console.log('📥 Response ok:', response.ok);
 
-      const data = await response.json();
-      console.log('📦 Data parseada:', data);
+      // Intentar parsear la respuesta
+      let data;
+      try {
+        data = await response.json();
+        console.log('📦 Data parseada:', data);
+      } catch (parseError) {
+        console.error('❌ Error parseando respuesta:', parseError);
+        throw new Error('Error de comunicación con el servidor');
+      }
 
       if (response.ok && data.ok) {
         console.log('✅ Configuración guardada exitosamente:', data);
@@ -858,26 +958,35 @@ class OnboardingEspacios {
         // Mostrar mensaje de éxito
         this.showSuccessMessage(data);
         
-        // Redirigir después de 2 segundos
+        // Redirigir después de 2 segundos usando replace para evitar volver atrás
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.replace('/dashboard');
         }, 2000);
       } else {
-        console.error('❌ Respuesta no OK:', { ok: data.ok, error: data.error });
-        throw new Error(data.error || 'Error al guardar la configuración');
+        console.error('❌ Respuesta no OK:', { status: response.status, ok: data.ok, error: data.error });
+        throw new Error(data.error || `Error al guardar la configuración (${response.status})`);
       }
     } catch (error) {
       console.error('❌ Error en saveConfiguration:', error.message);
       console.error('❌ Stack:', error.stack);
       this.isLoading = false;
-      this.showErrorMessage(error.message);
+      
+      // Manejar diferentes tipos de errores
+      let errorMessage = error.message;
+      if (error.name === 'AbortError') {
+        errorMessage = 'La operación tardó demasiado tiempo. Por favor, intenta nuevamente.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
+      }
+      
+      this.showErrorMessage(errorMessage);
       this.render();
     }
   }
 
   showSuccessMessage(data) {
-    const totalGenerales = data.total_generales ?? data.data?.espacios_creados?.generales;
-    const totalEspecificos = data.total_especificos ?? data.data?.espacios_creados?.especificos;
+    const totalGenerales = data.total_generales;
+    const totalEspecificos = data.total_especificos;
 
     const message = `
       <div class="success-message">

@@ -50,6 +50,13 @@
         "box.read", "box.write", "box.detalle.read", "box.detalle.write",
         "data.import", "data.export", "medicos.read", 
         "notificaciones.read", "notificaciones.historial"
+    ],
+    "owner": [
+        "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
+        "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+        "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+        "data.import", "data.export", "medicos.read", 
+        "notificaciones.read", "notificaciones.historial"
     ]
   }
 }

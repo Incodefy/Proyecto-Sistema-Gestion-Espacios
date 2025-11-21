@@ -93,32 +93,42 @@ try {
       "box.read", "box.write", "box.detalle.read", "box.detalle.write",
       "data.import", "data.export", "medicos.read",
       "notificaciones.read", "notificaciones.historial"
+    ],
+    "owner": [
+      "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
+      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
+      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
+      "data.import", "data.export", "medicos.read",
+      "notificaciones.read", "notificaciones.historial"
     ]
   };
 }
 
 /**
- * Verifica si un usuario tiene un permiso específico
- * También verifica si es el primer usuario en el sistema (admin bootstrap)
+ * Verifica si un usuario tiene un permiso específico en un grupo
+ * Ahora verifica en GROUP_MEMBERS_TABLE en lugar de USER_ROLES_TABLE
  */
-async function verifyPermission(userEmail, requiredPermission) {
+async function verifyPermission(userSub, groupId, requiredPermission) {
   const TRACE = `[Perms-${Date.now()}]`;
   
   try {
-    console.log(`${TRACE} 🔐 Verificando permiso '${requiredPermission}' para ${userEmail}`);
+    console.log(`${TRACE} 🔐 Verificando permiso '${requiredPermission}' para ${userSub} en grupo ${groupId}`);
     
     if (!dynamoBreaker.shouldAllow()) {
-      logger.warn("Circuit breaker activo - lectura DynamoDB pausada", { userEmail, requiredPermission });
+      logger.warn("Circuit breaker activo - lectura DynamoDB pausada", { userSub, groupId, requiredPermission });
       throw new Error("CircuitBreakerOpen");
     }
 
-    // Primero, intentar obtener el usuario de DynamoDB
-    console.log(`${TRACE} 📍 Buscando usuario en DynamoDB...`);
+    // Obtener el miembro del grupo de DynamoDB
+    console.log(`${TRACE} 📍 Buscando miembro en GROUP_MEMBERS_TABLE...`);
     const result = await retryWithJitter(
       async () => {
         const res = await docClient.send(new GetCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          Key: { user_email: userEmail }
+          TableName: process.env.GROUP_MEMBERS_TABLE,
+          Key: { 
+            group_id: groupId,
+            user_sub: userSub 
+          }
         }));
         dynamoBreaker.reportSuccess();
         return res;
@@ -126,97 +136,25 @@ async function verifyPermission(userEmail, requiredPermission) {
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    // Si existe el usuario en DynamoDB, verificar permisos normalmente
+    // Si existe el miembro en el grupo, verificar permisos según su rol
     if (result.Item) {
-      console.log(`${TRACE} ✅ Usuario encontrado en DynamoDB`);
-      const userPermissions = result.Item.permissions || [];
-      console.log(`${TRACE} 📋 Permisos del usuario: ${userPermissions.join(', ')}`);
+      console.log(`${TRACE} ✅ Miembro encontrado en grupo`);
+      const memberRole = result.Item.role || 'consulta';
+      const rolePermissions = PREDEFINED_ROLES[memberRole] || [];
+      console.log(`${TRACE} 📋 Rol: ${memberRole}, Permisos: ${rolePermissions.join(', ')}`);
 
-      if (userPermissions.includes("admin.users")) {
-        console.log(`${TRACE} ✅ Tiene admin.users (super permisos)`);
+      // Owner y admin tienen todos los permisos
+      if (memberRole === 'owner' || memberRole === 'admin' || rolePermissions.includes("admin.users")) {
+        console.log(`${TRACE} ✅ Tiene rol privilegiado (${memberRole})`);
         return true;
       }
       
-      const hasPermission = userPermissions.includes(requiredPermission);
+      const hasPermission = rolePermissions.includes(requiredPermission);
       console.log(`${TRACE} ${hasPermission ? '✅' : '❌'} Tiene permiso '${requiredPermission}': ${hasPermission}`);
       return hasPermission;
     }
 
-    console.log(`${TRACE} ❌ Usuario NO encontrado en DynamoDB`);
-
-    // === BOOTSTRAP MODE ===
-    // Si el permiso requerido es admin.users y el usuario no existe en DynamoDB,
-    // permitir el PRIMER admin del sistema
-    if (requiredPermission === "admin.users") {
-      console.log(`${TRACE} 🔍 Bootstrap check: ¿Hay otros admins en el sistema?`);
-      
-      // Intentar query a RoleIndex
-      let adminCheckResult = null;
-      let queryError = null;
-      
-      try {
-        console.log(`${TRACE} 📡 Consultando RoleIndex para buscar admins existentes...`);
-        
-        const adminCheck = await retryWithJitter(
-          async () => {
-            try {
-              const res = await docClient.send(new QueryCommand({
-                TableName: process.env.USER_ROLES_TABLE,
-                IndexName: 'RoleIndex',
-                KeyConditionExpression: 'role = :r',
-                ExpressionAttributeValues: { ':r': 'admin' },
-                Limit: 1
-              }));
-              dynamoBreaker.reportSuccess();
-              return res;
-            } catch (queryErr) {
-              console.error(`${TRACE} Error en query command:`, queryErr.message);
-              throw queryErr;
-            }
-          },
-          { maxAttempts: 2, baseDelayMs: 100 }
-        );
-        
-        adminCheckResult = adminCheck;
-        console.log(`${TRACE} 📊 Query exitosa, admins encontrados: ${adminCheck.Items ? adminCheck.Items.length : 0}`);
-        
-      } catch (err) {
-        queryError = err;
-        console.error(`${TRACE} ⚠️ Error en query a RoleIndex: ${err.message}`);
-        // Intentar un escaneo completo de la tabla como fallback
-        console.log(`${TRACE} 🔄 Intentando escaneo directo de la tabla...`);
-        try {
-          const scanRes = await docClient.send(new QueryCommand({
-            TableName: process.env.USER_ROLES_TABLE,
-            KeyConditionExpression: 'attribute_not_exists(user_email)',
-            Limit: 1
-          }));
-          console.log(`${TRACE} Scan result: ${JSON.stringify(scanRes)}`);
-        } catch (e) {
-          console.log(`${TRACE} Scan también falló, puede ser que la tabla esté vacía`);
-        }
-      }
-
-      // Evaluar resultado del query
-      if (adminCheckResult !== null) {
-        if (!adminCheckResult.Items || adminCheckResult.Items.length === 0) {
-          console.log(`${TRACE} ✅✅✅ BOOTSTRAP MODE ACTIVADO: No existen admins, permitiendo al primer admin`);
-          return true;
-        } else {
-          console.log(`${TRACE} ❌ Ya existen ${adminCheckResult.Items.length} admin(s) en el sistema`);
-          return false;
-        }
-      }
-      
-      // Fallback: Si el query falló pero parece que es el primer usuario
-      if (queryError) {
-        console.log(`${TRACE} ⚠️ No se pudo verificar admins, pero la tabla podría estar vacía`);
-        console.log(`${TRACE} ℹ️  Permitiendo bootstrap (si esto es incorrecto, el DynamoDB tiene admins que no se pudieron leer)`);
-        // PERMITIR bootstrap si el query falla (asumir que la tabla está vacía)
-        return true;
-      }
-    }
-
+    console.log(`${TRACE} ❌ Usuario NO es miembro del grupo`);
     return false;
 
   } catch (err) {
@@ -228,7 +166,7 @@ async function verifyPermission(userEmail, requiredPermission) {
 
 /**
  * POST /assign-role
- * Asigna un rol a un usuario con idempotencia y resiliencia
+ * Asigna un rol a un miembro de grupo con idempotencia y resiliencia
  */
 module.exports.assignRole = async (event) => {
   const endTrace = logger.startTrace('assignRole');
@@ -251,7 +189,7 @@ module.exports.assignRole = async (event) => {
       return validationErrorResponse(errors);
     }
 
-    const { userEmail: user_email, roleName: role } = data;
+    const { userSub: user_sub, groupId: group_id, roleName: role } = data;
 
     // 2) VALIDAR ROL
     if (!PREDEFINED_ROLES[role]) {
@@ -260,63 +198,27 @@ module.exports.assignRole = async (event) => {
       return errorResponse("Rol no válido", 400, { available_roles: Object.keys(PREDEFINED_ROLES) });
     }
 
-    // 3) BOOTSTRAP MODE: Permitir header especial para el primer admin
-    const bootstrapEmail = event.headers?.['x-bootstrap-email'] || event.headers?.['X-Bootstrap-Email'];
-    let requesterEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    
-    // Si hay header de bootstrap y es el primer admin del sistema
-    if (bootstrapEmail && role === 'admin' && user_email === bootstrapEmail) {
-      logger.info("🚀 Bootstrap mode detectado", { bootstrapEmail, user_email });
-      
-      // Verificar que no existan otros admins
-      try {
-        const adminCheck = await docClient.send(new QueryCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          IndexName: 'RoleIndex',
-          KeyConditionExpression: 'role = :r',
-          ExpressionAttributeValues: { ':r': 'admin' },
-          Limit: 1
-        }));
-        
-        if (adminCheck.Items && adminCheck.Items.length > 0) {
-          logger.warn("❌ Bootstrap denegado: Ya existen admins en el sistema");
-          endTrace();
-          return forbiddenResponse("Ya existe al menos un admin en el sistema. Usa autenticación normal.");
-        }
-        
-        logger.info("✅ Bootstrap permitido: No hay admins en el sistema");
-        requesterEmail = bootstrapEmail; // Usar el email del bootstrap como requester
-        
-      } catch (err) {
-        logger.warn("⚠️ No se pudo verificar admins existentes, permitiendo bootstrap", { error: err.message });
-        requesterEmail = bootstrapEmail;
-      }
-    }
-    
-    // 4) VALIDAR TOKEN DEL ADMIN (si no es bootstrap)
-    if (!requesterEmail) {
-      logger.warn("Intento sin token válido ni bootstrap");
+    // 3) VALIDAR TOKEN DEL SOLICITANTE
+    const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+    if (!requesterSub) {
+      logger.warn("Intento sin token válido");
       endTrace();
       return unauthorizedResponse("Token inválido o ausente. Debes enviar Authorization: Bearer <token>");
     }
 
-    logger.info("Solicitud de asignación de rol", { requesterEmail, targetUser: user_email, role });
+    logger.info("Solicitud de asignación de rol", { requesterSub, targetUser: user_sub, group_id, role });
 
-    // 5) VALIDAR PERMISO admin.users (skip para bootstrap del primer admin)
-    if (requesterEmail !== bootstrapEmail) {
-      const hasPermission = await verifyPermission(requesterEmail, "admin.users");
-      if (!hasPermission) {
-        logger.warn("Usuario sin permiso admin.users", { requester: requesterEmail });
-        endTrace();
-        return forbiddenResponse("No tienes permiso para asignar roles", { required_permission: "admin.users" });
-      }
-      } else {
-      logger.info("✅ Skipping permission check for bootstrap mode");
+    // 4) VALIDAR PERMISO admin.users EN EL GRUPO
+    const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users");
+    if (!hasPermission) {
+      logger.warn("Usuario sin permiso admin.users en el grupo", { requester: requesterSub, group_id });
+      endTrace();
+      return forbiddenResponse("No tienes permiso para asignar roles en este grupo", { required_permission: "admin.users" });
     }
 
-    // 6) IDEMPOTENCIA
+    // 5) IDEMPOTENCIA
     const timestamp = new Date().toISOString();
-    const idempotencyKey = `assignRole-${user_email}-${role}-${timestamp}`;
+    const idempotencyKey = `assignRole-${group_id}-${user_sub}-${role}-${timestamp}`;
 
     if (await wasAlreadyProcessed(idempotencyKey)) {
       logger.info("Asignación ya procesada (idempotencia)", { idempotencyKey });
@@ -324,55 +226,53 @@ module.exports.assignRole = async (event) => {
       return successResponse({ message: "Rol ya estaba asignado" });
     }
 
-    // 7) PREPARAR ÍTEM
-    const permissions = PREDEFINED_ROLES[role];
-    const item = {
-      user_email,
-      role,
-      permissions: permissions,  // Asegurar que sea un array
-      assigned_at: timestamp,
-      assigned_by: requesterEmail
-    };
-
-    // 8) CIRCUIT BREAKER
+    // 6) CIRCUIT BREAKER
     if (!dynamoBreaker.shouldAllow()) {
       logger.warn("Circuit breaker activo - asignación pausada");
       endTrace();
       return errorResponse("Circuit breaker activo, espere unos segundos", 503);
     }
 
-    // 9) ESCRITURA EN DYNAMO
-    logger.debug("Guardando rol en DynamoDB", { table: process.env.USER_ROLES_TABLE, user_email, role });
+    // 7) ESCRITURA EN DYNAMO (GROUP_MEMBERS_TABLE)
+    logger.debug("Actualizando rol de miembro en DynamoDB", { table: process.env.GROUP_MEMBERS_TABLE, group_id, user_sub, role });
 
     try {
       await retryWithJitter(
         async () => {
           await docClient.send(new PutCommand({
-            TableName: process.env.USER_ROLES_TABLE,
-            Item: item,
+            TableName: process.env.GROUP_MEMBERS_TABLE,
+            Item: {
+              group_id,
+              user_sub,
+              role,
+              added_at: timestamp,
+              updated_by: requesterSub
+            },
           }));
           dynamoBreaker.reportSuccess();
         },
         { maxAttempts: 3, baseDelayMs: 300 }
       );
     } catch (dynamoErr) {
-      logger.error("Error guardando en DynamoDB", dynamoErr, { table: process.env.USER_ROLES_TABLE });
+      logger.error("Error guardando en DynamoDB", dynamoErr, { table: process.env.GROUP_MEMBERS_TABLE });
       endTrace();
       return errorResponse("Error guardando en DynamoDB", 500, { details: dynamoErr.message });
     }
 
-    // 10) MARCAR COMO PROCESADO
+    // 8) MARCAR COMO PROCESADO
     await markAsProcessed(idempotencyKey);
 
-    logger.info("Rol asignado correctamente", { user_email, role, requesterEmail });
+    const rolePermissions = PREDEFINED_ROLES[role];
+    logger.info("Rol asignado correctamente", { group_id, user_sub, role, requesterSub });
     endTrace();
 
     return successResponse({
       message: "Rol asignado correctamente",
-      assigned_to: user_email,
+      group_id,
+      assigned_to: user_sub,
       assigned_role: role,
-      permissions,
-      assigned_by: requesterEmail,
+      permissions: rolePermissions,
+      assigned_by: requesterSub,
       assigned_at: timestamp
     });
 
@@ -387,26 +287,34 @@ module.exports.assignRole = async (event) => {
 
 /**
  * DELETE /remove-role
- * Remueve un rol de usuario con retry + breaker
+ * Remueve un rol de miembro de grupo con retry + breaker
  */
 module.exports.removeRole = async (event) => {
   const endTrace = logger.startTrace('removeRole');
 
   try {
-    const adminEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    const { user_email } = JSON.parse(event.body || "{}");
+    const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+    const { user_sub, group_id } = JSON.parse(event.body || "{}");
 
-    if (!user_email) {
-      logger.warn("Intento de remoción sin user_email");
+    if (!user_sub || !group_id) {
+      logger.warn("Intento de remoción sin user_sub o group_id");
       endTrace();
-      return errorResponse("user_email es obligatorio", 400);
+      return errorResponse("user_sub y group_id son obligatorios", 400);
+    }
+
+    // Verificar permiso admin.users en el grupo
+    const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users");
+    if (!hasPermission) {
+      logger.warn("Usuario sin permiso para remover miembros", { requesterSub, group_id });
+      endTrace();
+      return forbiddenResponse("No tienes permiso para remover miembros en este grupo");
     }
 
     const userCheck = await retryWithJitter(
       async () => {
         const res = await docClient.send(new GetCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          Key: { user_email }
+          TableName: process.env.GROUP_MEMBERS_TABLE,
+          Key: { group_id, user_sub }
         }));
         dynamoBreaker.reportSuccess();
         return res;
@@ -415,19 +323,18 @@ module.exports.removeRole = async (event) => {
     );
 
     if (!userCheck.Item) {
-      logger.warn("Usuario no tiene rol asignado", { user_email });
+      logger.warn("Usuario no es miembro del grupo", { user_sub, group_id });
       endTrace();
-      return notFoundResponse("Usuario no tiene rol asignado");
+      return notFoundResponse("Usuario no es miembro del grupo");
     }
 
-    if (user_email === adminEmail) {
-      logger.warn("Intento de eliminar propio rol", { adminEmail });
+    if (user_sub === requesterSub) {
+      logger.warn("Intento de eliminar propio rol", { requesterSub });
       endTrace();
       return forbiddenResponse("No puedes eliminar tu propio rol");
     }
 
     const removedRole = userCheck.Item.role;
-    const removedPermissions = userCheck.Item.permissions;
 
     if (!dynamoBreaker.shouldAllow()) {
       logger.warn("Circuit breaker activo - eliminación pausada");
@@ -437,23 +344,23 @@ module.exports.removeRole = async (event) => {
     await retryWithJitter(
       async () => {
         await docClient.send(new DeleteCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          Key: { user_email }
+          TableName: process.env.GROUP_MEMBERS_TABLE,
+          Key: { group_id, user_sub }
         }));
         dynamoBreaker.reportSuccess();
       },
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    logger.info("Rol eliminado", { user_email, removedRole, removedBy: adminEmail });
+    logger.info("Rol eliminado", { group_id, user_sub, removedRole, removedBy: requesterSub });
     endTrace();
 
     return successResponse({
       message: "Rol removido correctamente",
-      user_email,
+      group_id,
+      user_sub,
       removed_role: removedRole,
-      removed_permissions: removedPermissions,
-      removed_by: adminEmail,
+      removed_by: requesterSub,
       removed_at: new Date().toISOString()
     });
 
@@ -467,7 +374,8 @@ module.exports.removeRole = async (event) => {
 
 /**
  * GET /my-permissions
- * Obtiene los permisos del usuario autenticado
+ * Obtiene información básica de membresías del usuario (sin listar todos los permisos)
+ * Para verificar permisos específicos, usar checkPermission
  */
 module.exports.getMyPermissions = async (event) => {
   const endTrace = logger.startTrace('getMyPermissions');
@@ -481,84 +389,116 @@ module.exports.getMyPermissions = async (event) => {
       return unauthorizedResponse("Token inválido o malformado");
     }
 
-    const userEmail = claims.email;
-    if (!userEmail) {
-      logger.warn("Token JWT sin email");
+    const userSub = claims.sub;
+    if (!userSub) {
+      logger.warn("Token JWT sin sub");
       endTrace();
-      return unauthorizedResponse("Token JWT no contiene el email");
+      return unauthorizedResponse("Token JWT no contiene el sub");
     }
 
-    logger.info("Usuario autenticado solicitando permisos", { userEmail });
+    logger.info("Usuario autenticado solicitando información de membresías", { userSub });
 
     // 2) VALIDAR QUE LA TABLA EXISTA
-    if (!process.env.USER_ROLES_TABLE) {
-      logger.error("USER_ROLES_TABLE no configurado en environment");
+    if (!process.env.GROUP_MEMBERS_TABLE) {
+      logger.error("GROUP_MEMBERS_TABLE no configurado en environment");
       endTrace();
-      return errorResponse("Tabla USER_ROLES_TABLE no configurada", 500);
+      return errorResponse("Tabla GROUP_MEMBERS_TABLE no configurada", 500);
     }
 
-    // 3) CONSULTA A DYNAMO
+    // 3) CONSULTA A DYNAMO - Obtener todos los grupos del usuario
     let result;
     try {
+      console.log(`🔍 Consultando GROUP_MEMBERS_TABLE para user_sub: ${userSub}`);
+      console.log(`📋 Tabla: ${process.env.GROUP_MEMBERS_TABLE}`);
+      console.log(`📋 Índice: UserGroupsIndex`);
+      
       result = await retryWithJitter(
         async () => {
           const res = await docClient.send(
-            new GetCommand({
-              TableName: process.env.USER_ROLES_TABLE,
-              Key: { user_email: userEmail }
+            new QueryCommand({
+              TableName: process.env.GROUP_MEMBERS_TABLE,
+              IndexName: 'UserGroupsIndex',
+              KeyConditionExpression: 'user_sub = :sub',
+              ExpressionAttributeValues: { ':sub': userSub }
             })
           );
           dynamoBreaker.reportSuccess();
+          console.log(`✅ Query exitoso, Items encontrados: ${res.Items?.length || 0}`);
+          if (res.Items && res.Items.length > 0) {
+            console.log(`📊 Primer item:`, JSON.stringify(res.Items[0], null, 2));
+          }
           return res;
         },
         { maxAttempts: 3, baseDelayMs: 300 }
       );
     } catch (err) {
-      logger.error("Error consultando permisos en DynamoDB", err, { userEmail });
+      console.error("❌ Error consultando membresías en DynamoDB:", err);
+      logger.error("Error consultando membresías en DynamoDB", err, { userSub });
       endTrace();
-      return errorResponse("Error leyendo permisos en DynamoDB", 500, { details: err.message });
+      return errorResponse("Error leyendo membresías en DynamoDB", 500, { details: err.message });
     }
 
-    // 4) VALIDAR FORMATO DEL ÍTEM
-    if (result && result.Item) {
-      logger.debug("Registro encontrado en DynamoDB", { userEmail, role: result.Item.role });
+    // 4) PROCESAR MEMBERSHIPS - Solo información básica
+    const groups = [];
+    let hasAdminPermissions = false;
 
-      if (result.Item.permissions && !Array.isArray(result.Item.permissions)) {
-        logger.error("Campo permissions no es array", { 
-          userEmail, 
-          receivedType: typeof result.Item.permissions 
+    console.log(`🔄 Procesando ${result.Items?.length || 0} membresías...`);
+
+    if (result.Items && result.Items.length > 0) {
+      for (const item of result.Items) {
+        const role = item.role || 'consulta';
+        
+        console.log(`  👤 Grupo: ${item.group_id}, Rol: ${role}`);
+        
+        groups.push({
+          group_id: item.group_id,
+          role,
+          added_at: item.added_at
         });
-        endTrace();
-        return errorResponse(
-          "El campo permissions tiene un formato incorrecto (debe ser array)", 
-          500, 
-          { received_permissions: result.Item.permissions }
-        );
+
+        // Verificar si tiene rol privilegiado en algún grupo
+        if (role === 'owner' || role === 'admin') {
+          hasAdminPermissions = true;
+        }
       }
     } else {
-      logger.info("Usuario sin registro - rol 'none' asignado por defecto", { userEmail });
+      console.log(`⚠️ Usuario no tiene membresías en ningún grupo`);
     }
 
-    // 5) ARMAR OBJETO DE PERMISOS
-    const userPermissions = result.Item || {
-      user_email: userEmail,
-      role: "none",
-      permissions: []
-    };
+    // 5) CALCULAR TODOS LOS PERMISOS POR GRUPO
+    const permissionsByGroup = {};
+    
+    console.log(`🔄 Calculando permisos para cada grupo...`);
+    
+    for (const group of groups) {
+      const role = group.role || 'consulta';
+      const permissions = PREDEFINED_ROLES[role] || [];
+      
+      permissionsByGroup[group.group_id] = {
+        role,
+        permissions,
+        permissionsCount: permissions.length
+      };
+      
+      console.log(`  📋 Grupo ${group.group_id}: ${permissions.length} permisos (rol: ${role})`);
+    }
 
-    // 6) GENERAR CONFIGURACIÓN PARA UI
-    const uiConfig = generateUIConfig(userPermissions.permissions || []);
+    console.log(`📦 Total de grupos: ${groups.length}`);
+    console.log(`🔐 Tiene permisos de admin: ${hasAdminPermissions}`);
 
-    logger.info("Permisos obtenidos", { 
-      userEmail, 
-      role: userPermissions.role, 
-      permissionsCount: userPermissions.permissions?.length || 0 
+    logger.info("Membresías obtenidas", { 
+      userSub, 
+      groupsCount: groups.length,
+      hasAdminPermissions
     });
     endTrace();
 
     return successResponse({
-      ...userPermissions,
-      ui_config: uiConfig
+      user_sub: userSub,
+      groups,
+      has_admin_permissions: hasAdminPermissions,
+      permissions_by_group: permissionsByGroup,
+      message: "Permisos calculados para todos los grupos"
     });
 
   } catch (err) {
@@ -572,32 +512,33 @@ module.exports.getMyPermissions = async (event) => {
 
 /**
  * POST /check-permission
- * Verifica si el usuario tiene un permiso
+ * Verifica si el usuario tiene un permiso en un grupo específico
  */
 module.exports.checkPermission = async (event) => {
   const endTrace = logger.startTrace('checkPermission');
 
   try {
-    const { permission } = JSON.parse(event.body || "{}");
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    const { permission, group_id } = JSON.parse(event.body || "{}");
+    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
 
-    if (!permission) {
-      logger.warn("Verificación sin especificar permission");
+    if (!permission || !group_id) {
+      logger.warn("Verificación sin especificar permission o group_id");
       endTrace();
-      return errorResponse("permission es obligatorio", 400);
+      return errorResponse("permission y group_id son obligatorios", 400);
     }
-    if (!userEmail) {
+    if (!userSub) {
       logger.warn("Verificación sin usuario autenticado");
       endTrace();
       return unauthorizedResponse("Usuario no autenticado");
     }
 
-    const hasAccess = await verifyPermission(userEmail, permission);
-    logger.info("Verificación de permiso", { userEmail, permission, hasAccess });
+    const hasAccess = await verifyPermission(userSub, group_id, permission);
+    logger.info("Verificación de permiso", { userSub, group_id, permission, hasAccess });
     endTrace();
 
     return successResponse({
-      user_email: userEmail,
+      user_sub: userSub,
+      group_id,
       permission,
       has_access: hasAccess,
       message: hasAccess ? "Acceso permitido" : "Acceso denegado - Principio del mínimo permiso"
@@ -635,19 +576,28 @@ module.exports.listAvailablePermissions = async () => {
 
 /**
  * GET /users-with-roles
- * Lista usuarios con un rol específico
+ * Lista miembros de un grupo con un rol específico
  */
 module.exports.listUsersWithRoles = async (event) => {
   const endTrace = logger.startTrace('listUsersWithRoles');
 
   try {
-    const adminEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+    const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+    const group_id = event.queryStringParameters?.group_id;
     const role = event.queryStringParameters?.role;
     
-    if (!role) {
-      logger.warn("Listado sin especificar rol");
+    if (!group_id) {
+      logger.warn("Listado sin especificar group_id");
       endTrace();
-      return errorResponse("Debe especificar un rol para consultar", 400);
+      return errorResponse("Debe especificar un group_id para consultar", 400);
+    }
+
+    // Verificar que el usuario tiene permiso para ver miembros
+    const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users");
+    if (!hasPermission) {
+      logger.warn("Usuario sin permiso para listar miembros", { requesterSub, group_id });
+      endTrace();
+      return forbiddenResponse("No tienes permiso para listar miembros de este grupo");
     }
 
     if (!dynamoBreaker.shouldAllow()) {
@@ -655,32 +605,39 @@ module.exports.listUsersWithRoles = async (event) => {
       throw new Error("CircuitBreakerOpen");
     }
 
+    // Si se especifica rol, filtrar por rol
+    let queryParams = {
+      TableName: process.env.GROUP_MEMBERS_TABLE,
+      KeyConditionExpression: 'group_id = :gid',
+      ExpressionAttributeValues: { ':gid': group_id }
+    };
+
+    if (role) {
+      queryParams.FilterExpression = 'role = :r';
+      queryParams.ExpressionAttributeValues[':r'] = role;
+    }
+
     const result = await retryWithJitter(
       async () => {
-        const res = await docClient.send(new QueryCommand({
-          TableName: process.env.USER_ROLES_TABLE,
-          IndexName: 'RoleIndex',
-          KeyConditionExpression: 'role = :r',
-          ExpressionAttributeValues: { ':r': role }
-        }));
+        const res = await docClient.send(new QueryCommand(queryParams));
         dynamoBreaker.reportSuccess();
         return res;
       },
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    const users = (result.Items || []).map(item => ({
-      user_email: item.user_email,
+    const members = (result.Items || []).map(item => ({
+      user_sub: item.user_sub,
       role: item.role,
-      permissions_count: (item.permissions || []).length,
-      assigned_at: item.assigned_at,
-      assigned_by: item.assigned_by
+      permissions: PREDEFINED_ROLES[item.role] || [],
+      added_at: item.added_at,
+      updated_by: item.updated_by
     }));
 
-    logger.info("Listado de usuarios con rol", { role, count: users.length, requestedBy: adminEmail });
+    logger.info("Listado de miembros", { group_id, role, count: members.length, requestedBy: requesterSub });
     endTrace();
 
-    return successResponse({ role, users, total: users.length, requested_by: adminEmail });
+    return successResponse({ group_id, role: role || 'all', members, total: members.length, requested_by: requesterSub });
 
   } catch (err) {
     dynamoBreaker.reportFailure();

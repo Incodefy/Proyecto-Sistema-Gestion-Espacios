@@ -34,7 +34,7 @@ router.get('/box/:id', checkPermission('box.detalle.read'), async (req, res) => 
     res.render("detalle_box", {
       currentPath: req.path,
       canEdit: userPermissions.includes('box.detalle.write') || userPermissions.includes('admin.users'),
-      personalization: req.session.user?.personalization || {},
+      personalization: res.locals.personalization || {},
       nombre: box.nombre,
       idpasillo: box.idPasillo,
       pasillo_nombre: box.pasilloNombre,

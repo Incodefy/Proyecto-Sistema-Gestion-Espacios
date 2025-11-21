@@ -39,7 +39,7 @@ router.get('/box', checkPermission('box.read'), async (req, res) => {
 
     res.render('box', { 
       pasillo_box_map, 
-      personalization: req.session.user?.personalization || {},
+      personalization: res.locals.personalization || {},
       currentPath: req.path,
       canWrite: userPermissions.includes('box.write') || userPermissions.includes('admin.users'),
       canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')

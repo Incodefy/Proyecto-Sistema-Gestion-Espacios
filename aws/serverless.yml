@@ -582,6 +582,16 @@ functions:
           path: /groups
           authorizer: cognitoJwt
 
+  updateNomenclatura:
+    handler: src/handlers/groups/updateNomenclatura.handler
+    description: Actualiza la nomenclatura de un grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /grupos/{groupId}/nomenclatura
+          authorizer: cognitoJwt
+
   listUserGroups:
     handler: src/handlers/groups/listUserGroups.handler
     description: Lista los grupos donde pertenece el usuario
@@ -601,11 +611,12 @@ functions:
           authorizer: cognitoJwt
           
   getGroup:
-    handler: src/groups/getGroup.handler
+    handler: src/handlers/groups/getGroup.handler
     events:
       - httpApi:
           method: GET
           path: /grupos/{group_id}
+          authorizer: cognitoJwt
 
 
 

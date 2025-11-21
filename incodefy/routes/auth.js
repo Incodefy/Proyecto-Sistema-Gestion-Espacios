@@ -155,9 +155,13 @@ router.post('/login', async (req, res) => {
       
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json();
-        req.session.user.permissions = permissionsData.permissions || [];
-        req.session.user.ui_config = permissionsData.ui_config || {};
-        console.log('✅ Permisos obtenidos:', req.session.user.permissions);
+        // La nueva API ya no devuelve todos los permisos, solo información de membresías
+        req.session.user.groups = permissionsData.groups || [];
+        req.session.user.has_admin_permissions = permissionsData.has_admin_permissions || false;
+        // Mantener array vacío para compatibilidad, ahora se verifican permisos individualmente
+        req.session.user.permissions = [];
+        console.log('✅ Membresías obtenidas:', req.session.user.groups.length);
+        console.log('✅ Tiene permisos admin:', req.session.user.has_admin_permissions);
       } else {
         console.log('⚠️ Error obteniendo permisos:', permissionsResponse.status);
       }
@@ -200,6 +204,38 @@ router.post('/login', async (req, res) => {
       
       const ApiClient = require('../apiClient');
       const apiClient = new ApiClient(tokens.IdToken);
+      
+      // Obtener todos los permisos del usuario de una vez
+      console.log('📡 Obteniendo todos los permisos del usuario...');
+      const MY_PERMISSIONS_URL = `${process.env.API_BASE_URL}/my-permissions`;
+      const permissionsResponse = await fetch(MY_PERMISSIONS_URL, {
+        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
+      });
+      
+      if (permissionsResponse.ok) {
+        const permissionsData = await permissionsResponse.json();
+        const data = permissionsData.data || permissionsData;
+        
+        // Almacenar permisos en sesión
+        req.session.user.groups = data.groups || [];
+        req.session.user.has_admin_permissions = data.has_admin_permissions || false;
+        req.session.user.permissions_by_group = data.permissions_by_group || {};
+        
+        console.log(`✅ Permisos cargados: ${data.groups?.length || 0} grupos`);
+        console.log(`🔐 Permisos admin: ${data.has_admin_permissions}`);
+        
+        // Log detallado de permisos por grupo
+        if (data.permissions_by_group) {
+          Object.entries(data.permissions_by_group).forEach(([groupId, info]) => {
+            console.log(`  📋 ${groupId}: ${info.permissionsCount} permisos (${info.role})`);
+          });
+        }
+      } else {
+        console.log('⚠️ No se pudieron obtener permisos:', permissionsResponse.status);
+        req.session.user.groups = [];
+        req.session.user.has_admin_permissions = false;
+        req.session.user.permissions_by_group = {};
+      }
       
       const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
       
