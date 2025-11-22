@@ -26,19 +26,15 @@ module.exports.handler = async (event) => {
   }
 
   const params = {
-    TableName: process.env.DB_CATALOGO,
-    FilterExpression: "begins_with(PK, :pk)",
-    ExpressionAttributeValues: {
-      ":pk": "MEDICO#"
-    }
+    TableName: process.env.OCCUPANTS_TABLE
   };
 
   try {
     const data = await client.send(new ScanCommand(params));
 
     const medicoIds = data.Items
-      .filter(item => especialidades.includes(item.idEspecialidad))
-      .map(item => item.idMedico);
+      .filter(item => especialidades.includes(item.especialidad_id))
+      .map(item => item.id);
 
     logger.info('Medicos filtered by especialidades', { 
       especialidades_requested: especialidades.length,

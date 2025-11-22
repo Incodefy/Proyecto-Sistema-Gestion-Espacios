@@ -16,35 +16,72 @@ function formatFechaLarga(fechaStr) {
   return `${parseInt(d, 10)} de ${meses[parseInt(m, 10) - 1]} de ${y}`;
 }
 
-router.get('/box/:id', checkPermission('box.detalle.read'), async (req, res) => {
+router.get('/especifico/:id', checkPermission('box.detalle.read'), async (req, res) => {
   try {
     const boxId = req.params.id;
+    const grupoActivo = req.session.grupoActivo;
+    const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo?.grupo_id;
 
-    const box = await req.apiClient.obtenerBoxYPasillo(boxId);
-    if (!box) {
-      return res.status(404).send("Box no encontrado");
+    if (!grupoId) {
+      return res.status(400).send("No hay grupo activo");
     }
 
-    const instrumentos = await req.apiClient.obtenerInstrumentosPorBox(boxId);
+    // Obtener el espacio específico directamente de listarEspacios
+    const espaciosResponse = await req.apiClient.listarEspacios(grupoId);
+    const espacios = espaciosResponse.espacios || [];
+    
+    // Buscar el espacio específico
+    let espacioEspecifico = null;
+    let espacioGeneral = null;
+    
+    espacios.forEach(espacio => {
+      if (espacio.tipo === 'general' && Array.isArray(espacio.specificSpaces)) {
+        espacio.specificSpaces.forEach(sub => {
+          const subId = sub.SK?.split('#')[1];
+          if (subId === boxId) {
+            espacioEspecifico = sub;
+            espacioGeneral = espacio;
+          }
+        });
+      }
+    });
 
-    console.log(instrumentos)
+    if (!espacioEspecifico) {
+      return res.status(404).send("Espacio específico no encontrado");
+    }
 
-    const userPermissions = req.session.user?.permissions || [];
+    // Obtener instrumentos (si existe el endpoint)
+    let instrumentos = [];
+    try {
+      instrumentos = await req.apiClient.obtenerInstrumentosPorBox(boxId, grupoId);
+    } catch (err) {
+      console.warn('No se pudieron obtener instrumentos:', err.message);
+    }
+
+    // Helper para verificar permisos (mismo patrón que server.js)
+    const userHasPermission = (permission) => {
+      if (req.session.user?.has_admin_permissions) return true;
+      const grupoActivo = req.session.grupoActivo;
+      if (!grupoActivo) return false;
+      const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo.grupo_id;
+      if (!grupoId) return false;
+      const permissionsByGroup = req.session.user?.permissions_by_group || {};
+      const groupPermissions = permissionsByGroup[grupoId];
+      if (!groupPermissions || !groupPermissions.permissions) return false;
+      return groupPermissions.permissions.includes(permission);
+    };
 
     res.render("detalle_box", {
       currentPath: req.path,
-      canEdit: userPermissions.includes('box.detalle.write') || userPermissions.includes('admin.users'),
+      canEdit: userHasPermission('box.detalle.write'),
       personalization: res.locals.personalization || {},
-      nombre: box.nombre,
-      idpasillo: box.idPasillo,
-      pasillo_nombre: box.pasilloNombre,
-      box_id: box.idBox,
-      estado:
-        box.estado === 0
-          ? 'Inhabilitado'
-          : box.estado === 1
-          ? "Habilitado"
-          : "Desconocido",
+      nomenclatura: req.nomenclatura || res.locals.nomenclatura || {},
+      language: req.session.language || req.language || 'es',
+      nombre: espacioEspecifico.nombre,
+      idpasillo: espacioGeneral?.SK?.split('#')[1] || null,
+      pasillo_nombre: espacioGeneral?.nombre || null,
+      box_id: boxId,
+      estado: espacioEspecifico.estado === 0 ? 'Inhabilitado' : 'Habilitado',
       instrumentos: instrumentos,
     });
   } catch (err) {

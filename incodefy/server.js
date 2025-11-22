@@ -117,45 +117,33 @@ const nomenclaturaMiddleware = require('./middleware/nomenclatura');
 // === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
 // Estos se ejecutarán en todas las rutas que vengan después de ellos.
 
-// Middleware de logging para debugging
+// Middleware de logging para debugging (solo en modo DEBUG)
+const DEBUG_REQUESTS = process.env.DEBUG_REQUESTS === 'true';
+
 app.use((req, res, next) => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log('\n' + '='.repeat(80));
-  console.log(`[${timestamp}] 🌐 ${req.method} ${req.path}`);
-  console.log(`📧 Usuario: ${req.session?.user?.email || 'NO AUTENTICADO'}`);
-  console.log(`🆔 Session ID: ${req.sessionID || 'NO SESSION'}`);
-  console.log(`🔐 Token presente: ${req.session?.user?.idToken ? 'SÍ' : 'NO'}`);
-  console.log(`📦 Grupo activo: ${req.session?.grupoActivo?.grupo_id || 'NINGUNO'}`);
-  console.log('='.repeat(80));
+  if (DEBUG_REQUESTS) {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`[${timestamp}] ${req.method} ${req.path} - ${req.session?.user?.email || 'anon'}`);
+  }
 
-  // Interceptar res.redirect para ver qué se está enviando
-  const originalRedirect = res.redirect;
-  res.redirect = function(url) {
-    console.log(`\n🔀 REDIRECT INTERCEPTADO:`);
-    console.log(`   📍 Destino: ${url}`);
-    console.log(`   🆔 Session ID: ${req.sessionID}`);
-    console.log(`   📧 Usuario en sesión: ${req.session?.user?.email || 'NINGUNO'}`);
-    console.log(`   🔢 Status Code: ${this.statusCode || 302}`);
-    return originalRedirect.call(this, url);
-  };
+  // Solo interceptar en modo DEBUG
+  if (process.env.DEBUG_REQUESTS === 'true') {
+    const originalRedirect = res.redirect;
+    res.redirect = function(url) {
+      console.log(`🔀 REDIRECT: ${url}`);
+      return originalRedirect.call(this, url);
+    };
 
-  // Interceptar res.render para ver qué vistas se renderizan
-  const originalRender = res.render;
-  res.render = function(view, locals) {
-    console.log(`\n🎨 RENDER INTERCEPTADO:`);
-    console.log(`   📄 Vista: ${view}`);
-    console.log(`   🆔 Session ID: ${req.sessionID}`);
-    return originalRender.call(this, view, locals);
-  };
+    const originalRender = res.render;
+    res.render = function(view, locals) {
+      console.log(`🎨 RENDER: ${view}`);
+      return originalRender.call(this, view, locals);
+    };
 
-  // Log cuando la respuesta termina
-  res.on('finish', () => {
-    console.log(`\n✅ RESPUESTA COMPLETADA:`);
-    console.log(`   🔢 Status Code: ${res.statusCode}`);
-    console.log(`   📏 Content-Length: ${res.get('Content-Length') || 'N/A'}`);
-    console.log(`   📍 Location header: ${res.get('Location') || 'N/A'}`);
-    console.log('─'.repeat(80) + '\n');
-  });
+    res.on('finish', () => {
+      console.log(`✅ ${req.method} ${req.path} - ${res.statusCode}`);
+    });
+  }
 
   next();
 });
@@ -321,10 +309,6 @@ app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddlew
 
 // Perfil (NO requiere grupo activo)
 app.get('/perfil', requireAuth, attachApiClient, (req, res) => {
-  console.log('📄 GET /perfil - Usuario:', req.session.user?.email);
-  console.log('📄 req.session.user.personalization:', req.session.user?.personalization);
-  console.log('📄 res.locals.personalization:', res.locals.personalization);
-  
   res.render('perfil', {
     currentPath: req.path,
     personalization: res.locals.personalization || req.session.user?.personalization || {},

@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient } = require("@aws-sdk/lib-dynamodb");
 const { successResponse, errorResponse } = require('../../utils/response');
 const { createLogger } = require('../../utils/logger');
 
@@ -9,17 +9,9 @@ const logger = createLogger({ handler: 'obtenerEstadoNoAtendido' });
 module.exports.handler = async () => {
     const endTrace = logger.startTrace('obtenerEstadoNoAtendido');
 
-    const params = {
-        TableName: process.env.DB_CATALOGO,
-        KeyConditionExpression: "PK = :pk",
-        ExpressionAttributeValues: {
-            ":pk": "ESTADO#2"
-        }
-    };
-
     try {
-        const data = await client.send(new QueryCommand(params));
-        const estadoId = data.Items?.[0]?.idEstado || null;
+        // Estado "No Atendido" es siempre 2 en el sistema
+        const estadoId = 2;
         
         logger.info('Estado no atendido retrieved', { estado_id: estadoId });
         endTrace();

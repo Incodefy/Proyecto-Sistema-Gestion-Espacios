@@ -83,7 +83,18 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
 
     console.log('🗺️ Map generado:', JSON.stringify(general_especifico_map, null, 2));
 
-    const userPermissions = req.session.user?.permissions || [];
+    // Helper para verificar permisos (mismo patrón que server.js)
+    const userHasPermission = (permission) => {
+      if (req.session.user?.has_admin_permissions) return true;
+      const grupoActivo = req.session.grupoActivo;
+      if (!grupoActivo) return false;
+      const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo.grupo_id;
+      if (!grupoId) return false;
+      const permissionsByGroup = req.session.user?.permissions_by_group || {};
+      const groupPermissions = permissionsByGroup[grupoId];
+      if (!groupPermissions || !groupPermissions.permissions) return false;
+      return groupPermissions.permissions.includes(permission);
+    };
     
     // Obtener nomenclatura
     const nomenclatura = req.nomenclatura || { general: 'General', especifico: 'Específico' };
@@ -97,8 +108,8 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
       i18n: req.i18n,
       t: req.t,
       user: req.session.user,
-      canWrite: userPermissions.includes('box.write') || userPermissions.includes('admin.users'),
-      canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')
+      canWrite: userHasPermission('box.write'),
+      canViewDetail: userHasPermission('box.detalle.read')
     });
   } catch (err) {
     console.error('❌ Error en /especifico:', err);

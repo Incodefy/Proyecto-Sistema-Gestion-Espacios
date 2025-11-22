@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle Box</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/navbar.css' %}?v={% now 'U' %}">
+    <link rel="stylesheet" href="{% static 'css/box_detail.css' %}?v={% now 'U' %}">
+    <link rel="stylesheet" href="{% static 'css/notificacion.css' %}?v={% now 'U' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            {% include 'navbar.html' %}
+            {% include 'notificacion.html' %}
+            
+            <div class="main-container">
+                <div class="page-header fade-in">
+                    <h1><i class="fas fa-cube"></i> {{ nombre }}</h1>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12 col-sm-12 col-md-6 col-lg-7 col-xl-8 mb-3">
+                        <div class="info-card fade-in">
+                            <div class="d-flex align-items-center">
+                                <div class="card-icon me-3">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <h3 class="card-title mb-4">Información del Box</h3>
+                            </div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-icon">
+                                        <i class="fas fa-tag"></i>
+                                    </div>
+                                    <span class="info-label">Nombre:</span>
+                                    <span class="info-value"> {{ nombre }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-icon">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </div>
+                                    <span class="info-label">Pasillo:</span>
+                                    <span class="info-value"> {{idpasillo}} </span>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <span class="info-label">Estado:</span>
+                                    <span class="info-value">
+                                        <span class="status-badge status-activo"> {{ estado }} </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="instruments-btn" onclick="abrirModalInstrumentos()">
+                                <i class="fas fa-stethoscope"></i>
+                                Ver Instrumentos del Box
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-12 col-md-6 col-lg-5 col-xl-4 mb-3">
+                        <div class="date-selector-card fade-in">
+                            <div class="d-flex align-items-center">
+                                <div class="card-icon me-3">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <h3 class="card-title mb-4">Seleccionar Fecha</h3>
+                            </div>
+                            <div class="date-controls">
+                                <button class="date-btn" onclick="cambiarFecha(-1)" title="Día anterior">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+
+                                <div class="current-date" id="fechaLabel"></div>
+
+                                <button class="date-btn" onclick="cambiarFecha(1)" title="Día siguiente">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <input type="date" class="date-input" id="selectorFecha" onchange="seleccionarFecha(this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="custom-tabs fade-in">
+                    <button class="tab-btn active" onclick="mostrarTab('consultas')">
+                        <i class="fas fa-clipboard-list"></i> Consultas del Día
+                    </button>
+                    <button class="tab-btn" onclick="mostrarTab('estadisticas')">
+                        <i class="fas fa-chart-bar"></i> Estadísticas y Métricas
+                    </button>
+                </div>
+
+                <!-- Contenido Consultas -->
+                <div id="tab-consultas" class="tab-content active fade-in">
+                    <div class="enhanced-table">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-clock"></i> Hora</th>
+                                    <th><i class="fas fa-user-md"></i> Médico</th>
+                                    <th><i class="fas fa-heartbeat"></i> Especialidad</th>
+                                    <th><i class="fas fa-info-circle"></i> Estado</th>
+                                    <th><i class="fas fa-notes-medical"></i> Tipo Consulta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaHorarios">
+                                <!-- Datos de ejemplo -->
+                                <tr>
+                                    <td>Hora</td>
+                                    <td>Médico</td>
+                                    <td>Especialidad</td>
+                                    <td>Estado</td>
+                                    <td>Tipo consulta</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Contenido Estadísticas -->
+                <div id="tab-estadisticas" class="tab-content fade-in">
+                    <!-- Métricas principales -->
+                    <div class="metrics-grid row g-3">
+                        <div class="col-6 col-lg-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="totalConsultas"></div>
+                                <div class="metric-label">Total Consultas</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="usoBox"><span></span></div>
+                                <div class="metric-label">Uso del Box</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="noRealizadas"></div>
+                                <div class="metric-label">No Realizadas</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="cumplimiento">100<span></span></div>
+                                <div class="metric-label">Cumplimiento</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="chart-card">
+                                <h4 class="chart-title">Uso del Box</h4>
+                                <canvas id="graficoUso" style="max-height: 350px;"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-card">
+                                <h4 class="chart-title">Cumplimiento de Consultas</h4>
+                                <canvas id="graficoCumplimiento" style="max-height: 350px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Instrumentos Mejorado -->
+            <div id="modalInstrumentos" class="enhanced-modal">
+                <div class="modal-content-enhanced">
+                    <div class="modal-header-enhanced">
+                        <h3 class="modal-title-enhanced">
+                            <i class="fas fa-stethoscope"></i>
+                            Instrumentos del Box
+                        </h3>
+                        <button class="close-btn" onclick="cerrarModalInstrumentos()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {% if instrumentos %}
+                            <ul class="instrument-list-enhanced">
+                                {% for item in instrumentos %}
+                                    <li class="instrument-item-enhanced">
+                                        <span class="instrument-name">{{ item.idinstrumento.nombre }}</span>
+                                        <span class="instrument-count">{{ item.cantidad }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No se han registrado instrumentos para este box.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/websocket_notificaciones.js' %}"></script>
+    <script>
+
+        let fechaActual = new Date();
+        let graficoUso = null;
+        let graficoCumplimiento = null;
+
+        // Funciones del modal
+        function abrirModalInstrumentos() {
+            document.getElementById("modalInstrumentos").classList.add("show");
+        }
+
+        function cerrarModalInstrumentos() {
+            document.getElementById("modalInstrumentos").classList.remove("show");
+        }
+
+        // Funciones de fecha
+        function cambiarFecha(dias) {
+            fechaActual.setDate(fechaActual.getDate() + dias);
+            actualizarVista();
+        }
+
+        function seleccionarFecha(valor) {
+            if (valor) {
+                const partes = valor.split('-');
+                if (partes.length === 3) {
+                    const nuevaFecha = new Date(
+                        parseInt(partes[0], 10),
+                        parseInt(partes[1], 10) - 1,
+                        parseInt(partes[2], 10)
+                    );
+                    if (!isNaN(nuevaFecha.getTime())) {
+                        fechaActual = nuevaFecha;
+                        actualizarVista();
+                    }
+                }
+            }
+        }
+
+        // Función principal de actualización
+        function actualizarVista() {
+            const boxId = "{{ box_id }}";
+
+            const fechaStr = fechaActual.getFullYear() + '-' +
+                String(fechaActual.getMonth() + 1).padStart(2, '0') + '-' +
+                String(fechaActual.getDate()).padStart(2, '0');
+
+            document.getElementById("selectorFecha").value = fechaStr;
+            
+            // Formatear fecha para mostrar
+            const opciones = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };        
+
+            fetch(`/obtener-info-box/?box_id=${boxId}&fecha=${fechaStr}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Error al cargar la información: " + data.error);
+                        return;
+                    }
+
+                    // Actualizar fecha
+                    document.getElementById("fechaLabel").innerText = data.fecha;
+
+                    // Actualizar tabla
+                    const tabla = document.getElementById("tablaHorarios");
+                    tabla.innerHTML = "";
+                    for (const hora in data.horarios) {
+                        const fila = document.createElement("tr");
+                        const bloque = data.horarios[hora];
+                        fila.innerHTML = `
+                            <td>${hora}</td>
+                            <td>${bloque.medico || "-"}</td>
+                            <td>${bloque.especialidad || "-"}</td>
+                            <td>${bloque.estado || "-"}</td>
+                            <td>${bloque.tipo_consulta || "-"}</td>
+                        `;
+                        tabla.appendChild(fila);
+                    }
+
+                    // Actualizar métricas
+                    document.getElementById("totalConsultas").innerText = data.total_consultas;
+                    document.getElementById("noRealizadas").innerText = data.consultas_no_realizadas;
+                    document.getElementById("usoBox").innerText = data.uso_box;
+                    document.getElementById("cumplimiento").innerText = data.cumplimiento;
+
+                    // Dibujar gráficos
+                    renderGraficos(data.uso_box, data.consultas_no_realizadas, data.total_consultas);
+                })
+                .catch(error => {
+                    console.error("Error en la solicitud:", error);
+                });
+        }
+
+        function actualizarMetricas(data) {
+            document.getElementById("totalConsultas").innerText = data.total_consultas;
+            document.getElementById("noRealizadas").innerText = data.consultas_no_realizadas;
+            document.getElementById("usoBox").innerHTML = parseFloat(data.uso_box).toFixed(0) + '<span style="font-size: 1rem;">%</span>';
+            document.getElementById("cumplimiento").innerHTML = parseFloat(data.cumplimiento).toFixed(0) + '<span style="font-size: 1rem;">%</span>';
+        }
+
+        function renderGraficos(uso, noRealizadas, total) {
+            const realizadas = total - noRealizadas;
+
+            // Limpiar gráficos existentes
+            if (graficoUso) graficoUso.destroy();
+            if (graficoCumplimiento) graficoCumplimiento.destroy();
+
+            // Gráfico de uso
+            const ctxUso = document.getElementById("graficoUso").getContext("2d");
+            graficoUso = new Chart(ctxUso, {
+                type: "doughnut",
+                data: {
+                    labels: ["Usado", "Libre"],
+                    datasets: [{
+                        data: [uso, 100 - uso],
+                        backgroundColor: ["#142c59", "#e8f2ff"],
+                        borderWidth: 0,
+                        cutout: '70%'
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,                    
+                    plugins: {
+                        datalabels: {
+                            color: function(context) {
+                                const index = context.dataIndex;
+                                const label = context.chart.data.labels[index];
+
+                                if (label === "Usado") {
+                                    return "#ffffff";
+                                } else if (label === "Libre") {
+                                    return "#142c59";
+                                } else {
+                                    return "#142c59";
+                                }
+                            },
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            formatter: (value, ctx) => {
+                                const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = (value / total * 100).toFixed(0);
+                                return percentage + '%';
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 35,
+                                usePointStyle: true,
+                                font: {
+                                    size: 16
+                                },
+                                color: "#222"
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de cumplimiento
+            const ctxCumplimiento = document.getElementById("graficoCumplimiento").getContext("2d");
+            graficoCumplimiento = new Chart(ctxCumplimiento, {
+                type: "doughnut",
+                data: {
+                    labels: ["Realizadas", "No Realizadas"],
+                    datasets: [{
+                        data: [realizadas, noRealizadas],
+                        backgroundColor: ["#1d428a", "#dc3545"],
+                        borderWidth: 0,
+                        cutout: '70%'
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: function(context) {
+                                const index = context.dataIndex;
+                                const label = context.chart.data.labels[index];
+
+                                if (label === "Realizadas") {
+                                    return "#ffffff";
+                                } else if (label === "No Realizadas") {
+                                    return "#ffffff";
+                                } else {
+                                    return "#ffffff";
+                                }
+                            },
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            formatter: (value, ctx) => {
+                                const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = (value / total * 100).toFixed(0);
+                                return percentage + '%';
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 35,
+                                usePointStyle: true,
+                                font: {
+                                    size: 16
+                                },
+                                color: "#222"
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function mostrarTab(tab) {
+            // Remover clases activas
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Activar tab seleccionado
+            document.querySelector(`.tab-btn[onclick*="${tab}"]`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            // Actualizar URL (sin recargar)
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tab);
+            window.history.replaceState({}, '', url);
+        }
+
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarModalInstrumentos();
+            }
+        });
+
+        // Cerrar modal clickeando fuera
+        document.getElementById('modalInstrumentos').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModalInstrumentos();
+            }
+        });
+
+        // Inicialización
+        document.addEventListener("DOMContentLoaded", function() {
+            actualizarVista();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab') || 'consultas';
+            mostrarTab(tab);
+            
+            const elements = document.querySelectorAll('.fade-in');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
+        });
+    </script>
+    <script>
+        const socket = new WebSocket( 
+            (window.location.protocol === "https:" ? "wss" : "ws") + "://" + window.location.host + "/ws/estado-box/"
+        );
+        
+        socket.onopen = function(e) {
+            console.log("WebSocket conectado correctamente");
+        };
+
+        socket.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                console.log("Cambio detectado en Agenda:", data);
+
+                if (data.trigger === 'cambio_en_agenda') {
+                    if (data.accion === 'guardado') {
+                    } else if (data.accion === 'eliminado') {
+                    }
+                    actualizarVista()
+                }
+            } catch (error) {
+                console.error("Error al procesar mensaje:", error, e.data);
+            }
+        };
+
+        socket.onerror = function(e) {
+            console.error("Error en WebSocket:", e);
+        };
+
+        socket.onclose = function(e) {
+            console.warn("⚠️ WebSocket cerrado. Reintentando en 5s...");
+            setTimeout(() => location.reload(), 5000);
+        };
+    </script>
+    <script>
+        function toggleNavbar() {
+            const menu = document.querySelector('.navbar-menu');
+            if (menu) {
+                menu.classList.toggle('show');
+            } else {
+                console.warn("⚠️ No se encontró .navbar-menu");
+            }
+        }
+    </script>
+
+</body>
+</html>

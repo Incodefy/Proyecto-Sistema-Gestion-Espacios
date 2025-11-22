@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { successResponse, errorResponse } = require("../../utils/response");
 const { createLogger } = require("../../utils/logger");
 
@@ -7,30 +7,33 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const logger = createLogger({ handler: 'obtenerMedicos' });
 
 module.exports.handler = async () => {
-    const endTrace = logger.startTrace('query-medicos');
+    const endTrace = logger.startTrace('obtenerMedicos');
     
-    // ✅ Query con índice GSI - 100x más rápido que Scan
     const params = {
-        TableName: process.env.DB_CATALOGO,
-        IndexName: "TipoEntidadIndex",
-        KeyConditionExpression: "GSI1PK = :tipo",
-        ExpressionAttributeValues: {
-            ":tipo": "TIPO#MEDICO"
-        }
+        TableName: process.env.OCCUPANTS_TABLE
     };
 
     try {
-        const data = await client.send(new QueryCommand(params));
-        const count = data.Items?.length || 0;
+        const data = await client.send(new ScanCommand(params));
         
-        logger.info('Doctors fetched successfully', { count });
+        // Mapear a formato legacy (idMedico, nombre, idEspecialidad, especialidad)
+        const medicos = (data.Items || []).map(item => ({
+            idMedico: item.id,
+            nombre: item.name,
+            idEspecialidad: item.especialidad_id,
+            especialidad: item.especialidad,
+            grupo_id: item.grupo_id
+        }));
+        
+        const count = medicos.length;
+        
+        logger.info('Médicos obtenidos exitosamente', { count });
         endTrace({ success: true, count });
         
-        return successResponse(data.Items, 200, { count });
+        return successResponse(medicos, 200, { count });
     } catch (err) {
-        logger.error('Failed to fetch doctors', err, { 
-            table: process.env.DB_CATALOGO,
-            index: 'TipoEntidadIndex'
+        logger.error('Error obteniendo médicos', err, { 
+            table: process.env.OCCUPANTS_TABLE
         });
         endTrace({ success: false, error: err.message });
         

@@ -39,6 +39,7 @@ provider:
     ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades
     TIPOS_INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-tipos-instrumentos
     INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-instrumentos
+    ESPACIO_INSTRUMENTO_TABLE: ${self:service}-${sls:stage}-espacio-instrumento
     # SES Configuration
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
     APP_URL: ${env:APP_URL, 'http://localhost:3000'}
@@ -261,6 +262,8 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-especialidades
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-tipos-instrumentos
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-instrumentos
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-espacio-instrumento
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-espacio-instrumento/index/*
 
 functions:
   # === HEALTH CHECK ===
@@ -1092,6 +1095,10 @@ resources:
             AttributeType: S
           - AttributeName: GSI2SK
             AttributeType: S
+          - AttributeName: GSI3PK
+            AttributeType: S
+          - AttributeName: GSI3SK
+            AttributeType: S
         KeySchema:
           - AttributeName: PK
             KeyType: HASH
@@ -1111,6 +1118,14 @@ resources:
               - AttributeName: GSI2PK
                 KeyType: HASH
               - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GrupoIndex
+            KeySchema:
+              - AttributeName: GSI3PK
+                KeyType: HASH
+              - AttributeName: GSI3SK
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
@@ -1402,6 +1417,37 @@ resources:
             KeyType: HASH
           - AttributeName: SK
             KeyType: RANGE
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    EspacioInstrumentoTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-espacio-instrumento
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: InstrumentoEspacioIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
 

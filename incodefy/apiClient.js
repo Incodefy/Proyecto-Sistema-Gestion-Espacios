@@ -156,17 +156,17 @@ class ApiClient {
   }
 
   // ============ INSTRUMENTOS ============
-  async obtenerInstrumentosPorBox(boxId) {
+  async obtenerInstrumentosPorBox(boxId, grupoId) {
     const response = await this.client.get('/db/instrumentos-box', {
-      params: { boxId }
+      params: { boxId, grupo_id: grupoId }
     });
     return response.data;
   }
 
   // ============ INFORMACIÓN ADICIONAL ============
-  async obtenerBoxYPasillo(boxId) {
+  async obtenerBoxYPasillo(boxId, grupoId) {
     const response = await this.client.get('/db/box-pasillo', {
-      params: { boxId }
+      params: { boxId, grupo_id: grupoId }
     });
     return response.data;
   }

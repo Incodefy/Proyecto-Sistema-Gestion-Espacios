@@ -56,10 +56,11 @@ function calcularPeriodoAnterior(fechaInicio, fechaFin) {
   }
 }
 
-async function construirFiltrosDynamoDB(fechaInicio, fechaFin) {
+async function construirFiltrosDynamoDB(fechaInicio, fechaFin, grupoId) {
   const filtros = {
     fechaInicio: fechaInicio,
-    fechaFin: fechaFin
+    fechaFin: fechaFin,
+    grupo_id: grupoId
   };
 
   return filtros;
@@ -187,8 +188,14 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
 
   console.log(`📅 Período actual: ${fechaInicio} a ${fechaFin} (${diasPeriodo} días)`);
 
+  // Obtener grupo_id de la sesión
+  const grupoId = req.session?.grupoActivo?.grupo_id;
+  if (!grupoId) {
+    throw new Error('No se encontró grupo activo en la sesión');
+  }
+
   // ✅ Construir filtros para Lambda
-  const filtrosActuales = await construirFiltrosDynamoDB(fechaInicio, fechaFin);
+  const filtrosActuales = await construirFiltrosDynamoDB(fechaInicio, fechaFin, grupoId);
 
   console.log("Filtros: ", filtrosActuales)
 
@@ -201,7 +208,8 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   if (periodoAnterior) {
     const filtrosAnteriores = await construirFiltrosDynamoDB(
       periodoAnterior.inicio, 
-      periodoAnterior.fin
+      periodoAnterior.fin,
+      grupoId
     );
     
     totalConsultasAnterior = await req.apiClient.obtenerTotalConsultas(filtrosAnteriores);
@@ -250,7 +258,8 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
   if (especialidadTop && periodoAnterior) {
     const filtrosAnteriores = await construirFiltrosDynamoDB(
       periodoAnterior.inicio,
-      periodoAnterior.fin
+      periodoAnterior.fin,
+      grupoId
     );
     
     const especialidadAnt = await req.apiClient.obtenerEspecialidadMasDemandada(filtrosAnteriores);
@@ -304,8 +313,14 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin) {
 async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFin) {
   console.log('📊 Calculando gráficos del dashboard');
 
+  // Obtener grupo_id de la sesión
+  const grupoId = req.session?.grupoActivo?.grupo_id;
+  if (!grupoId) {
+    throw new Error('No se encontró grupo activo en la sesión');
+  }
+
   // ✅ Construir filtros
-  const filtros = await construirFiltrosDynamoDB(fechaInicio, fechaFin);
+  const filtros = await construirFiltrosDynamoDB(fechaInicio, fechaFin, grupoId);
 
   // ✅ Obtener datos en paralelo
   const [consultasPorEspecialidad, consultasPorDia, rendimientoMedicos] = await Promise.all([

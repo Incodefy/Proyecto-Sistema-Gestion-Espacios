@@ -252,13 +252,10 @@ router.delete('/test/delete-espacio/:id', requireAuthAPI, async (req, res) => {
 // GET /api/espacios/grupo-activo - Obtener grupo activo del usuario
 router.get('/espacios/grupo-activo', requireAuthAPI, async (req, res) => {
   try {
-    console.log('📋 GET /api/espacios/grupo-activo - Usuario:', req.session.user?.email);
-    
     // Obtener desde sesión primero (más rápido)
     const grupoActivoSesion = req.session.grupoActivo;
     
     if (grupoActivoSesion) {
-      console.log('✅ Grupo activo desde sesión:', grupoActivoSesion);
       return res.json({
         ok: true,
         grupo_activo: grupoActivoSesion

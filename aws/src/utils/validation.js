@@ -60,12 +60,12 @@ const schemas = {
         type: 'integer', 
         minimum: 1
       },
-      idMedico: { 
+      idOccupant: { 
         type: 'integer', 
         minimum: 1,
         maximum: 99999
       },
-      medicoNombre: {
+      occupantName: {
         type: 'string',
         minLength: 1,
         maxLength: 200
@@ -78,12 +78,12 @@ const schemas = {
         type: 'string',
         minLength: 1
       },
-      idBox: { 
+      idSpace: { 
         type: 'integer', 
         minimum: 1,
         maximum: 9999
       },
-      boxNombre: {
+      spaceName: {
         type: 'string',
         minLength: 1
       },
@@ -113,11 +113,15 @@ const schemas = {
       tipoConsulta: {
         type: 'string',
         minLength: 1
+      },
+      grupo_id: {
+        type: 'string',
+        minLength: 1
       }
     },
-    required: ['idAgenda', 'idMedico', 'medicoNombre', 'idEspecialidad', 
-               'especialidadNombre', 'idBox', 'boxNombre', 'idEstado', 
-               'estadoNombre', 'fecha', 'horaInicio', 'horaFin', 'tipoConsulta'],
+    required: ['idAgenda', 'idOccupant', 'occupantName', 'idEspecialidad', 
+               'especialidadNombre', 'idSpace', 'spaceName', 'idEstado', 
+               'estadoNombre', 'fecha', 'horaInicio', 'horaFin', 'tipoConsulta', 'grupo_id'],
     additionalProperties: false,
     errorMessage: {
       properties: {

@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { successResponse, errorResponse } = require("../../utils/response");
 const { createLogger } = require("../../utils/logger");
 
@@ -10,23 +10,33 @@ module.exports.handler = async () => {
     const endTrace = logger.startTrace('obtenerBoxes');
 
     try {
-        logger.info("Obteniendo boxes desde catálogo");
+        logger.info("Obteniendo boxes (SUBSPACE) desde SPACES_TABLE");
         
-        // Cambio de ScanCommand a QueryCommand para mejor performance
         const params = {
-            TableName: process.env.DB_CATALOGO,
-            KeyConditionExpression: 'begins_with(PK, :pk)',
+            TableName: process.env.SPACES_TABLE,
+            FilterExpression: '#type = :typeVal',
+            ExpressionAttributeNames: {
+                '#type': 'type'
+            },
             ExpressionAttributeValues: {
-                ':pk': 'BOX#'
+                ':typeVal': 'SUBSPACE'
             }
         };
 
-        const data = await client.send(new QueryCommand(params));
+        const data = await client.send(new ScanCommand(params));
         
-        logger.info("Boxes obtenidos", { count: data.Items?.length || 0 });
+        // Mapear a formato legacy (idBox, nombre)
+        const boxes = (data.Items || []).map(item => ({
+            idBox: item.id,
+            nombre: item.name,
+            grupo_id: item.grupo_id,
+            parent_id: item.parent_id
+        }));
+        
+        logger.info("Boxes obtenidos", { count: boxes.length });
         endTrace();
         
-        return successResponse(data.Items || [], 200, { count: data.Items?.length || 0 });
+        return successResponse(boxes, 200, { count: boxes.length });
     } catch (err) {
         logger.error("Error obteniendo boxes", err);
         endTrace();

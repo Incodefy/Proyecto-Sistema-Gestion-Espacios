@@ -17,10 +17,9 @@ module.exports.handler = async (event) => {
   }
 
   const params = {
-    TableName: process.env.DB_CATALOGO,
+    TableName: process.env.SPACES_TABLE,
     Key: {
-      PK: `BOX#${boxId}`,
-      SK: "#"
+      id: boxId
     }
   };
 
@@ -35,7 +34,7 @@ module.exports.handler = async (event) => {
 
     logger.info('Box name retrieved', { box_id: boxId });
     endTrace();
-    return successResponse({ nombre: data.Item.nombre || null });
+    return successResponse({ nombre: data.Item.name || null });
 
   } catch (err) {
     logger.error('Error retrieving box name', err, { box_id: boxId });

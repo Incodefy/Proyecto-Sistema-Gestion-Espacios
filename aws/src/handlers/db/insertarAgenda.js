@@ -36,7 +36,7 @@ module.exports.handler = async (event) => {
   const {
     idAgenda, idSpace, spaceName, idOccupant, occupantName,
     idEspecialidad, especialidadNombre, idEstado, estadoNombre,
-    fecha, horaInicio, horaFin, tipoConsulta
+    fecha, horaInicio, horaFin, tipoConsulta, grupo_id
   } = validation.data;
 
   // Validación adicional: horaInicio < horaFin
@@ -69,10 +69,13 @@ module.exports.handler = async (event) => {
     horaInicio: skHora,
     horaFin,
     tipoConsulta,
+    grupo_id: String(grupo_id),
     GSI1PK: `${idOccupant}#DATE#${fecha}`,
     GSI1SK: skHora,
     GSI2PK: `DATE#${fecha}`,
-    GSI2SK: skHora
+    GSI2SK: skHora,
+    GSI3PK: `GRUPO#${grupo_id}`,
+    GSI3SK: `${fecha}#${skHora}`
   };
 
   const params = {

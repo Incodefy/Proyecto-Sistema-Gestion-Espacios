@@ -24,16 +24,26 @@ module.exports.handler = async (event) => {
   logger.info("Obteniendo boxes disponibles", { filterCount: boxes?.length || 0 });
 
   const params = {
-    TableName: process.env.DB_CATALOGO
+    TableName: process.env.SPACES_TABLE
   };
 
+  // Filtrar por tipo SUBSPACE (boxes)
   if (Array.isArray(boxes) && boxes.length > 0) {
     const placeholders = boxes.map((_, i) => `:b${i}`).join(", ");
-    params.FilterExpression = `idBox IN (${placeholders})`;
-    params.ExpressionAttributeValues = boxes.reduce((acc, box, index) => {
-      acc[`:b${index}`] = box;
-      return acc;
-    }, {});
+    params.FilterExpression = `#type = :typeVal AND id IN (${placeholders})`;
+    params.ExpressionAttributeNames = { '#type': 'type' };
+    params.ExpressionAttributeValues = {
+      ':typeVal': 'SUBSPACE',
+      ...boxes.reduce((acc, box, index) => {
+        acc[`:b${index}`] = box;
+        return acc;
+      }, {})
+    };
+  } else {
+    // Si no hay filtro, solo traer SUBSPACE
+    params.FilterExpression = '#type = :typeVal';
+    params.ExpressionAttributeNames = { '#type': 'type' };
+    params.ExpressionAttributeValues = { ':typeVal': 'SUBSPACE' };
   }
 
   try {

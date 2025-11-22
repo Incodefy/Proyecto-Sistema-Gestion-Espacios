@@ -17,10 +17,9 @@ module.exports.handler = async (event) => {
   }
 
   const params = {
-    TableName: process.env.DB_CATALOGO,
+    TableName: process.env.OCCUPANTS_TABLE,
     Key: {
-      PK: `MEDICO#${medicoId}`,
-      SK: "#"
+      id: medicoId
     }
   };
 
@@ -35,7 +34,7 @@ module.exports.handler = async (event) => {
 
     logger.info('Medico name retrieved', { medico_id: medicoId });
     endTrace();
-    return successResponse({ nombre: data.Item.nombre || null });
+    return successResponse({ nombre: data.Item.name || null });
 
   } catch (err) {
     logger.error('Error retrieving medico name', err, { medico_id: medicoId });
