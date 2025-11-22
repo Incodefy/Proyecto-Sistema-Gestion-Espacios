@@ -5,20 +5,19 @@ const { successResponse, errorResponse, validationErrorResponse } = require("../
 const { createLogger } = require("../../utils/logger");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerAgendaPorMedico' });
+const logger = createLogger({ handler: 'obtenerAgendaPorOcupante' });
 
 module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('query-agenda-by-doctor');
+    const endTrace = logger.startTrace('query-agenda-by-occupant');
     
-    // Obtener medico_id de queryString
-    const medico_id = event.queryStringParameters?.medico_id;
+    // Obtener occupant_id de queryString
+    const occupant_id = event.queryStringParameters?.occupant_id;
     
     // Validar parámetros
-    const validation = validate({ medico_id: medico_id ? parseInt(medico_id) : undefined }, 'consultaPorMedico');
-    if (!validation.valid) {
-        logger.warn('Invalid medico_id parameter', { errors: validation.errors });
+    if (!occupant_id) {
+        logger.warn('Missing occupant_id parameter');
         endTrace({ success: false, reason: 'validation' });
-        return validationErrorResponse(validation.errors);
+        return errorResponse('occupant_id es requerido', 400);
     }
 
     const params = {
@@ -26,7 +25,7 @@ module.exports.handler = async (event) => {
         IndexName: "MedicoFechaIndex",
         KeyConditionExpression: "begins_with(GSI1PK, :prefix)",
         ExpressionAttributeValues: {
-            ":prefix": `MEDICO#${medico_id}`
+            ":prefix": `${occupant_id}#DATE#`
         }
     };
 
@@ -34,12 +33,12 @@ module.exports.handler = async (event) => {
         const result = await client.send(new QueryCommand(params));
         const count = result.Items?.length || 0;
         
-        logger.info('Agenda fetched by doctor', { medico_id, count });
+        logger.info('Agenda obtenida por ocupante', { occupant_id, count });
         endTrace({ success: true, count });
         
-        return successResponse(result.Items || [], 200, { count, medico_id });
+        return successResponse(result.Items || [], 200, { count, occupant_id });
     } catch (err) {
-        logger.error('Failed to fetch agenda by doctor', err, { medico_id });
+        logger.error('Error obteniendo agenda por ocupante', err, { occupant_id });
         endTrace({ success: false, error: err.message });
         
         return errorResponse('Error obteniendo agenda', 500);

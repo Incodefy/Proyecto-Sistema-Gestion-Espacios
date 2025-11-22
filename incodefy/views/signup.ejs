@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="<%= i18n.language %>">
+<head>
+  <meta charset="UTF-8">
+  <title>Crear Cuenta - Incodefy</title>
+  <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .login-box {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .back-to-login {
+      text-align: center;
+      margin-top: 15px;
+      color: #fff;
+    }
+    
+    .back-to-login a {
+      color: #00d4ff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .back-to-login a:hover {
+      text-decoration: underline;
+    }
+    
+    .password-requirements {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 0.85em;
+    }
+    
+    .password-requirements ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 8px 0 0 0;
+    }
+    
+    .password-requirements li {
+      padding: 4px 0;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .password-requirements li i {
+      margin-right: 8px;
+      width: 16px;
+    }
+    
+    .password-requirements li.valid {
+      color: #4caf50;
+    }
+    
+    .password-requirements li.invalid {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="login-box">
+    <form method="POST" action="/auth/signup" id="signupForm">
+      <h2><i class="fas fa-user-plus"></i> Crear Cuenta</h2>
+      
+      <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length) { %>
+        <div class="messages-container">
+          <% error_msg.forEach(msg => { %>
+            <div class="alert alert-danger fade-in">
+              <i class="fa-solid fa-exclamation-circle"></i>
+              <%= msg %>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length) { %>
+        <div class="messages-container">
+          <% success_msg.forEach(msg => { %>
+            <div class="alert alert-success fade-in">
+              <i class="fa-solid fa-check-circle"></i>
+              <%= msg %>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div class="input-box">
+        <span class="icon"><i class="fa-solid fa-user"></i></span>
+        <input type="text" name="nombre" id="nombre" required
+               value="<%= typeof form_data !== 'undefined' && form_data ? form_data.nombre : '' %>">
+        <label>Nombre completo</label>
+        <div class="error-message" id="nombre-error"></div>
+      </div>
+
+      <div class="input-box">
+        <span class="icon"><i class="fa-solid fa-envelope"></i></span>
+        <input type="email" name="email" id="email" required
+               value="<%= typeof form_data !== 'undefined' && form_data ? form_data.email : '' %>">
+        <label>Correo electrónico</label>
+        <div class="error-message" id="email-error"></div>
+      </div>
+
+      <div class="input-box">
+        <span class="icon">
+          <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
+        </span>
+        <input type="password" name="password" id="password" required>
+        <label>Contraseña</label>
+        <div class="error-message" id="password-error"></div>
+      </div>
+
+      <div class="input-box">
+        <span class="icon">
+          <i class="fa-solid fa-eye" id="toggleConfirmPassword" title="Mostrar contraseña"></i>
+        </span>
+        <input type="password" name="confirm_password" id="confirm_password" required>
+        <label>Confirmar contraseña</label>
+        <div class="error-message" id="confirm-password-error"></div>
+      </div>
+
+      <div class="password-requirements">
+        <strong>La contraseña debe contener:</strong>
+        <ul id="password-checklist">
+          <li id="length-check"><i class="fas fa-circle"></i> Al menos 8 caracteres</li>
+          <li id="uppercase-check"><i class="fas fa-circle"></i> Una letra mayúscula</li>
+          <li id="lowercase-check"><i class="fas fa-circle"></i> Una letra minúscula</li>
+          <li id="number-check"><i class="fas fa-circle"></i> Un número</li>
+          <li id="special-check"><i class="fas fa-circle"></i> Un carácter especial</li>
+        </ul>
+      </div>
+
+      <button type="submit" id="signupButton">
+        <span class="button-text">Crear Cuenta</span>
+        <div class="spinner" id="spinner" style="display:none;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+      </button>
+
+      <div class="back-to-login">
+        ¿Ya tienes cuenta? <a href="/login">Iniciar Sesión</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/signup.js"></script>
+</body>
+</html>

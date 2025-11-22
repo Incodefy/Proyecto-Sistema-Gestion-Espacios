@@ -676,6 +676,52 @@ body[data-theme="dark"] .btn-secondary:hover {
   color: #991b1b;
 }
 
+/* Notification Toast (Success) */
+.notification-toast {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  max-width: 400px;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification-toast.success {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+}
+
+.notification-toast.success i {
+  font-size: 1.5rem;
+  color: #16a34a;
+}
+
+.notification-toast.success span {
+  flex: 1;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.close-notification {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #16a34a;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-notification:hover {
+  color: #15803d;
+}
+
 /* Tema oscuro para nuevos elementos */
 body[data-theme="dark"] .grupo-card {
   background: #334155;
@@ -727,6 +773,15 @@ body[data-theme="dark"] .error-notification span {
   color: #fef2f2;
 }
 
+body[data-theme="dark"] .notification-toast.success {
+  background: #14532d;
+  border-color: #16a34a;
+}
+
+body[data-theme="dark"] .notification-toast.success span {
+  color: #f0fdf4;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .grupo-card {
@@ -748,4 +803,416 @@ body[data-theme="dark"] .error-notification span {
   .grupos-lista {
     max-height: 300px;
   }
+}
+
+/* === ESTILOS PARA OCUPANTES === */
+/* ==================== ESPECIALIDADES ==================== */
+.especialidades-container {
+  margin: 2rem 0;
+}
+
+.especialidades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.especialidad-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.especialidad-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.especialidad-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.especialidad-name {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.especialidad-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-especialidad-section {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.especialidad-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.especialidad-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode para especialidades */
+body[data-theme="dark"] .especialidad-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .especialidad-item:hover {
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .especialidad-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .especialidad-name {
+  color: #f1f5f9;
+}
+
+/* ==================== OCUPANTES ==================== */
+.ocupantes-container {
+  margin: 2rem 0;
+}
+
+.ocupantes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.ocupante-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.ocupante-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ocupante-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.ocupante-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ocupante-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ocupante-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: white;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ocupante-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ocupante-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ocupante-nombre {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.ocupante-especialidad {
+  font-size: 0.875rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.ocupante-especialidad::before {
+  content: "•";
+  font-size: 1.25rem;
+}
+
+.ocupante-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-add-large {
+  width: 100%;
+  padding: 1rem;
+  background: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  color: #64748b;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-add-large:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* Dark mode para ocupantes */
+body[data-theme="dark"] .ocupante-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .ocupante-item:hover {
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .ocupante-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .ocupante-select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .ocupante-nombre {
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .ocupante-especialidad {
+  color: #94a3b8;
+}
+
+body[data-theme="dark"] .btn-add-large {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+body[data-theme="dark"] .btn-add-large:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #1e3a5f;
+}
+
+/* ==================== INSTRUMENTOS ==================== */
+
+.instrumentos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.tipo-instrumento-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.tipo-instrumento-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.instrumentos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.instrumento-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.instrumento-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.instrumento-name {
+  font-size: 0.9375rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.instrumento-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.empty-state-small {
+  text-align: center;
+  padding: 1.5rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.add-instrumento-section {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-instrumento-section .form-input {
+  flex: 1;
+  margin: 0;
+}
+
+.btn-sm {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.edit-instrumento-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-instrumento-modal .modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  min-width: 400px;
+  max-width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.edit-instrumento-modal h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 1.5rem 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* Dark mode para instrumentos */
+body[data-theme="dark"] .tipo-instrumento-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .tipo-instrumento-card h3 {
+  color: #f1f5f9;
+  border-bottom-color: #334155;
+}
+
+body[data-theme="dark"] .instrumento-item {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .instrumento-item:hover {
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .instrumento-name {
+  color: #f1f5f9;
+}
+
+body[data-theme="dark"] .empty-state-small {
+  color: #64748b;
+}
+
+body[data-theme="dark"] .edit-instrumento-modal .modal-content {
+  background: #1e293b;
+}
+
+body[data-theme="dark"] .edit-instrumento-modal h3 {
+  color: #f1f5f9;
 }

@@ -39,6 +39,12 @@ module.exports = {
         options: process.env.FONT_SIZES ? process.env.FONT_SIZES.split(',') : defaults.fontSizes,
         default: 'mediano',
         name: 'Escala de fuente'
+      },
+      'espacios.grupo_activo': {
+        type: 'object',
+        default: null,
+        name: 'Grupo activo',
+        description: 'Grupo de trabajo actualmente seleccionado por el usuario'
       }
     },
 

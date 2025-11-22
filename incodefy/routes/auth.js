@@ -56,20 +56,23 @@ const refreshUserPersonalization = async (req) => {
 // Página login
 router.get('/login', (req, res) => {
   if (req.session.user && req.session.user.idToken) {
-    return res.redirect('/dashboard');
+    // Si ya está logueado y hay redirect, ir ahí; sino al dashboard
+    const redirect = req.query.redirect;
+    return res.redirect(redirect || '/dashboard');
   }
 
   res.render('login', {
     error_msg: req.flash('error') || [],
     form_errors: {},
-    form_data: {}
+    form_data: {},
+    redirect: req.query.redirect || null
   });
 });
 
 // Procesar login con Cognito
 router.post('/login', async (req, res) => {
   try {
-    const { correo, password } = req.body;
+    const { correo, password, redirect } = req.body;
     let form_errors = {};
     let error_msg = [];
 
@@ -81,7 +84,8 @@ router.post('/login', async (req, res) => {
       return res.render('login', {
         error_msg,
         form_errors,
-        form_data: { correo }
+        form_data: { correo },
+        redirect: redirect || null
       });
     }
 
@@ -104,7 +108,8 @@ router.post('/login', async (req, res) => {
       return res.render('login', {
         error_msg,
         form_errors: {},
-        form_data: { correo }
+        form_data: { correo },
+        redirect: redirect || null
       });
     }
 
@@ -198,15 +203,9 @@ router.post('/login', async (req, res) => {
       idioma: req.session.user.idioma
     });
 
-    // Verificar si el usuario tiene un grupo activo
+    // Obtener permisos del usuario
     try {
-      console.log('🔍 Verificando grupo activo del usuario...');
-      
-      const ApiClient = require('../apiClient');
-      const apiClient = new ApiClient(tokens.IdToken);
-      
-      // Obtener todos los permisos del usuario de una vez
-      console.log('📡 Obteniendo todos los permisos del usuario...');
+      console.log('📡 Obteniendo permisos del usuario...');
       const MY_PERMISSIONS_URL = `${process.env.API_BASE_URL}/my-permissions`;
       const permissionsResponse = await fetch(MY_PERMISSIONS_URL, {
         headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
@@ -216,66 +215,84 @@ router.post('/login', async (req, res) => {
         const permissionsData = await permissionsResponse.json();
         const data = permissionsData.data || permissionsData;
         
-        // Almacenar permisos en sesión
         req.session.user.groups = data.groups || [];
         req.session.user.has_admin_permissions = data.has_admin_permissions || false;
         req.session.user.permissions_by_group = data.permissions_by_group || {};
         
-        console.log(`✅ Permisos cargados: ${data.groups?.length || 0} grupos`);
-        console.log(`🔐 Permisos admin: ${data.has_admin_permissions}`);
-        
-        // Log detallado de permisos por grupo
-        if (data.permissions_by_group) {
-          Object.entries(data.permissions_by_group).forEach(([groupId, info]) => {
-            console.log(`  📋 ${groupId}: ${info.permissionsCount} permisos (${info.role})`);
-          });
-        }
-      } else {
-        console.log('⚠️ No se pudieron obtener permisos:', permissionsResponse.status);
-        req.session.user.groups = [];
-        req.session.user.has_admin_permissions = false;
-        req.session.user.permissions_by_group = {};
+        console.log(`✅ Permisos: ${data.groups?.length || 0} grupos, Admin: ${data.has_admin_permissions}`);
       }
-      
+    } catch (err) {
+      console.log('⚠️ Error obteniendo permisos:', err.message);
+      req.session.user.groups = [];
+      req.session.user.has_admin_permissions = false;
+      req.session.user.permissions_by_group = {};
+    }
+
+    // Obtener grupo activo
+    try {
+      const ApiClient = require('../apiClient');
+      const apiClient = new ApiClient(tokens.IdToken);
       const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
       
-      if (grupoActivoResponse && grupoActivoResponse.ok && grupoActivoResponse.grupo_activo) {
-        // Usuario tiene grupo activo, cachear en sesión y ir al dashboard
+      if (grupoActivoResponse?.ok && grupoActivoResponse.grupo_activo) {
         req.session.grupoActivo = grupoActivoResponse.grupo_activo;
         req.session.grupoActivoVerificado = true;
         req.session.grupoActivoVerificadoEn = Date.now();
-        
-        console.log(`✅ Grupo activo encontrado: ${grupoActivoResponse.grupo_activo.grupo_id}, redirigiendo a dashboard`);
-        req.flash('success', `¡Bienvenido ${req.session.user.nombre}!`);
-        res.redirect('/dashboard');
+        console.log(`✅ Grupo activo: ${grupoActivoResponse.grupo_activo.grupo_id}`);
       } else {
-        // Usuario no tiene grupo activo, ir a onboarding
         req.session.grupoActivo = null;
         req.session.grupoActivoVerificado = true;
         req.session.grupoActivoVerificadoEn = Date.now();
-        
-        console.log('⚠️ Usuario sin grupo activo, redirigiendo a onboarding');
-        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
-        res.redirect('/onboarding-espacios');
+        console.log('⚠️ Sin grupo activo');
       }
-      
     } catch (error) {
-      // Si hay error al verificar grupo (ej: 404), ir a onboarding
-      if (error.response?.status === 404) {
-        req.session.grupoActivo = null;
-        req.session.grupoActivoVerificado = true;
-        req.session.grupoActivoVerificadoEn = Date.now();
-        
-        console.log('ℹ️ No hay grupo activo (404), redirigiendo a onboarding');
-        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
-        res.redirect('/onboarding-espacios');
-      } else {
-        console.error('❌ Error verificando grupo activo:', error.message);
-        // Ir a onboarding como medida de seguridad
-        req.flash('success', `¡Bienvenido ${req.session.user.nombre}! Por favor, configura tu primer espacio.`);
-        res.redirect('/onboarding-espacios');
-      }
+      req.session.grupoActivo = null;
+      req.session.grupoActivoVerificado = true;
+      req.session.grupoActivoVerificadoEn = Date.now();
+      console.log('⚠️ Error verificando grupo activo:', error.message);
     }
+
+    // GUARDAR SESIÓN EXPLÍCITAMENTE antes de redirect
+    console.log('🔄 Iniciando guardado de sesión...');
+    console.log('📊 Estado sesión antes de guardar:', {
+      hasUser: !!req.session.user,
+      hasToken: !!req.session.user?.idToken,
+      hasGrupoActivo: !!req.session.grupoActivo,
+      grupoId: req.session.grupoActivo?.grupo_id
+    });
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ ERROR CRÍTICO guardando sesión:', err);
+        console.error('❌ Stack:', err.stack);
+        return res.render('login', {
+          error_msg: ['Error al guardar la sesión'],
+          form_errors: {},
+          form_data: { correo },
+          redirect: redirect || null
+        });
+      }
+
+      console.log('✅ Sesión guardada exitosamente');
+      console.log('📊 Sesión ID:', req.sessionID);
+      
+      // Decidir a dónde redirigir
+      let redirectUrl;
+      if (redirect) {
+        redirectUrl = redirect;
+        console.log(`🔀 Redirect específico: ${redirect}`);
+      } else if (req.session.grupoActivo) {
+        redirectUrl = '/dashboard';
+        console.log('🎯 Usuario con grupo activo, redirigiendo a dashboard');
+      } else {
+        redirectUrl = '/onboarding-espacios';
+        console.log('🎯 Usuario sin grupo activo, redirigiendo a onboarding');
+      }
+
+      console.log(`🚀 ENVIANDO REDIRECT 302 a: ${redirectUrl}`);
+      console.log('=' .repeat(80));
+      return res.redirect(redirectUrl);
+    });
 
   } catch (err) {
     console.error('❌ Error en login:', err);
@@ -301,7 +318,8 @@ router.post('/login', async (req, res) => {
     res.render('login', {
       error_msg: [errorMessage],
       form_errors: form_errors,
-      form_data: { correo: req.body.correo || '' }
+      form_data: { correo: req.body.correo || '' },
+      redirect: req.body.redirect || null
     });
   }
 });

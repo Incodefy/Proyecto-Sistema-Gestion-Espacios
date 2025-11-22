@@ -27,8 +27,8 @@ function parseRangos(texto) {
     return Array.from(valores);
 }
 
-function actualizarBoxes() {
-    fetch('/estado-boxes/')
+function actualizarEspecificos() {
+    fetch('/estado-boxes')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -37,13 +37,13 @@ function actualizarBoxes() {
         })
         .then(data => {
             for (const [id, info] of Object.entries(data)) {
-                const contenedor = document.getElementById(`info-box-${id}`);
+                const contenedor = document.getElementById(`info-especifico-${id}`);
                 if (contenedor) {
                     const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
                     const claseOculto = detallesVisibles ? '' : 'oculto';
                     const displayStyle = detallesVisibles ? 'flex' : 'none';
                     contenedor.innerHTML = `
-                        <div class="contenido-box ${claseOculto}" style="display: ${displayStyle};">
+                        <div class="contenido-especifico ${claseOculto}" style="display: ${displayStyle};">
                             ${info.estado === "Libre" && (!info.proxima_consulta || info.proxima_consulta.trim() === '') 
                                 ? `<p>${window.translations.notNextAppointment}</p>`
                                 : (info.proxima_consulta 
@@ -80,7 +80,7 @@ document.addEventListener('click', function (e) {
         .then(data => {
             if (data.success) {
                 console.log('Estado actualizado correctamente');
-                actualizarBoxes();
+                actualizarEspecificos();
             } else {
                 console.error('Error:', data.error);
             }
@@ -142,75 +142,75 @@ function actualizarBoxesBatch(boxIds) {
 }
 
 function aplicarFiltrosLocales() {
-    const filtroPasillo = document.getElementById('filtroPasillo').value.trim().toLowerCase();
-    const filtroBox = document.getElementById('filtroBox').value.trim().toLowerCase();
+    const filtroGeneral = document.getElementById('filtroPasillo').value.trim().toLowerCase();
+    const filtroEspecifico = document.getElementById('filtroBox').value.trim().toLowerCase();
     const filtroEstado = document.getElementById('filtroEstado').value.trim();
 
-    const rangosPasillo = filtroPasillo ? parseRangos(filtroPasillo) : [];
-    const rangosBox = filtroBox ? parseRangos(filtroBox) : [];
+    const rangosGeneral = filtroGeneral ? parseRangos(filtroGeneral) : [];
+    const rangosEspecifico = filtroEspecifico ? parseRangos(filtroEspecifico) : [];
 
     let tieneResultados = false;
     
-    document.querySelectorAll('.pasillo-bloque').forEach(pasilloBloque => {
-        const nombrePasillo = pasilloBloque.dataset.pasilloNombre.toLowerCase();
-        let pasilloTieneBoxesVisibles = false;
+    document.querySelectorAll('.general-bloque').forEach(generalBloque => {
+        const nombreGeneral = generalBloque.dataset.generalNombre.toLowerCase();
+        let generalTieneEspecificosVisibles = false;
 
-        let pasilloCoincide = true;
-        if (filtroPasillo) {
-            if (rangosPasillo.length > 0) {
-                const numeroPasillo = nombrePasillo.match(/\d+/);
-                if (numeroPasillo) {
-                    pasilloCoincide = rangosPasillo.includes(parseInt(numeroPasillo[0]));
+        let generalCoincide = true;
+        if (filtroGeneral) {
+            if (rangosGeneral.length > 0) {
+                const numeroGeneral = nombreGeneral.match(/\d+/);
+                if (numeroGeneral) {
+                    generalCoincide = rangosGeneral.includes(parseInt(numeroGeneral[0]));
                 } else {
-                    pasilloCoincide = nombrePasillo.includes(filtroPasillo);
+                    generalCoincide = nombreGeneral.includes(filtroGeneral);
                 }
             } else {
-                pasilloCoincide = nombrePasillo.includes(filtroPasillo);
+                generalCoincide = nombreGeneral.includes(filtroGeneral);
             }
         }
 
-        if (pasilloCoincide) {
-            pasilloBloque.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(colBox => {
-                const boxCard = colBox.querySelector('.box-card');
-                if (boxCard) {
-                    const nombreBox = boxCard.dataset.boxNombre.toLowerCase();
-                    const estadoBar = boxCard.querySelector('.estado-bar');
+        if (generalCoincide) {
+            generalBloque.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(colEspecifico => {
+                const especificoCard = colEspecifico.querySelector('.especifico-card');
+                if (especificoCard) {
+                    const nombreEspecifico = especificoCard.dataset.especificoNombre.toLowerCase();
+                    const estadoBar = especificoCard.querySelector('.estado-bar');
                     const estadoActual = estadoBar ? estadoBar.textContent.trim().toLowerCase().replace(' ', '-') : '';
 
-                    let boxCoincide = true;
+                    let especificoCoincide = true;
 
-                    if (filtroBox) {
-                        if (rangosBox.length > 0) {
-                            const numeroBox = nombreBox.match(/\d+/);
-                            if (numeroBox) {
-                                boxCoincide = rangosBox.includes(parseInt(numeroBox[0]));
+                    if (filtroEspecifico) {
+                        if (rangosEspecifico.length > 0) {
+                            const numeroEspecifico = nombreEspecifico.match(/\d+/);
+                            if (numeroEspecifico) {
+                                especificoCoincide = rangosEspecifico.includes(parseInt(numeroEspecifico[0]));
                             } else {
-                                boxCoincide = nombreBox.includes(filtroBox);
+                                especificoCoincide = nombreEspecifico.includes(filtroEspecifico);
                             }
                         } else {
-                            boxCoincide = nombreBox.includes(filtroBox);
+                            especificoCoincide = nombreEspecifico.includes(filtroEspecifico);
                         }
                     }
 
-                    if (filtroEstado && boxCoincide) {
-                        boxCoincide = estadoActual === filtroEstado;
+                    if (filtroEstado && especificoCoincide) {
+                        especificoCoincide = estadoActual === filtroEstado;
                     }
                 
-                    if (boxCoincide) {
-                        colBox.classList.remove('filtrado-oculto');
-                        pasilloTieneBoxesVisibles = true;
+                    if (especificoCoincide) {
+                        colEspecifico.classList.remove('filtrado-oculto');
+                        generalTieneEspecificosVisibles = true;
                         tieneResultados = true;
                     } else {
-                        colBox.classList.add('filtrado-oculto');
+                        colEspecifico.classList.add('filtrado-oculto');
                     }
                 }
             });
         }
 
-        if (pasilloCoincide && pasilloTieneBoxesVisibles) {
-            pasilloBloque.classList.remove('filtrado-oculto');
+        if (generalCoincide && generalTieneEspecificosVisibles) {
+            generalBloque.classList.remove('filtrado-oculto');
         } else {
-            pasilloBloque.classList.add('filtrado-oculto');
+            generalBloque.classList.add('filtrado-oculto');
         }
     });
 
@@ -234,7 +234,7 @@ function reiniciarFiltros() {
     document.getElementById('filtroBox').value = '';
     document.getElementById('filtroEstado').value = '';
     
-    document.querySelectorAll('.pasillo-bloque').forEach(el => el.classList.remove('filtrado-oculto'));
+    document.querySelectorAll('.general-bloque').forEach(el => el.classList.remove('filtrado-oculto'));
     document.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(el => el.classList.remove('filtrado-oculto'));
     document.getElementById('mensaje-no-resultados').style.display = 'none';
     
@@ -242,7 +242,7 @@ function reiniciarFiltros() {
 }
 
 function aplicarEstadoVisual() {
-    const elementos = document.querySelectorAll('.contenido-box');
+    const elementos = document.querySelectorAll('.contenido-especifico');
     elementos.forEach(el => {
         el.classList.toggle('oculto', !detallesVisibles);
         el.style.display = detallesVisibles ? 'flex' : 'none';
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('filtroEstado').value = params.get('estado') || '';
 
     aplicarEstadoVisual();
-    actualizarBoxes();
+    actualizarEspecificos();
 });
 
 document.addEventListener('DOMContentLoaded', () => {

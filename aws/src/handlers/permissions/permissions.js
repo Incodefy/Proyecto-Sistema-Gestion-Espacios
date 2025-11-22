@@ -56,50 +56,80 @@ try {
     "box.write": "Gestionar Box",
     "box.detalle.read": "Ver Detalle de Box",
     "box.detalle.write": "Modificar Detalle de Box",
+    "consultas.read": "Ver Consultas",
+    "consultas.write": "Gestionar Consultas",
     "data.import": "Importar Datos",
     "data.export": "Exportar Datos",
     "medicos.read": "Ver Médicos",
+    "medicos.write": "Gestionar Médicos",
     "notificaciones.read": "Ver Notificaciones",
+    "notificaciones.write": "Gestionar Notificaciones",
     "notificaciones.historial": "Ver Historial de Notificaciones",
-    "admin.users": "Administrar Sistema y Usuarios",
-    "admin.roles": "Administrar Roles",
+    "grupo.read": "Ver Información del Grupo",
+    "grupo.manage": "Gestionar Grupo (Espacios, Miembros, Roles)",
+    "grupo.delete": "Eliminar Grupo",
+    "admin.users": "Administrar Usuarios del Grupo",
+    "admin.roles": "Administrar Roles del Grupo",
     "admin.permissions": "Administrar Permisos",
-    "admin.db": "Administrar Bases de Datos",
-    "admin.system": "Acceso de Sistema"
+    "admin.system": "Acceso Total de Sistema"
   };
   
   PREDEFINED_ROLES = {
-    "consulta": [
-      "dashboard.read", "agenda.read", "box.read", "box.detalle.read",
-      "medicos.read", "notificaciones.read", "notificaciones.historial"
+    // LECTOR - Solo lectura de todo
+    "lector": [
+      "dashboard.read",
+      "agenda.read",
+      "box.read",
+      "box.detalle.read",
+      "consultas.read",
+      "medicos.read",
+      "notificaciones.read",
+      "notificaciones.historial",
+      "grupo.read"
     ],
-    "operador": [
-      "dashboard.read", "agenda.read", "agenda.write", "box.read", "box.write",
-      "box.detalle.read", "medicos.read", "notificaciones.read"
+    
+    // ESCRITOR - Lectura + escritura en todas las interfaces
+    "escritor": [
+      "dashboard.read", "dashboard.write",
+      "agenda.read", "agenda.write",
+      "box.read", "box.write",
+      "box.detalle.read", "box.detalle.write",
+      "consultas.read", "consultas.write",
+      "medicos.read", "medicos.write",
+      "notificaciones.read", "notificaciones.write",
+      "notificaciones.historial",
+      "data.import", "data.export",
+      "grupo.read"
     ],
-    "gestor": [
-      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
-      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
-      "data.import", "data.export", "medicos.read",
-      "notificaciones.read", "notificaciones.historial"
-    ],
-    "medico": [
-      "dashboard.read", "agenda.read", "medicos.read",
-      "notificaciones.read", "notificaciones.historial"
-    ],
+    
+    // ADMIN - Todo lo de escritor + gestión del grupo (espacios, miembros, roles)
     "admin": [
-      "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
-      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
-      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
-      "data.import", "data.export", "medicos.read",
-      "notificaciones.read", "notificaciones.historial"
+      "dashboard.read", "dashboard.write",
+      "agenda.read", "agenda.write",
+      "box.read", "box.write",
+      "box.detalle.read", "box.detalle.write",
+      "consultas.read", "consultas.write",
+      "medicos.read", "medicos.write",
+      "notificaciones.read", "notificaciones.write",
+      "notificaciones.historial",
+      "data.import", "data.export",
+      "grupo.read", "grupo.manage",
+      "admin.users", "admin.roles", "admin.permissions"
     ],
+    
+    // OWNER - Acceso total (solo el creador del grupo)
     "owner": [
-      "admin.users", "admin.roles", "admin.permissions", "admin.db", "admin.system",
-      "dashboard.read", "dashboard.write", "agenda.read", "agenda.write",
-      "box.read", "box.write", "box.detalle.read", "box.detalle.write",
-      "data.import", "data.export", "medicos.read",
-      "notificaciones.read", "notificaciones.historial"
+      "dashboard.read", "dashboard.write",
+      "agenda.read", "agenda.write",
+      "box.read", "box.write",
+      "box.detalle.read", "box.detalle.write",
+      "consultas.read", "consultas.write",
+      "medicos.read", "medicos.write",
+      "notificaciones.read", "notificaciones.write",
+      "notificaciones.historial",
+      "data.import", "data.export",
+      "grupo.read", "grupo.manage", "grupo.delete",
+      "admin.users", "admin.roles", "admin.permissions", "admin.system"
     ]
   };
 }
@@ -139,7 +169,7 @@ async function verifyPermission(userSub, groupId, requiredPermission) {
     // Si existe el miembro en el grupo, verificar permisos según su rol
     if (result.Item) {
       console.log(`${TRACE} ✅ Miembro encontrado en grupo`);
-      const memberRole = result.Item.role || 'consulta';
+      const memberRole = result.Item.role || 'lector';
       const rolePermissions = PREDEFINED_ROLES[memberRole] || [];
       console.log(`${TRACE} 📋 Rol: ${memberRole}, Permisos: ${rolePermissions.join(', ')}`);
 
@@ -446,7 +476,7 @@ module.exports.getMyPermissions = async (event) => {
 
     if (result.Items && result.Items.length > 0) {
       for (const item of result.Items) {
-        const role = item.role || 'consulta';
+        const role = item.role || 'lector';
         
         console.log(`  👤 Grupo: ${item.group_id}, Rol: ${role}`);
         
@@ -471,7 +501,7 @@ module.exports.getMyPermissions = async (event) => {
     console.log(`🔄 Calculando permisos para cada grupo...`);
     
     for (const group of groups) {
-      const role = group.role || 'consulta';
+      const role = group.role || 'lector';
       const permissions = PREDEFINED_ROLES[role] || [];
       
       permissionsByGroup[group.group_id] = {

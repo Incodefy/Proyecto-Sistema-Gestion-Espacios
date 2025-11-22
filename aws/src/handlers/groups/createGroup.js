@@ -8,6 +8,8 @@ exports.handler = async (event) => {
   
   try {
     const userSub = event.requestContext.authorizer.jwt.claims.sub;
+    const userEmail = event.requestContext.authorizer.jwt.claims.email;
+    const userName = event.requestContext.authorizer.jwt.claims['cognito:username'] || userEmail?.split('@')[0] || 'Usuario';
     const body = JSON.parse(event.body || "{}");
     
     console.log(`[${TRACE_ID}] 👤 User:`, userSub);
@@ -29,7 +31,16 @@ exports.handler = async (event) => {
     const groupId = `grp_${crypto.randomUUID()}`;
     const now = new Date().toISOString();
 
+    // Nomenclatura con valores predeterminados o personalizados
+    const nomenclatura = body.nomenclatura || {
+      general: 'Pasillo',
+      especifico: 'Box',
+      ocupante: 'Médico',
+      especialidad: 'Especialidad'
+    };
+
     console.log(`[${TRACE_ID}] 💾 Guardando grupo:`, groupId);
+    console.log(`[${TRACE_ID}] 📝 Nomenclatura:`, nomenclatura);
 
     // 1️⃣ Crear el grupo
     await db.send(
@@ -40,7 +51,7 @@ exports.handler = async (event) => {
             nombre: body.name.trim(),
             owner_sub: userSub,
             configured: false,
-            nomenclatura: null,
+            nomenclatura: nomenclatura,
             created_at: now,
             updated_at: now
         }
@@ -54,6 +65,8 @@ exports.handler = async (event) => {
         Item: {
             group_id: groupId,
             user_sub: userSub,
+            user_email: userEmail,
+            user_name: userName,
             role: "owner",
             added_at: now,
             updated_by: userSub

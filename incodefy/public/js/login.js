@@ -112,8 +112,6 @@ if (passwordInput) {
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-
     const email = emailInput.value.trim();
     const password = passwordInput.value;
     const loginButton = document.getElementById('loginButton');
@@ -123,17 +121,21 @@ if (loginForm) {
     let isValid = true;
 
     if (!email) {
+      e.preventDefault();
       showFieldError('email', 'El correo electrónico es requerido');
       isValid = false;
     } else if (!validateEmail(email)) {
+      e.preventDefault();
       showFieldError('email', 'Ingresa un correo electrónico válido');
       isValid = false;
     }
 
     if (!password) {
+      e.preventDefault();
       showFieldError('password', 'La contraseña es requerida');
       isValid = false;
     } else if (!validatePassword(password)) {
+      e.preventDefault();
       showFieldError('password', 'La contraseña debe tener al menos 6 caracteres');
       isValid = false;
     }
@@ -145,16 +147,15 @@ if (loginForm) {
       }, 500);
 
       showToast('Por favor corrige los errores en el formulario', 'error');
-      return;
+      return; // IMPORTANTE: return para evitar que se envíe el form
     }
 
-    // Mostrar spinner
+    // Si llegamos aquí, el form es válido - mostrar spinner pero NO preventDefault
     loginButton.disabled = true;
     buttonText.style.display = 'none';
     spinner.style.display = 'inline-block';
-
-    // Enviar formulario
-    this.submit();
+    
+    // NO HACER e.preventDefault() - dejar que el formulario se envíe normalmente
   });
 }
 

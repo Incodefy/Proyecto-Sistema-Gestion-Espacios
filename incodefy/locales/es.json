@@ -83,6 +83,7 @@
     "agenda": "Agenda",
     "box": "Box",
     "notifications": "Notificaciones",
+    "manageGroup": "Gestión de Grupo",
     "profile": "Perfil",
     "logout": "Cerrar Sesión"
   },
@@ -92,10 +93,11 @@
     "in_progress_title": "Consultas en curso",
     "back_to_top_aria": "Volver arriba",
     "back_to_top_title": "Volver arriba",
-    "header": "Estado de los Boxes",
+    "header": "Estado de los Espacios",
     "filters": {
       "filter_corridor": "Filtrar por pasillo...",
       "filter_box": "Filtrar por box...",
+      "filter_by": "Filtrar por {{tipo}}...",
       "filter_state": "Filtrar por estado",
       "show_all": "Mostrar todos"
     },
@@ -111,7 +113,7 @@
     "corridor_prefix": "Pasillo {{count}}"
   },
   "footer": {
-    "copyright": "© 2025 Incodefy. Sistema de Agenda Médica - Todos los derechos reservados."
+    "copyright": "© 2025 Incodefy. Sistema de Gestión de Espacios - Todos los derechos reservados."
   },
   "login": {
     "title": "Iniciar Sesión",
@@ -181,7 +183,7 @@
     "main_subtitle": "Gestiona tu agenda médica de forma eficiente",
     "management": {
       "title": "Gestión de Agenda",
-      "description": "Visualiza y administra tus citas médicas",
+      "description": "Visualiza y administra tu agenda",
       "box": "Box",
       "doctor": "Médico"
     },
@@ -308,6 +310,10 @@
     "waiting": "En espera",
     "in_use": "En uso",
     "disabled": "Inhabilitado",
+    "state_free_plural": "Libres",
+    "state_waiting_plural": "En espera",
+    "state_in_use_plural": "En Uso",
+    "state_disabled_plural": "Inhabilitados",
     "boxes_free": "Boxes Libres",
     "boxes_waiting": "En espera",
     "boxes_in_use": "En Uso",

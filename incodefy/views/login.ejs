@@ -10,6 +10,9 @@
 <div class="wrapper">
   <div class="login-box">
     <form method="POST" action="/login" id="loginForm">
+      <% if (typeof redirect !== 'undefined' && redirect) { %>
+        <input type="hidden" name="redirect" value="<%= redirect %>">
+      <% } %>
       <h2><%= t('login.title') %></h2>
 
       <% if (error_msg && error_msg.length) { %>
@@ -53,6 +56,10 @@
           <i class="fa-solid fa-spinner fa-spin"></i>
         </div>
       </button>
+
+      <div class="register-link" style="text-align: center; margin-top: 20px; color: #fff;">
+        ¿No tienes cuenta? <a href="/auth/signup" style="color: #00d4ff; text-decoration: none; font-weight: 500;">Créala aquí</a>
+      </div>
     </form>
   </div>
 </div>

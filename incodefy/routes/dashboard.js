@@ -1,12 +1,10 @@
 // routes/dashboard.js
 const express = require('express');
 const router = express.Router();
-const requireAuth = require('../middleware/requireAuth');
-const attachApiClient = require('../middleware/apiClient');
 const checkPermission = require("../middleware/checkPermission");
 
-router.use(requireAuth);
-router.use(attachApiClient);
+// NOTA: requireAuth y attachApiClient ya están aplicados en server.js
+// No duplicar middlewares aquí
 
 const toKey = (str) => {
   if (!str) return '';
@@ -71,11 +69,17 @@ async function construirFiltrosDynamoDB(fechaInicio, fechaFin) {
 // 1. Render del dashboard
 // ==========================
 router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => {
+  console.log('\n🎨 [DASHBOARD HANDLER] Ejecutando...');
+  console.log('🎨 [DASHBOARD HANDLER] Usuario:', req.session?.user?.email);
+  console.log('🎨 [DASHBOARD HANDLER] Grupo activo:', req.session?.grupoActivo?.grupo_id);
+  
   res.render('dashboard', { 
     currentPath: req.path,
     personalization: res.locals.personalization || {},
     user: req.session.user
   });
+  
+  console.log('🎨 [DASHBOARD HANDLER] Vista renderizada exitosamente\n');
 });
 
 // ==========================

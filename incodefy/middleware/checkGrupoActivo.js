@@ -1,11 +1,8 @@
 const ApiClient = require('../apiClient');
 
 /**
- * Middleware para verificar si el usuario tiene un grupo activo
- * Si no tiene grupo activo, redirige a /onboarding-espacios
- * Si ocurre un error al verificar, también redirige a onboarding
- * 
- * Cachea el resultado en la sesión para evitar llamadas repetidas
+ * Middleware SIMPLIFICADO para verificar grupo activo
+ * Confía en la sesión configurada durante el login
  */
 const checkGrupoActivo = async (req, res, next) => {
   // Si no hay usuario autenticado, dejar que requireAuth lo maneje
@@ -13,77 +10,78 @@ const checkGrupoActivo = async (req, res, next) => {
     return next();
   }
 
-  // Evitar bucle infinito: si ya está en onboarding o endpoints relacionados, permitir acceso
-  if (req.path === '/onboarding-espacios' || 
-      req.path.startsWith('/api/espacios/') || 
-      req.path.startsWith('/api/grupos/') ||
-      req.path === '/groups' ||
-      req.path.startsWith('/grupos/')) {
+  // Rutas excluidas de verificación
+  const rutasExcluidas = [
+    '/onboarding-espacios',
+    '/aceptar-invitacion',
+    '/api/espacios/',
+    '/api/grupos/',
+    '/api/invitaciones/',
+    '/groups',
+    '/grupos/'
+  ];
+
+  if (rutasExcluidas.some(ruta => req.path === ruta || req.path.startsWith(ruta))) {
     return next();
   }
 
-  try {
-    // Si ya verificamos en esta sesión hace poco, usar el cache
-    if (req.session.grupoActivoVerificado && req.session.grupoActivoVerificadoEn) {
-      const ahora = Date.now();
-      const hace5Minutos = 5 * 60 * 1000;
-      
-      if (ahora - req.session.grupoActivoVerificadoEn < hace5Minutos) {
-        console.log(`[checkGrupoActivo] ✅ Usando cache - Grupo activo: ${req.session.grupoActivo?.grupo_id || 'ninguno'}`);
-        
-        if (req.session.grupoActivo && req.session.grupoActivo.grupo_id) {
-          req.grupoActivo = req.session.grupoActivo;
-          return next();
-        } else {
-          console.log(`[checkGrupoActivo] ⚠️ Cache indica que no hay grupo activo, redirigiendo`);
-          return res.redirect('/onboarding-espacios');
-        }
+  console.log(`\n[checkGrupoActivo] ═══ INICIO ═══`);
+  console.log(`[checkGrupoActivo] 🛣️  Ruta: ${req.path}`);
+  console.log(`[checkGrupoActivo] 🆔 Session ID: ${req.sessionID}`);
+  console.log(`[checkGrupoActivo] 👤 Usuario: ${req.session.user?.email || 'NINGUNO'}`);
+  console.log(`[checkGrupoActivo] 📦 Grupo en sesión:`, req.session.grupoActivo);
+  console.log(`[checkGrupoActivo] ✓ Verificado: ${req.session.grupoActivoVerificado}`);
+  console.log(`[checkGrupoActivo] 🕐 Verificado en: ${req.session.grupoActivoVerificadoEn}`);
+
+  // Usar cache de sesión (configurado en login)
+  if (req.session.grupoActivoVerificado) {
+    const cacheValido = Date.now() - (req.session.grupoActivoVerificadoEn || 0) < 5 * 60 * 1000;
+    
+    if (cacheValido) {
+      if (req.session.grupoActivo?.grupo_id) {
+        console.log(`[checkGrupoActivo] ✅ Cache válido: ${req.session.grupoActivo.grupo_id}`);
+        req.grupoActivo = req.session.grupoActivo;
+        return next();
+      } else {
+        console.log(`[checkGrupoActivo] ⚠️ Cache válido pero sin grupo activo`);
+        return res.redirect('/onboarding-espacios');
       }
     }
+  }
 
-    // Crear cliente API con el token del usuario (ya disponible en req.apiClient si attachApiClient se ejecutó antes)
-    const apiClient = req.apiClient || new (require('../apiClient'))(req.session.user.idToken);
-    
-    console.log(`[checkGrupoActivo] 🔍 Verificando grupo activo para: ${req.session.user.email} (ruta: ${req.path})`);
-    
-    // Intentar obtener el grupo activo
+  // Si no hay cache válido, verificar con API
+  try {
+    console.log(`[checkGrupoActivo] 🔍 Verificando con API...`);
+    const apiClient = req.apiClient || new ApiClient(req.session.user.idToken);
     const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
     
-    console.log(`[checkGrupoActivo] 📦 Respuesta API:`, grupoActivoResponse);
-    
-    if (grupoActivoResponse && grupoActivoResponse.ok && grupoActivoResponse.grupo_activo) {
-      // El usuario tiene un grupo activo, cachear y continuar
+    if (grupoActivoResponse?.ok && grupoActivoResponse.grupo_activo) {
       req.session.grupoActivo = grupoActivoResponse.grupo_activo;
       req.session.grupoActivoVerificado = true;
       req.session.grupoActivoVerificadoEn = Date.now();
-      
-      console.log(`[checkGrupoActivo] ✅ Grupo activo encontrado: ${grupoActivoResponse.grupo_activo.grupo_id}`);
       req.grupoActivo = grupoActivoResponse.grupo_activo;
+      
+      console.log(`[checkGrupoActivo] ✅ Grupo encontrado: ${grupoActivoResponse.grupo_activo.grupo_id}`);
       return next();
     } else {
-      // No hay grupo activo
-      console.log(`[checkGrupoActivo] ⚠️ No hay grupo activo para el usuario`);
       req.session.grupoActivo = null;
       req.session.grupoActivoVerificado = true;
       req.session.grupoActivoVerificadoEn = Date.now();
       
+      console.log(`[checkGrupoActivo] ⚠️ Sin grupo activo`);
       return res.redirect('/onboarding-espacios');
     }
-
   } catch (error) {
-    // Si es 404, significa que no hay grupo activo (esperado)
+    console.log(`[checkGrupoActivo] ❌ Error:`, error.message);
+    
     if (error.response?.status === 404) {
-      console.log(`[checkGrupoActivo] ℹ️ No hay grupo activo (404)`);
       req.session.grupoActivo = null;
       req.session.grupoActivoVerificado = true;
       req.session.grupoActivoVerificadoEn = Date.now();
-      
       return res.redirect('/onboarding-espacios');
     }
     
-    // Para otros errores, registrar pero redirigir a onboarding como medida de seguridad
-    console.error(`[checkGrupoActivo] ❌ Error verificando grupo activo:`, error.message);
-    console.error(`[checkGrupoActivo] ❌ Error completo:`, error.response?.data || error);
+    // En caso de error, permitir acceso (fail open) o redirigir según necesidad
     return res.redirect('/onboarding-espacios');
   }
 };

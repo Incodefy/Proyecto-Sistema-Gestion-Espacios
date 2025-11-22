@@ -34,7 +34,7 @@ module.exports.handler = async (event) => {
   }
 
   const {
-    idAgenda, idBox, boxNombre, idMedico, medicoNombre,
+    idAgenda, idSpace, spaceName, idOccupant, occupantName,
     idEspecialidad, especialidadNombre, idEstado, estadoNombre,
     fecha, horaInicio, horaFin, tipoConsulta
   } = validation.data;
@@ -54,14 +54,14 @@ module.exports.handler = async (event) => {
     : String(horaInicio);
 
   const item = {
-    PK: `BOX#${idBox}#DATE#${fecha}`,
+    PK: `${idSpace}#DATE#${fecha}`,
     SK: skHora,
-    idAgenda: Number(idAgenda),
-    idBox: Number(idBox),
-    boxNombre,
-    idMedico: Number(idMedico),
-    medicoNombre,
-    idEspecialidad: Number(idEspecialidad),
+    idAgenda: String(idAgenda),
+    idSpace: String(idSpace),
+    spaceName,
+    idOccupant: String(idOccupant),
+    occupantName,
+    idEspecialidad: String(idEspecialidad),
     especialidadNombre,
     idEstado: Number(idEstado),
     estadoNombre,
@@ -69,7 +69,7 @@ module.exports.handler = async (event) => {
     horaInicio: skHora,
     horaFin,
     tipoConsulta,
-    GSI1PK: `MEDICO#${idMedico}#DATE#${fecha}`,
+    GSI1PK: `${idOccupant}#DATE#${fecha}`,
     GSI1SK: skHora,
     GSI2PK: `DATE#${fecha}`,
     GSI2SK: skHora
@@ -87,8 +87,8 @@ module.exports.handler = async (event) => {
     logger.info('Agenda inserted successfully', { 
       idAgenda, 
       fecha, 
-      medico: medicoNombre,
-      box: boxNombre 
+      ocupante: occupantName,
+      espacio: spaceName 
     });
     endTrace({ success: true });
 
@@ -99,9 +99,9 @@ module.exports.handler = async (event) => {
 
   } catch (err) {
     if (err.name === "ConditionalCheckFailedException") {
-      logger.warn('Duplicate agenda detected', { fecha, box: idBox, hora: skHora });
+      logger.warn('Duplicate agenda detected', { fecha, espacio: idSpace, hora: skHora });
       endTrace({ success: false, reason: 'duplicate' });
-      return errorResponse('Ya existe una agenda en ese horario para ese box', 409);
+      return errorResponse('Ya existe una agenda en ese horario para ese espacio', 409);
     }
 
     logger.error('Failed to insert agenda', err, { idAgenda, fecha });

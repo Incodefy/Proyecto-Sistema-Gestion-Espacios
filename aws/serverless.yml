@@ -35,6 +35,13 @@ provider:
     ROLE_MAPPINGS_TABLE: ${self:service}-${sls:stage}-role-mappings
     PERMISSIONS_CATALOG_TABLE: ${self:service}-${sls:stage}-permissions-catalog
     SPACES_TABLE: ${self:service}-${sls:stage}-spaces
+    OCCUPANTS_TABLE: ${self:service}-${sls:stage}-occupants
+    ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades
+    TIPOS_INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-tipos-instrumentos
+    INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-instrumentos
+    # SES Configuration
+    SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
+    APP_URL: ${env:APP_URL, 'http://localhost:3000'}
     
   logs:
     httpApi: true
@@ -76,6 +83,21 @@ provider:
       Resource:
         - Ref: PersonalizationTopic
         - Ref: SystemNotificationsTopic
+    
+    # === SES EMAIL PERMISSIONS ===
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+        - ses:SendRawEmail
+      Resource: '*'
+    
+    # === COGNITO USER POOL ACCESS ===
+    - Effect: Allow
+      Action:
+        - cognito-idp:ListUsers
+        - cognito-idp:AdminGetUser
+      Resource:
+        - Fn::GetAtt: [CognitoUserPool, Arn]
     
     # === ACTIVITY LOGS TABLE ===
     - Effect: Allow
@@ -226,6 +248,7 @@ provider:
       Action:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
         - dynamodb:BatchWriteItem
         - dynamodb:Query
         - dynamodb:GetItem
@@ -233,6 +256,11 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-spaces
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-spaces/index/TypeIndex
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-groups
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-occupants
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-occupants/index/TypeIndex
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-especialidades
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-tipos-instrumentos
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-instrumentos
 
 functions:
   # === HEALTH CHECK ===
@@ -490,20 +518,35 @@ functions:
           authorizer:
             name: cognitoJwt
   
+  # === ESPACIOS (reemplazo de pasillos/boxes) ===
+  obtenerEspaciosGenerales:
+    handler: src/handlers/db/obtenerEspaciosGenerales.handler
+    description: Obtiene espacios generales (SPACE) de un grupo
+
+  obtenerEspaciosEspecificos:
+    handler: src/handlers/db/obtenerEspaciosEspecificos.handler
+    description: Obtiene espacios específicos (SUBSPACE) de un grupo
+  
+  # === OCUPANTES (reemplazo de médicos) ===
+  obtenerOcupantes:
+    handler: src/handlers/db/obtenerOcupantes.handler
+    description: Obtiene ocupantes (OCCUPANT) de un grupo
+
+  # === FUNCIONES LEGACY (mantener para compatibilidad) ===
   obtenerPasillos:
     handler: src/handlers/db/obtenerPasillos.handler
 
   obtenerBoxes:
     handler: src/handlers/db/obtenerBoxes.handler
 
+  obtenerMedicos:
+    handler: src/handlers/db/obtenerMedicos.handler
+
   obtenerAgendaPorFecha:
     handler: src/handlers/db/obtenerAgendaPorFecha.handler
 
   obtenerEspecialidades:
     handler: src/handlers/db/obtenerEspecialidades.handler
-
-  obtenerMedicos:
-    handler: src/handlers/db/obtenerMedicos.handler
 
   obtenerAgendaPorBox:
     handler: src/handlers/db/obtenerAgendaPorBox.handler
@@ -630,15 +673,6 @@ functions:
           path: /groups/{group_id}/invite
           authorizer: cognitoJwt
 
-  acceptInvitation:
-    handler: src/handlers/groups/acceptInvitation.handler
-    description: Acepta invitación (no requiere autenticación inicial)
-    timeout: 15
-    events:
-      - httpApi:
-          method: POST
-          path: /groups/invitations/accept
-
   listMembers:
     handler: src/handlers/groups/listMembers.handler
     description: Lista miembros del grupo
@@ -667,6 +701,261 @@ functions:
       - httpApi:
           method: DELETE
           path: /groups/{group_id}/members/{user_sub}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE ESPACIOS ===
+  createSpace:
+    handler: src/handlers/groups/createSpace.handler
+    description: Crea un nuevo espacio (general o específico)
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /api/espacios/espacio
+          authorizer: cognitoJwt
+
+  updateSpace:
+    handler: src/handlers/groups/updateSpace.handler
+    description: Actualiza un espacio existente
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /api/espacios/espacio/{id}
+          authorizer: cognitoJwt
+
+  deleteSpace:
+    handler: src/handlers/groups/deleteSpace.handler
+    description: Elimina un espacio
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /api/espacios/espacio/{id}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE ESPECIALIDADES ===
+  listEspecialidades:
+    handler: src/handlers/especialidades/listEspecialidades.handler
+    description: Lista especialidades del grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /groups/{grupo_id}/especialidades
+          authorizer: cognitoJwt
+
+  createEspecialidad:
+    handler: src/handlers/especialidades/createEspecialidad.handler
+    description: Crea una nueva especialidad
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/especialidades
+          authorizer: cognitoJwt
+
+  updateEspecialidad:
+    handler: src/handlers/especialidades/updateEspecialidad.handler
+    description: Actualiza una especialidad
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /groups/{grupo_id}/especialidades/{id}
+          authorizer: cognitoJwt
+
+  deleteEspecialidad:
+    handler: src/handlers/especialidades/deleteEspecialidad.handler
+    description: Elimina una especialidad
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /groups/{grupo_id}/especialidades/{id}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE OCUPANTES ===
+  listOcupantes:
+    handler: src/handlers/ocupantes/listOcupantes.handler
+    description: Lista ocupantes del grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /groups/{grupo_id}/ocupantes
+          authorizer: cognitoJwt
+
+  createOcupante:
+    handler: src/handlers/ocupantes/createOcupante.handler
+    description: Crea un nuevo ocupante
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/ocupantes
+          authorizer: cognitoJwt
+
+  updateOcupante:
+    handler: src/handlers/ocupantes/updateOcupante.handler
+    description: Actualiza un ocupante
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /groups/{grupo_id}/ocupantes/{id}
+          authorizer: cognitoJwt
+
+  deleteOcupante:
+    handler: src/handlers/ocupantes/deleteOcupante.handler
+    description: Elimina un ocupante
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /groups/{grupo_id}/ocupantes/{id}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE TIPOS DE INSTRUMENTOS ===
+  listTiposInstrumentos:
+    handler: src/handlers/tipos-instrumentos/listTiposInstrumentos.handler
+    description: Lista tipos de instrumentos del grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /groups/{grupo_id}/tipos-instrumentos
+          authorizer: cognitoJwt
+
+  createTipoInstrumento:
+    handler: src/handlers/tipos-instrumentos/createTipoInstrumento.handler
+    description: Crea un nuevo tipo de instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/tipos-instrumentos
+          authorizer: cognitoJwt
+
+  updateTipoInstrumento:
+    handler: src/handlers/tipos-instrumentos/updateTipoInstrumento.handler
+    description: Actualiza un tipo de instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /groups/{grupo_id}/tipos-instrumentos/{id}
+          authorizer: cognitoJwt
+
+  deleteTipoInstrumento:
+    handler: src/handlers/tipos-instrumentos/deleteTipoInstrumento.handler
+    description: Elimina un tipo de instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /groups/{grupo_id}/tipos-instrumentos/{id}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE INSTRUMENTOS ===
+  listInstrumentos:
+    handler: src/handlers/instrumentos/listInstrumentos.handler
+    description: Lista instrumentos del grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /groups/{grupo_id}/instrumentos
+          authorizer: cognitoJwt
+
+  createInstrumento:
+    handler: src/handlers/instrumentos/createInstrumento.handler
+    description: Crea un nuevo instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/instrumentos
+          authorizer: cognitoJwt
+
+  updateInstrumento:
+    handler: src/handlers/instrumentos/updateInstrumento.handler
+    description: Actualiza un instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /groups/{grupo_id}/instrumentos/{id}
+          authorizer: cognitoJwt
+
+  deleteInstrumento:
+    handler: src/handlers/instrumentos/deleteInstrumento.handler
+    description: Elimina un instrumento
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /groups/{grupo_id}/instrumentos/{id}
+          authorizer: cognitoJwt
+
+  # === GESTIÓN DE MIEMBROS (rutas alternativas) ===
+  listGroupMembers:
+    handler: src/handlers/groups/listMembers.handler
+    description: Lista miembros del grupo (ruta alternativa)
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /api/grupos/{id}/miembros
+          authorizer: cognitoJwt
+
+  inviteGroupMember:
+    handler: src/handlers/groups/inviteMember.handler
+    description: Envía invitación a un miembro (ruta alternativa)
+    timeout: 15
+    events:
+      - httpApi:
+          method: POST
+          path: /api/grupos/invitar
+          authorizer: cognitoJwt
+
+  updateGroupMemberRole:
+    handler: src/handlers/groups/updateMemberRole.handler
+    description: Cambia el rol de un miembro (ruta alternativa)
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /api/grupos/miembro/{id}/rol
+          authorizer: cognitoJwt
+
+  removeGroupMember:
+    handler: src/handlers/groups/removeMember.handler
+    description: Remueve un miembro del grupo (ruta alternativa)
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /api/grupos/miembro/{id}
+          authorizer: cognitoJwt
+
+  verifyInvitation:
+    handler: src/handlers/groups/verifyInvitation.handler
+    description: Verifica una invitación por token (público, sin auth)
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /api/invitaciones/verificar
+
+  acceptInvitation:
+    handler: src/handlers/groups/acceptInvitation.handler
+    description: Acepta una invitación a grupo
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /api/invitaciones/aceptar
           authorizer: cognitoJwt
 
 # Plugins comentados - no necesarios para deployment
@@ -1034,6 +1323,87 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+
+    OccupantsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-occupants
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: TypeIndex
+            KeySchema:
+              - AttributeName: PK
+                KeyType: HASH
+              - AttributeName: SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    EspecialidadesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-especialidades
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    TiposInstrumentosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-tipos-instrumentos
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    InstrumentosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-instrumentos
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
 
     # === SQS PARA PERSONALIZACIÓN ===
     PersonalizationDLQ:

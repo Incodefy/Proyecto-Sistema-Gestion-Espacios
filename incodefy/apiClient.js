@@ -246,10 +246,14 @@ class ApiClient {
     }
   }
 
-  async guardarEspacios(grupo_id, espacios) {
+  async guardarEspacios(grupo_id, espacios, ocupantes = [], especialidades = [], tiposInstrumentos = [], instrumentos = []) {
     const response = await this.client.post(`/groups/${grupo_id}/spaces`, {
       grupo_id,
-      espacios
+      espacios,
+      especialidades,
+      ocupantes,
+      tipos_instrumentos: tiposInstrumentos,
+      instrumentos
     });
     return response.data;
   }
@@ -264,6 +268,25 @@ class ApiClient {
   async listarEspacios(grupo_id) {
     const response = await this.client.get('/api/espacios/lista', {
       params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async crearEspacio(data) {
+    const response = await this.client.post('/api/espacios/espacio', data);
+    return response.data;
+  }
+
+  async actualizarEspacio(espacioId, data) {
+    const encodedId = encodeURIComponent(espacioId);
+    const response = await this.client.put(`/api/espacios/espacio/${encodedId}`, data);
+    return response.data;
+  }
+
+  async eliminarEspacio(espacioId, grupoId) {
+    const encodedId = encodeURIComponent(espacioId);
+    const response = await this.client.delete(`/api/espacios/espacio/${encodedId}`, {
+      params: { grupo_id: grupoId }
     });
     return response.data;
   }
@@ -308,6 +331,46 @@ class ApiClient {
     const response = await this.client.put(`/grupos/${grupoId}/nomenclatura`, {
       nomenclatura
     });
+    return response.data;
+  }
+
+  // ============ GESTIÓN DE MIEMBROS ============
+  async listarMiembrosGrupo(grupoId) {
+    const response = await this.client.get(`/api/grupos/${grupoId}/miembros`);
+    return response.data;
+  }
+
+  async invitarMiembro(grupo_id, email, rol) {
+    const response = await this.client.post('/api/grupos/invitar', {
+      grupo_id,
+      email,
+      rol
+    });
+    return response.data;
+  }
+
+  async actualizarRolMiembro(miembroId, grupo_id, rol) {
+    const response = await this.client.put(`/api/grupos/miembro/${miembroId}/rol`, 
+      { rol },
+      { params: { grupo_id } }
+    );
+    return response.data;
+  }
+
+  async removerMiembro(miembroId, grupo_id) {
+    const response = await this.client.delete(`/api/grupos/miembro/${miembroId}`, {
+      params: { grupo_id }
+    });
+    return response.data;
+  }
+
+  async verificarInvitacion(token) {
+    const response = await this.client.get(`/api/invitaciones/verificar?token=${token}`);
+    return response.data;
+  }
+
+  async aceptarInvitacion(token) {
+    const response = await this.client.post('/api/invitaciones/aceptar', { token });
     return response.data;
   }
 

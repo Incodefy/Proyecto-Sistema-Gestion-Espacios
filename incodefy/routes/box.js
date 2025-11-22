@@ -8,45 +8,101 @@ const checkPermission = require("../middleware/checkPermission");
 router.use(requireAuth);
 router.use(attachApiClient);
 
-router.get('/box', checkPermission('box.read'), async (req, res) => {
+router.get('/especifico', checkPermission('box.read'), async (req, res) => {
   try {
-    const filtroPasillo = expandirRangos(req.query.pasillo);
-    const filtroBox = expandirRangos(req.query.box);
+    const filtroGeneral = expandirRangos(req.query.general);
+    const filtroEspecifico = expandirRangos(req.query.especifico);
     const filtroEstado = req.query.estado;
 
     const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
 
-    const pasillos = (await req.apiClient.obtenerPasillos()).sort((a, b) => a.idPasillo - b.idPasillo);
+    // Obtener grupo activo
+    const grupoActivo = req.session.grupoActivo;
+    const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo?.grupo_id;
     
-    const boxes = (await req.apiClient.obtenerBoxes()).sort((a, b) => a.idBox - b.idBox);
-    
-    const agendas = await req.apiClient.obtenerAgendaPorFecha(hoy);
+    if (!grupoId) {
+      return res.status(400).send('No hay grupo activo');
+    }
 
-    const pasillo_box_map = generarPasillosConBoxes(
+    // Obtener espacios del grupo
+    const espaciosResponse = await req.apiClient.listarEspacios(grupoId);
+    console.log('📦 Respuesta de listarEspacios:', espaciosResponse);
+    
+    const espacios = espaciosResponse.espacios || [];
+    console.log('📋 Espacios obtenidos:', espacios.length);
+    if (espacios.length > 0) {
+      console.log('📦 Primer espacio:', espacios[0]);
+    }
+    
+    // Separar espacios generales y específicos
+    // NOTA: Los específicos vienen dentro de cada general en el campo specificSpaces
+    const generales = espacios.filter(e => e.tipo === 'general').sort((a, b) => {
+      const numA = parseInt(a.nombre.match(/\d+/)?.[0] || '0');
+      const numB = parseInt(b.nombre.match(/\d+/)?.[0] || '0');
+      return numA - numB;
+    });
+    
+    // Extraer todos los específicos de los arrays specificSpaces de cada general
+    const especificos = [];
+    espacios.forEach(espacio => {
+      if (espacio.tipo === 'general' && Array.isArray(espacio.specificSpaces)) {
+        espacio.specificSpaces.forEach(sub => {
+          especificos.push(sub);
+        });
+      }
+    });
+    
+    // Ordenar específicos por número
+    especificos.sort((a, b) => {
+      const numA = parseInt(a.nombre.match(/\d+/)?.[0] || '0');
+      const numB = parseInt(b.nombre.match(/\d+/)?.[0] || '0');
+      return numA - numB;
+    });
+    
+    console.log('🏢 Generales:', generales.length, generales.map(g => ({ nombre: g.nombre, SK: g.SK, PK: g.PK })));
+    console.log('🚪 Específicos:', especificos.length, especificos.map(e => ({ nombre: e.nombre, SK: e.SK, parent: e.parent })));
+    
+    // Obtener agenda del día
+    const agendasResponse = await req.apiClient.obtenerAgendaPorFecha(hoy);
+    const agendas = Array.isArray(agendasResponse) ? agendasResponse : (agendasResponse.agendas || []);
+    console.log('📅 Agendas obtenidas:', agendas.length);
+
+    // Generar estructura de datos
+    const general_especifico_map = generarGeneralesConEspecificos(
       req,
-      pasillos,
-      boxes,
+      generales,
+      especificos,
       agendas,
-      filtroPasillo,
-      filtroBox,
+      filtroGeneral,
+      filtroEspecifico,
       filtroEstado,
       hoy,
       ahora
     );
 
+    console.log('🗺️ Map generado:', JSON.stringify(general_especifico_map, null, 2));
+
     const userPermissions = req.session.user?.permissions || [];
+    
+    // Obtener nomenclatura
+    const nomenclatura = req.nomenclatura || { general: 'General', especifico: 'Específico' };
+    console.log('📋 Nomenclatura:', nomenclatura);
 
     res.render('box', { 
-      pasillo_box_map, 
+      generales_especificos_map: general_especifico_map,
       personalization: res.locals.personalization || {},
+      nomenclatura,
       currentPath: req.path,
+      i18n: req.i18n,
+      t: req.t,
+      user: req.session.user,
       canWrite: userPermissions.includes('box.write') || userPermissions.includes('admin.users'),
       canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')
     });
   } catch (err) {
-    console.error('❌ Error en /box:', err);
-    res.status(500).send('Error cargando datos de boxes');
+    console.error('❌ Error en /especifico:', err);
+    res.status(500).send('Error cargando datos de espacios específicos');
   }
 });
 
@@ -69,82 +125,109 @@ function expandirRangos(texto) {
   return Array.from(resultado).sort((a, b) => a - b);
 }
 
-function generarPasillosConBoxes(req, pasillos, boxes, agendas, filtroPasillo, filtroBox, filtroEstado, hoy, horaActual) {
+function generarGeneralesConEspecificos(req, generales, especificos, agendas, filtroGeneral, filtroEspecifico, filtroEstado, hoy, horaActual) {
   const resultado = {};
+  
+  console.log('\n🔧 generarGeneralesConEspecificos - Iniciando...');
+  console.log('   Generales recibidos:', generales.length);
+  console.log('   Específicos recibidos:', especificos.length);
+  console.log('   Filtros:', { filtroGeneral, filtroEspecifico, filtroEstado });
 
-  pasillos.forEach(pasillo => {
-    if (filtroPasillo && !filtroPasillo.includes(pasillo.idPasillo)) return;
+  generales.forEach(general => {
+    console.log(`\n   📂 Procesando general: "${general.nombre}" (SK: ${general.SK})`);
+    
+    // Extraer número del nombre para filtrado
+    const numeroGeneral = parseInt(general.nombre.match(/\d+/)?.[0] || '0');
+    if (filtroGeneral && !filtroGeneral.includes(numeroGeneral)) {
+      console.log(`      ⏭️  Saltado por filtro (número ${numeroGeneral} no en filtro)`);
+      return;
+    }
 
-    const boxesFiltrados = boxes.filter(b => b.idPasillo === pasillo.idPasillo);
-    const boxesProcesados = [];
+    // Filtrar específicos que pertenecen a este general
+    // Nota: parent puede ser grp_xxx#SPACE#1 o solo SPACE#1
+    const generalId = general.SK; // Ej: SPACE#1
+    console.log(`      🔍 Buscando específicos con parent = "${generalId}" o "${general.PK}"`);
+    
+    const especificosFiltrados = especificos.filter(e => {
+      const match = e.parent === generalId || e.parent === general.PK;
+      if (match) {
+        console.log(`         ✅ "${e.nombre}" (parent: ${e.parent}) - MATCH`);
+      }
+      return match;
+    });
+    
+    console.log(`      📊 Específicos encontrados: ${especificosFiltrados.length}`);
+    
+    const especificosProcesados = [];
 
-    boxesFiltrados.forEach(box => {
-      if (filtroBox && !filtroBox.includes(box.idBox)) return;
-
-      let estadoKey = box.estado === 0 ? 'disabled' : 'free';
-      let estado = req.t(`common.state_${estadoKey}`);
-
-      if (box.estado !== 0) {
-        const consultas = agendas.filter(a => {
-          const fechaAgenda = new Date(a.fecha).toISOString().split('T')[0];
-          const horaInicio = a.horaInicio.slice(0,5);
-          return (
-            a.idBox === box.idBox &&
-            fechaAgenda === hoy &&
-            horaInicio <= horaActual
-          );
-        });
-
-        for (const consulta of consultas) {
-          const inicio = new Date(`${hoy}T${consulta.horaInicio}`);
-          let fin;
-
-          if (!consulta.horaFin) {
-            fin = new Date(`${hoy}T23:59:59`);
-          } else if (consulta.horaFin <= consulta.horaInicio) {
-            const nextDay = new Date(hoy);
-            nextDay.setDate(nextDay.getDate() + 1);
-            fin = new Date(`${nextDay.toISOString().split('T')[0]}T${consulta.horaFin}`);
-          } else {
-            fin = new Date(`${hoy}T${consulta.horaFin}`);
-          }
-
-          const ahora = new Date(`${hoy}T${horaActual}`);
-
-          if (ahora >= inicio && ahora < fin) {
-            estadoKey = 'in_use';
-            estado = req.t(`common.state_${estadoKey}`);
-            break;
-          }
-        }
+    especificosFiltrados.forEach(especifico => {
+      const numeroEspecifico = parseInt(especifico.nombre.match(/\d+/)?.[0] || '0');
+      if (filtroEspecifico && !filtroEspecifico.includes(numeroEspecifico)) {
+        console.log(`         ⏭️  "${especifico.nombre}" saltado por filtro`);
+        return;
       }
 
-      if (filtroEstado && estado.replace(' ', '-').toLowerCase() !== filtroEstado) return;
+      // Determinar estado (por ahora libre, luego integraremos con agenda)
+      let estadoKey = 'free';
+      let estado = req.t(`common.state_${estadoKey}`);
 
-      boxesProcesados.push({
-        id: box.idBox,
-        nombre: box.nombre || `Box ${box.idBox}`,
+      // TODO: Integrar con agenda para determinar estado real
+      // Por ahora todos son "Libre"
+
+      if (filtroEstado && estado.replace(' ', '-').toLowerCase() !== filtroEstado) {
+        console.log(`         ⏭️  "${especifico.nombre}" saltado por estado`);
+        return;
+      }
+
+      console.log(`         ➕ Agregando "${especifico.nombre}" con estado "${estado}"`);
+      especificosProcesados.push({
+        id: especifico.SK,
+        nombre: especifico.nombre,
         estado
       });
     });
 
-    if (boxesProcesados.length > 0) {
-      resultado[pasillo.nombre] = boxesProcesados;
+    if (especificosProcesados.length > 0) {
+      console.log(`      ✅ Agregando "${general.nombre}" con ${especificosProcesados.length} específicos`);
+      resultado[general.nombre] = especificosProcesados;
+    } else {
+      console.log(`      ⚠️  "${general.nombre}" sin específicos, no se agrega al resultado`);
     }
   });
 
+  console.log('\n🔧 Resultado final:', Object.keys(resultado).length, 'generales con específicos\n');
   return resultado;
 }
 
 router.get('/estado-boxes', async (req, res) => {
   try {
+    const grupoActivo = req.session.grupoActivo;
+    const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo?.grupo_id;
     
+    if (!grupoId) {
+      return res.status(400).json({ error: 'No hay grupo activo' });
+    }
+
     const hoy = new Date().toISOString().split('T')[0];
     const ahora = new Date().toTimeString().slice(0, 5);
     const contexto = new ContextoEstado();
 
-    const boxes = await req.apiClient.obtenerBoxes();
-    let agendas = await req.apiClient.obtenerAgendaPorFecha(hoy);
+    // Obtener espacios en lugar de boxes
+    const espaciosResponse = await req.apiClient.listarEspacios(grupoId);
+    const espacios = espaciosResponse.espacios || [];
+    
+    // Extraer específicos de los arrays specificSpaces de cada general
+    const especificos = [];
+    espacios.forEach(espacio => {
+      if (espacio.tipo === 'general' && Array.isArray(espacio.specificSpaces)) {
+        espacio.specificSpaces.forEach(sub => {
+          especificos.push(sub);
+        });
+      }
+    });
+
+    const agendasResponse = await req.apiClient.obtenerAgendaPorFecha(hoy);
+    let agendas = Array.isArray(agendasResponse) ? agendasResponse : (agendasResponse.agendas || []);
 
     agendas = agendas.map(a => ({
       ...a,
@@ -154,24 +237,30 @@ router.get('/estado-boxes', async (req, res) => {
     }));
 
     const data = {};
-      for (const box of boxes) {
-        const estado = contexto.obtenerEstado(req, box, hoy, ahora, agendas);
-        // console.log("Estado para el box", box.idBox, ":", estado);
-        data[box.idBox] = {
-          estado: estado.nombre,
-          medico: estado.medico,
-          especialidad: estado.especialidad,
-          consulta_actual: estado.consulta_actual,
-          consulta_actual_id: estado.consulta_id,
-          proxima_consulta: estado.proxima_consulta,
-          inhabilitado: box.estado === 0,
-        };
+    for (const especifico of especificos) {
+      // Adaptar el objeto especifico al formato que espera el contexto
+      const espacioAdaptado = {
+        idBox: especifico.SK.split('#')[1], // Extraer ID del SK
+        estado: 1 // Por defecto habilitado, TODO: añadir campo estado a SPACES_TABLE
+      };
+
+      const estado = contexto.obtenerEstado(req, espacioAdaptado, hoy, ahora, agendas);
+      
+      data[especifico.SK] = {
+        estado: estado.nombre,
+        medico: estado.medico,
+        especialidad: estado.especialidad,
+        consulta_actual: estado.consulta_actual,
+        consulta_actual_id: estado.consulta_id,
+        proxima_consulta: estado.proxima_consulta,
+        inhabilitado: false, // TODO: añadir campo estado a SPACES_TABLE
+      };
     }
 
     res.json(data);
   } catch (err) {
     console.error('❌ Error en /estado-boxes:', err);
-    res.status(500).json({ error: 'Error cargando estado de boxes' });
+    res.status(500).json({ error: 'Error cargando estado de espacios' });
   }
   
 });

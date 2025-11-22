@@ -36,14 +36,14 @@ body {
 
 .main {
     margin-left: 0;
-    padding: 5rem 0 2rem 0!important;
+    padding: 5rem 0 2.4rem 0!important;
     min-height: 100vh;
 }
 
 /* Título principal */
 .top-header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
     padding-top: 2rem;
 }
 

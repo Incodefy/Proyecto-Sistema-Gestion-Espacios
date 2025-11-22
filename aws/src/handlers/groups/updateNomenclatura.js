@@ -14,14 +14,14 @@ exports.handler = async (event) => {
     console.log(`[${TRACE_ID}] 📦 Group ID:`, groupId);
     console.log(`[${TRACE_ID}] 📥 Body:`, body);
     
-    if (!body.nomenclatura || !body.nomenclatura.general || !body.nomenclatura.especifico) {
+    if (!body.nomenclatura || !body.nomenclatura.general || !body.nomenclatura.especifico || !body.nomenclatura.ocupante || !body.nomenclatura.especialidad) {
       console.warn(`[${TRACE_ID}] ⚠️ Nomenclatura incompleta`);
       return {
         statusCode: 400,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           ok: false, 
-          error: "La nomenclatura debe incluir 'general' y 'especifico'",
+          error: "La nomenclatura debe incluir 'general', 'especifico', 'ocupante' y 'especialidad'",
           trace_id: TRACE_ID
         })
       };

@@ -28,17 +28,17 @@
     </div>
   </div>
 
+  <%- include('navbar') %>
+
   <div class="container-fluid">
     <div class="row">
-      <%- include('navbar') %>
-
       <div class="main">
         <div class="top-header">
           <h1 class="page-title"><%= t('agenda.main_title') %></h1>
           <p class="page-subtitle"><%= t('agenda.main_subtitle') %></p>
         </div>
 
-        <div class="row g-4 gap-5 justify-content-center">
+        <div class="row g-4 gap-5 justify-content-center" style="max-width: 1400px; margin: 0 auto;">
           
           <!-- Sección de Gestión de Agenda - Requiere agenda.read -->
           <% if (canViewAgenda) { %>
@@ -55,13 +55,13 @@
                 <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                   <a href="#" class="option-card" onclick="showDevToast(event)">
                     <i class="fa-solid fa-boxes-stacked"></i>
-                    <span><%= t('agenda.management.box') %></span>
+                    <span>Por <%= nomenclatura.especifico %></span>
                   </a>
                 </div>
                 <div class="col-12 col-sm-11 col-md-11 col-lg-6">
                   <a href="#" class="option-card" onclick="showDevToast(event)">
                     <i class="fa-solid fa-user-doctor" aria-hidden="true"></i>
-                    <span><%= t('agenda.management.doctor') %></span>
+                    <span>Por <%= nomenclatura.ocupante %></span>
                   </a>
                 </div>
               </div>

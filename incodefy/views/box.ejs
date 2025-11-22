@@ -51,8 +51,8 @@
                 <!-- Filtros -->
                 <div class="filtros">
                     <div class="filtros-inputs">
-                    <input type="text" id="filtroPasillo" placeholder="<%= t('box.filters.filter_corridor') %>" aria-label="<%= t('box.filters.filter_corridor') %>">
-                    <input type="text" id="filtroBox" placeholder="<%= t('box.filters.filter_box') %>" aria-label="<%= t('box.filters.filter_box') %>">
+                    <input type="text" id="filtroPasillo" placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>" aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>">
+                    <input type="text" id="filtroBox" placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>" aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>">
                     <select id="filtroEstado" aria-label="<%= t('box.filters.filter_state') %>">
                         <option value=""><%= t('box.filters.show_all') %></option>
                         <option value="en-uso"><%= t('common.state_in_use') %></option>
@@ -71,25 +71,25 @@
                 <div class="resumen-estados row align-items-stretch" id="resumenEstados">
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card libre">
-                        <h4><%= t('common.boxes_free') %></h4>
+                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h4>
                         <p id="count-libre">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-espera">
-                        <h4><%= t('common.boxes_waiting') %></h4>
+                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h4>
                         <p id="count-en-espera">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-uso">
-                        <h4><%= t('common.boxes_in_use') %></h4>
+                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h4>
                         <p id="count-en-uso">0</p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card inhabilitado">
-                        <h4><%= t('common.boxes_disabled') %></h4>
+                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h4>
                         <p id="count-inhabilitado">0</p>
                     </div>
                     </div>
@@ -102,36 +102,36 @@
                     <p><%= t('common.no_results_desc') %></p>
                 </div>
 
-                <!-- Render dinámico de pasillos y boxes -->
-                <% Object.keys(pasillo_box_map).forEach(pasilloNombre => { 
-                    const match = pasilloNombre.match(/\d+/);
+                <!-- Render dinámico de generales y específicos -->
+                <% Object.keys(generales_especificos_map).forEach(generalNombre => { 
+                    const match = generalNombre.match(/\d+/);
                     const count = match ? parseInt(match[0], 10) : 0;
                 %>
-                    <div class="pasillo-bloque" data-pasillo-nombre="<%= pasilloNombre %>">
-                        <div class="pasillo-nombre"><%= count ? t('box.corridor_prefix', { count: count }) : pasilloNombre %></div>
-                        <div class="pasillo-content row">
-                        <% pasillo_box_map[pasilloNombre].forEach(box => { %>
+                    <div class="general-bloque" data-general-nombre="<%= generalNombre %>">
+                        <div class="general-nombre"><%= generalNombre %></div>
+                        <div class="general-content row">
+                        <% generales_especificos_map[generalNombre].forEach(especifico => { %>
                             <div class="col-12 col-sm-6 col-md-4 col-lg-4 col-xl-3 col-xxl-2 mb-3">
                             <% if (canViewDetail) { %>
                                 <!-- Si tiene permiso, hacer clickeable -->
-                                <a href="/box/<%= box.id %>" 
-                                class="box-card" 
-                                data-box-nombre="<%= box.nombre %>" 
-                                data-pasillo="<%= pasilloNombre %>">
+                                <a href="/especifico/<%= especifico.id %>" 
+                                class="especifico-card" 
+                                data-especifico-nombre="<%= especifico.nombre %>" 
+                                data-general="<%= generalNombre %>">
                             <% } else { %>
                                 <!-- Si no tiene permiso, mostrar como div sin enlace -->
-                                <div class="box-card disabled" 
-                                data-box-nombre="<%= box.nombre %>" 
-                                data-pasillo="<%= pasilloNombre %>"
+                                <div class="especifico-card disabled" 
+                                data-especifico-nombre="<%= especifico.nombre %>" 
+                                data-general="<%= generalNombre %>"
                                 title="<%= t('box.no_permission_title') %>">
                             <% } %>
-                                <h3><%= box.nombre %></h3>
-                                <div id="info-box-<%= box.id %>" class="info-box">
-                                    <div class="contenido-box oculto">
+                                <h3><%= especifico.nombre %></h3>
+                                <div id="info-especifico-<%= especifico.id %>" class="info-especifico">
+                                    <div class="contenido-especifico oculto">
                                         <p></p>
                                     </div>
-                                    <div class="estado-bar <%= box.estado.replace(/\s+/g, '-').toLowerCase() %>">
-                                        <%= box.estado %>
+                                    <div class="estado-bar <%= especifico.estado.replace(/\s+/g, '-').toLowerCase() %>">
+                                        <%= especifico.estado %>
                                     </div>
                                 </div>
                             <% if (canViewDetail) { %>

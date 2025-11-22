@@ -3,17 +3,17 @@ const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb"
 const { successResponse, errorResponse } = require("../../utils/response");
 const { createLogger } = require("../../utils/logger");
 
-const logger = createLogger({ handler: 'verificarConflictoBox' });
+const logger = createLogger({ handler: 'verificarConflictoEspacio' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('verificarConflictoBox');
-    const { box_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
+    const endTrace = logger.startTrace('verificarConflictoEspacio');
+    const { space_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
 
-    if (!box_id || !fecha || !hora_inicio || !hora_fin) {
-        logger.warn("Parámetros faltantes", { box_id, fecha, hora_inicio, hora_fin });
+    if (!space_id || !fecha || !hora_inicio || !hora_fin) {
+        logger.warn("Parámetros faltantes", { space_id, fecha, hora_inicio, hora_fin });
         endTrace();
-        return errorResponse("Faltan parámetros obligatorios: box_id, fecha, hora_inicio, hora_fin", 400);
+        return errorResponse("Faltan parámetros obligatorios: space_id, fecha, hora_inicio, hora_fin", 400);
     }
 
     const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -39,13 +39,13 @@ module.exports.handler = async (event) => {
     }
 
     try {
-        logger.info("Verificando conflicto de box", { box_id, fecha, hora_inicio, hora_fin });
+        logger.info("Verificando conflicto de espacio", { space_id, fecha, hora_inicio, hora_fin });
         
         const params = {
             TableName: process.env.DB_AGENDA,
             KeyConditionExpression: 'PK = :pk AND SK BETWEEN :hora_inicio AND :hora_fin',
             ExpressionAttributeValues: {
-                ':pk': `BOX#${box_id}#DATE#${fecha}`,
+                ':pk': `${space_id}#DATE#${fecha}`,
                 ':hora_inicio': hora_inicio,
                 ':hora_fin': hora_fin
             }
@@ -62,7 +62,7 @@ module.exports.handler = async (event) => {
         const hasConflicto = conflictos.length > 0;
         
         logger.info("Verificación de conflicto completada", { 
-            box_id, 
+            space_id, 
             fecha, 
             conflicto: hasConflicto,
             conflictosCount: conflictos.length
@@ -75,8 +75,8 @@ module.exports.handler = async (event) => {
         });
         
     } catch (err) {
-        logger.error("Error verificando conflicto de box", err, { box_id, fecha });
+        logger.error("Error verificando conflicto de espacio", err, { space_id, fecha });
         endTrace();
-        return errorResponse("Error verificando conflicto de box", 500, { details: err.message });
+        return errorResponse("Error verificando conflicto de espacio", 500, { details: err.message });
     }
 };

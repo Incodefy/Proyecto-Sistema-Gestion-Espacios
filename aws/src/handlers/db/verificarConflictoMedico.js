@@ -3,17 +3,17 @@ const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb"
 const { successResponse, errorResponse } = require("../../utils/response");
 const { createLogger } = require("../../utils/logger");
 
-const logger = createLogger({ handler: 'verificarConflictoMedico' });
+const logger = createLogger({ handler: 'verificarConflictoOcupante' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('verificarConflictoMedico');
-    const { medico_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
+    const endTrace = logger.startTrace('verificarConflictoOcupante');
+    const { occupant_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
 
-    if (!medico_id || !fecha || !hora_inicio || !hora_fin) {
-        logger.warn("Parámetros faltantes", { medico_id, fecha, hora_inicio, hora_fin });
+    if (!occupant_id || !fecha || !hora_inicio || !hora_fin) {
+        logger.warn("Parámetros faltantes", { occupant_id, fecha, hora_inicio, hora_fin });
         endTrace();
-        return errorResponse("Faltan parámetros obligatorios: medico_id, fecha, hora_inicio, hora_fin", 400);
+        return errorResponse("Faltan parámetros obligatorios: occupant_id, fecha, hora_inicio, hora_fin", 400);
     }
 
     const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -39,14 +39,14 @@ module.exports.handler = async (event) => {
     }
 
     try {
-        logger.info("Verificando conflicto de médico", { medico_id, fecha, hora_inicio, hora_fin });
+        logger.info("Verificando conflicto de ocupante", { occupant_id, fecha, hora_inicio, hora_fin });
         
         const params = {
             TableName: process.env.DB_AGENDA,
             IndexName: "MedicoFechaIndex",
             KeyConditionExpression: "GSI1PK = :pk AND GSI1SK BETWEEN :hIni AND :hFin",
             ExpressionAttributeValues: {
-                ":pk": `MEDICO#${medico_id}#DATE#${fecha}`,
+                ":pk": `${occupant_id}#DATE#${fecha}`,
                 ":hIni": hora_inicio,
                 ":hFin": hora_fin
             }
@@ -63,7 +63,7 @@ module.exports.handler = async (event) => {
         const hasConflicto = conflictos.length > 0;
         
         logger.info("Verificación de conflicto completada", { 
-            medico_id, 
+            occupant_id, 
             fecha, 
             conflicto: hasConflicto,
             conflictosCount: conflictos.length
@@ -76,8 +76,8 @@ module.exports.handler = async (event) => {
         });
         
     } catch (err) {
-        logger.error("Error verificando conflicto de médico", err, { medico_id, fecha });
+        logger.error("Error verificando conflicto de ocupante", err, { occupant_id, fecha });
         endTrace();
-        return errorResponse("Error verificando conflicto de médico", 500, { details: err.message });
+        return errorResponse("Error verificando conflicto de ocupante", 500, { details: err.message });
     }
 };

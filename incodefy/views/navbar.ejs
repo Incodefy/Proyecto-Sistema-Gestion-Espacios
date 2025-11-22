@@ -30,11 +30,11 @@
         </a>
       </li>
       
-      <!-- Box -->
+      <!-- Box/Espacio Específico -->
       <li>
-        <a href="/box" class="menu-link <%= (currentPath.startsWith('/box') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="<%= t('navbar.box') %>">
-          <img src="/icons/box.webp" alt="">
-          <span><%= t('navbar.box') %></span>
+        <a href="/especifico" class="menu-link <%= (currentPath.startsWith('/especifico') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="<%= nomenclatura ? nomenclatura.especifico : 'Especifico' %>">
+          <i class="fas fa-door-open"></i>
+          <span><%= nomenclatura ? nomenclatura.especifico : 'Especifico' %></span>
         </a>
       </li>
       
@@ -43,6 +43,14 @@
         <a href="/historial-notificaciones" class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" data-tooltip="<%= t('navbar.notifications') %>">
           <img src="/icons/notificaciones.webp" alt="" class="noti">
           <span><%= t('navbar.notifications') %></span>
+        </a>
+      </li>
+      
+      <!-- Gestión de Grupo -->
+      <li>
+        <a href="/gestion-grupo" class="menu-link <%= currentPath.startsWith('/gestion-grupo') ? 'active' : '' %>" data-tooltip="<%= t('navbar.manageGroup') %>">
+          <i class="fas fa-users-cog"></i>
+          <span><%= t('navbar.manageGroup') %></span>
         </a>
       </li>
     <% } %>

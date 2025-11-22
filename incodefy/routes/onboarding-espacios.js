@@ -7,10 +7,44 @@ router.use(requireAuth);
 router.use(attachApiClient);
 
 /**
- * GET /onboarding-espacios
+ * DEBUG ENDPOINT - Eliminar después de solucionar el problema
+ */
+router.get('/debug/session-info', (req, res) => {
+  res.json({
+    session_exists: !!req.session,
+    user: {
+      email: req.session?.user?.email,
+      sub: req.session?.user?.sub,
+      has_idToken: !!req.session?.user?.idToken,
+      has_admin_permissions: req.session?.user?.has_admin_permissions,
+      idToken_preview: req.session?.user?.idToken?.substring(0, 50) + '...'
+    },
+    grupo_activo: req.session?.grupoActivo,
+    instructions: 'Para probar: cd incodefy && node test-grupos-simple.js <COPIA_EL_TOKEN_COMPLETO>'
+  });
+});
+
+/**
+ * DEBUG ENDPOINT - Devuelve el token completo para pruebas
+ */
+router.get('/debug/get-token', (req, res) => {
+  if (!req.session?.user?.idToken) {
+    return res.status(401).json({ error: 'No hay token en sesión' });
+  }
+  
+  res.json({
+    idToken: req.session.user.idToken,
+    email: req.session.user.email,
+    sub: req.session.user.sub,
+    command: `cd incodefy && node test-grupos-simple.js "${req.session.user.idToken}"`
+  });
+});
+
+/**
+ * GET /onboarding-espacios (ruta principal del router)
  * Renderiza la página de onboarding para configuración de espacios
  */
-router.get('/onboarding-espacios', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     // Verificar si el usuario ya tiene una configuración
     let configuracionExistente = null;
@@ -103,7 +137,7 @@ router.post('/api/espacios/configuracion', async (req, res) => {
   console.log(`\n=== [Express] POST /api/espacios/configuracion | ${TRACE_ID} ===`);
 
   try {
-    const { espacios, grupo_id } = req.body;
+    const { espacios, especialidades, ocupantes, tipos_instrumentos, instrumentos, grupo_id } = req.body;
 
     // Validación básica en Express (antes de llamar Lambda)
     if (!grupo_id) {
@@ -146,11 +180,22 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     console.log(`[${TRACE_ID}] 📊 Datos:`, {
       grupo_id,
       total_espacios: espacios.length,
-      total_especificos: espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0)
+      total_especificos: espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0),
+      total_especialidades: especialidades?.length || 0,
+      total_ocupantes: ocupantes?.length || 0,
+      total_tipos_instrumentos: tipos_instrumentos?.length || 0,
+      total_instrumentos: instrumentos?.length || 0
     });
 
-    // Llamar a Lambda (ya NO enviamos nomenclatura, solo espacios)
-    const response = await req.apiClient.guardarEspacios(grupo_id, espacios);
+    // Llamar a Lambda
+    const response = await req.apiClient.guardarEspacios(
+      grupo_id, 
+      espacios, 
+      ocupantes, 
+      especialidades,
+      tipos_instrumentos || [],
+      instrumentos || []
+    );
 
     console.log(`[${TRACE_ID}] ✅ Lambda respondió exitosamente`);
 
@@ -176,6 +221,10 @@ router.post('/api/espacios/configuracion', async (req, res) => {
       message: 'Configuración guardada correctamente',
       total_generales: response.total_generales,
       total_especificos: response.total_especificos,
+      total_especialidades: response.total_especialidades || 0,
+      total_ocupantes: response.total_ocupantes || 0,
+      total_tipos_instrumentos: response.total_tipos_instrumentos || 0,
+      total_instrumentos: response.total_instrumentos || 0,
       grupo_id: response.grupo_id,
       trace_id: TRACE_ID,
       lambda_trace_id: response.trace
@@ -466,11 +515,25 @@ router.get('/api/espacios/estadisticas', async (req, res) => {
  * Lista todos los grupos a los que pertenece el usuario
  */
 router.get('/api/espacios/grupos-usuario', async (req, res) => {
+  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   try {
+    console.log(`[${TRACE_ID}] 🔍 Obteniendo grupos para usuario:`, {
+      email: req.session?.user?.email,
+      sub: req.session?.user?.sub,
+      idToken: req.session?.user?.idToken ? '(presente)' : '(ausente)'
+    });
+    
     const response = await req.apiClient.listarGruposUsuario();
+    
+    console.log(`[${TRACE_ID}] 📦 Respuesta de API:`, {
+      ok: response?.ok,
+      total: response?.total,
+      grupos: response?.grupos?.length
+    });
+    
     res.json(response);
   } catch (error) {
-    console.error('Error listando grupos:', error);
+    console.error(`[${TRACE_ID}] ❌ Error listando grupos:`, error);
     res.status(500).json({ ok: false, error: 'Error al obtener grupos' });
   }
 });

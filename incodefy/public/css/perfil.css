@@ -65,7 +65,7 @@ body {
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .user-avatar {
@@ -89,6 +89,19 @@ body {
   font-size: 0.9rem;
 }
 
+.fc {
+  margin-bottom: 0rem!important;
+}
+
+.fc h4 {
+  color: var(--primary-color);
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .form-section {
   margin-bottom: 1.6rem!important;
 }
@@ -102,13 +115,26 @@ body {
   gap: 0.5rem;
 }
 
+.fg {
+  padding-bottom: 0!important;
+  margin-bottom: 0!important;
+}
+
 .form-group {
   margin-bottom: 1rem;
 }
 
+.form-group .tl {
+  margin-bottom: 1rem!important;
+}
+
+.form-group .ch {
+  margin-top: 0.8rem!important;
+}
+
 .form-group label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.5rem!important;
   font-weight: 500;
   color: var(--text-color);
 }
@@ -264,9 +290,9 @@ body {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-  margin-top: 2rem;
+  margin-top: 1.3rem!important;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
+  border-top: 2px solid var(--border-color);
 }
 
 .btn {
@@ -446,8 +472,8 @@ body[data-theme="dark"] .message.error {
 /* Sección de workspace/grupo */
 .current-group-info {
   padding: 1rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background-color: var(--background-color)!important;
+  border: 2px solid var(--border-color)!important;
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
 }
@@ -458,15 +484,24 @@ body[data-theme="dark"] .message.error {
   justify-content: space-between;
 }
 
+.current-group-info .badge {
+  background-color: var(--primary-color)!important;
+  color: white!important;
+  padding: 0.5rem 0.75rem!important;
+  border-radius: 1rem!important;
+  font-size: 0.75rem!important;
+  font-weight: 600!important;
+}
+
 .current-group-name {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-color);
   font-size: 1.1rem;
 }
 
 .current-group-date {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--secondary-text-color);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -476,8 +511,8 @@ body[data-theme="dark"] .message.error {
 /* Modal de grupos */
 .group-modal-item {
   padding: 1rem;
-  background-color: #f8fafc;
-  border: 2px solid #e2e8f0;
+  background-color: var(--background-color)!important;
+  border: 2px solid var(--border-color)!important;
   border-radius: 0.5rem;
   margin-bottom: 0.75rem;
   cursor: pointer;
@@ -488,28 +523,37 @@ body[data-theme="dark"] .message.error {
 }
 
 .group-modal-item:hover {
-  border-color: var(--primary-color, #1a3c7c);
+  border-color: var(--primary-color);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .group-modal-item.active {
-  border-color: var(--primary-color, #1a3c7c);
+  border-color: var(--primary-color);
   background-color: rgba(26, 60, 124, 0.05);
+}
+
+.group-modal-item .fr {
+  color: var(--text-color)!important;
+  margin-right: 8px!important;
+}
+
+.group-modal-info .fa-calendar {
+  margin-right: 0.3rem!important;
 }
 
 .group-modal-info h6 {
   margin: 0 0 0.25rem 0;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-color)!important;
 }
 
 .group-modal-info small {
-  color: #64748b;
+  color: var(--secondary-text-color);
 }
 
 .group-modal-badge {
-  background-color: var(--primary-color, #1a3c7c);
+  background-color: var(--primary-color)!important;
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
@@ -517,18 +561,48 @@ body[data-theme="dark"] .message.error {
   font-weight: 600;
 }
 
-/* Tema oscuro */
-body[data-theme="dark"] .current-group-info,
-body[data-theme="dark"] .group-modal-item {
-  background-color: #334155;
-  border-color: #475569;
+.fg .btn {
+  color: var(--primary-color)!important;
+  border-color: var(--primary-color)!important;
+  margin-bottom: 2px!important;
 }
 
-body[data-theme="dark"] .current-group-name,
-body[data-theme="dark"] .group-modal-info h6 {
-  color: #f1f5f9;
+.fg .btn:hover {
+  background-color: var(--primary-color);
+  color: white!important;
 }
 
-body[data-theme="dark"] .group-modal-item.active {
-  background-color: rgba(100, 116, 139, 0.2);
+.fg .btn:active,
+.fg .btn:focus {
+  background-color: var(--primary-color)!important;
+  color: white!important;
+  outline: none!important;
+  box-shadow: none!important;
+}
+
+.modal-content {
+  background-color: var(--card-background)!important;
+  border: 1px solid var(--border-color)!important;
+}
+
+.modal-title {
+  color: var(--primary-color)!important;
+}
+
+.modal-header {
+  border-bottom: 1.8px solid var(--secondary-text-color)!important;
+}
+
+.modal-body {
+  padding: 1.2rem 1rem 0.5rem 1rem!important;
+}
+
+.modal-footer .btn {
+  color: white!important;
+  background-color: var(--primary-color)!important;
+  border: 1px solid var(--primary-color-dark)!important;
+}
+
+.spinner-border {
+  color: var(--text-color)!important;
 }

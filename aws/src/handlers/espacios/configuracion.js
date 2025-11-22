@@ -446,6 +446,7 @@ module.exports.obtenerConfiguracion = async (event) => {
  */
 module.exports.listarEspacios = async (event) => {
   const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [ListarEspacios] Inicio | ${TRACE_ID} ===`);
   
   try {
     const grupo_id = event.queryStringParameters?.grupo_id;
@@ -458,7 +459,10 @@ module.exports.listarEspacios = async (event) => {
       });
     }
 
-    // Obtener todos los items del catálogo que pertenecen a este grupo
+    console.log(`[${TRACE_ID}] Consultando espacios para grupo: ${grupo_id}`);
+    console.log(`[${TRACE_ID}] Tabla: ${process.env.SPACES_TABLE}`);
+
+    // Obtener todos los espacios que pertenecen a este grupo
     const result = await retryWithJitter(
       async () => {
         if (!dynamoBreaker.shouldAllow()) {
@@ -466,13 +470,10 @@ module.exports.listarEspacios = async (event) => {
         }
         
         const res = await docClient.send(new QueryCommand({
-          TableName: process.env.DB_CATALOGO,
-          IndexName: "TipoEntidadIndex",
-          KeyConditionExpression: "GSI1PK = :tipo",
-          FilterExpression: "grupo_id = :grupoId",
+          TableName: process.env.SPACES_TABLE,
+          KeyConditionExpression: "PK = :pk",
           ExpressionAttributeValues: {
-            ":tipo": "TIPO#ESPACIO",
-            ":grupoId": grupo_id
+            ":pk": grupo_id
           }
         }));
         
@@ -484,11 +485,24 @@ module.exports.listarEspacios = async (event) => {
 
     const espacios = result.Items || [];
     
+    console.log(`[${TRACE_ID}] ✅ Espacios encontrados: ${espacios.length}`);
+    
+    // Organizar espacios en estructura jerárquica
+    const espaciosGenerales = espacios.filter(e => e.tipo === 'general');
+    const espaciosEspecificos = espacios.filter(e => e.tipo === 'especifico');
+    
+    // Mapear espacios específicos a sus padres
+    const espaciosConHijos = espaciosGenerales.map(general => ({
+      ...general,
+      specificSpaces: espaciosEspecificos.filter(esp => esp.parent === general.SK)
+    }));
+    
     return response(200, {
       ok: true,
       grupo_id,
-      espacios,
-      total: espacios.length,
+      espacios: espaciosConHijos,
+      total: espaciosGenerales.length,
+      total_especificos: espaciosEspecificos.length,
       trace_id: TRACE_ID
     });
 

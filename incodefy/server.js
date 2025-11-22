@@ -61,13 +61,14 @@ const sessionSecret = process.env.SESSION_SECRET || 'default-insecure-secret-cha
 
 app.use(session({
   secret: sessionSecret,
-  resave: false,
+  resave: true, // Forzar guardado de sesión en cada request
   saveUninitialized: false,
-  name: 'sessionId', // Nombre personalizado en lugar de 'connect.sid'
+  name: 'sessionId',
+  rolling: true, // Renovar cookie en cada request
   cookie: {
-    httpOnly: true, // Previene acceso por JavaScript del cliente
-    secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-    sameSite: 'lax', // Protección CSRF
+    httpOnly: true,
+    secure: false, // Deshabilitado para desarrollo local
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 horas
   }
 }));
@@ -111,9 +112,54 @@ const setLanguage = require('./middleware/setLanguage');
 const checkPermission = require('./middleware/checkPermission');
 const checkGrupoActivo = require('./middleware/checkGrupoActivo');
 const attachApiClient = require('./middleware/apiClient');
+const nomenclaturaMiddleware = require('./middleware/nomenclatura');
 
 // === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
 // Estos se ejecutarán en todas las rutas que vengan después de ellos.
+
+// Middleware de logging para debugging
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.log('\n' + '='.repeat(80));
+  console.log(`[${timestamp}] 🌐 ${req.method} ${req.path}`);
+  console.log(`📧 Usuario: ${req.session?.user?.email || 'NO AUTENTICADO'}`);
+  console.log(`🆔 Session ID: ${req.sessionID || 'NO SESSION'}`);
+  console.log(`🔐 Token presente: ${req.session?.user?.idToken ? 'SÍ' : 'NO'}`);
+  console.log(`📦 Grupo activo: ${req.session?.grupoActivo?.grupo_id || 'NINGUNO'}`);
+  console.log('='.repeat(80));
+
+  // Interceptar res.redirect para ver qué se está enviando
+  const originalRedirect = res.redirect;
+  res.redirect = function(url) {
+    console.log(`\n🔀 REDIRECT INTERCEPTADO:`);
+    console.log(`   📍 Destino: ${url}`);
+    console.log(`   🆔 Session ID: ${req.sessionID}`);
+    console.log(`   📧 Usuario en sesión: ${req.session?.user?.email || 'NINGUNO'}`);
+    console.log(`   🔢 Status Code: ${this.statusCode || 302}`);
+    return originalRedirect.call(this, url);
+  };
+
+  // Interceptar res.render para ver qué vistas se renderizan
+  const originalRender = res.render;
+  res.render = function(view, locals) {
+    console.log(`\n🎨 RENDER INTERCEPTADO:`);
+    console.log(`   📄 Vista: ${view}`);
+    console.log(`   🆔 Session ID: ${req.sessionID}`);
+    return originalRender.call(this, view, locals);
+  };
+
+  // Log cuando la respuesta termina
+  res.on('finish', () => {
+    console.log(`\n✅ RESPUESTA COMPLETADA:`);
+    console.log(`   🔢 Status Code: ${res.statusCode}`);
+    console.log(`   📏 Content-Length: ${res.get('Content-Length') || 'N/A'}`);
+    console.log(`   📍 Location header: ${res.get('Location') || 'N/A'}`);
+    console.log('─'.repeat(80) + '\n');
+  });
+
+  next();
+});
+
 app.use(personalizationMiddleware);
 app.use(setLanguage);
 
@@ -153,187 +199,139 @@ app.get('/', async (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/', authRoutes);
 
-const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
-app.use('/', requireAuth, attachApiClient, onboardingEspaciosRouter);
+// Rutas de registro y verificación de email (públicas)
+const signupRoutes = require('./routes/signup');
+const verifyEmailRoutes = require('./routes/verify-email');
+app.use('/auth', signupRoutes);
+app.use('/auth', verifyEmailRoutes);
 
-// === RUTAS PROTEGIDAS (requieren autenticación) ===
+// API routes (requieren autenticación)
+const apiRoutes = require('./routes/api');
+app.use('/api', apiRoutes);
+
+// API especialidades, ocupantes, tipos-instrumentos e instrumentos (requieren autenticación)
+const apiEspecialidadesRoutes = require('./routes/api-especialidades');
+const apiOcupantesRoutes = require('./routes/api-ocupantes');
+const apiTiposInstrumentosRoutes = require('./routes/api-tipos-instrumentos');
+const apiInstrumentosRoutes = require('./routes/api-instrumentos');
+app.use('/api/grupos', apiEspecialidadesRoutes);
+app.use('/api/grupos', apiOcupantesRoutes);
+app.use('/api/grupos', apiTiposInstrumentosRoutes);
+app.use('/api/grupos', apiInstrumentosRoutes);
+
+// Aceptar invitación (COMPLETAMENTE PÚBLICO - debe ir ANTES de requireAuth global)
+const aceptarInvitacionRoutes = require('./routes/aceptar-invitacion');
+app.use('/aceptar-invitacion', aceptarInvitacionRoutes);
+
+// Onboarding espacios (requiere auth pero NO grupo activo)
+const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
+app.use('/onboarding-espacios', requireAuth, attachApiClient, onboardingEspaciosRouter);
+
+// === RUTAS PROTEGIDAS CON GRUPO ACTIVO ===
+// Middleware de nomenclatura solo para rutas con grupo activo
+// Helper para verificar permisos del usuario en el grupo activo
+function userHasPermission(req, permission) {
+  // Admin siempre tiene acceso
+  if (req.session.user?.has_admin_permissions) {
+    return true;
+  }
+  
+  // Obtener grupo activo
+  const grupoActivo = req.session.grupoActivo;
+  if (!grupoActivo) return false;
+  
+  const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo.grupo_id;
+  if (!grupoId) return false;
+  
+  // Verificar permisos del grupo
+  const permissionsByGroup = req.session.user?.permissions_by_group || {};
+  const groupPermissions = permissionsByGroup[grupoId];
+  
+  if (!groupPermissions || !groupPermissions.permissions) return false;
+  
+  return groupPermissions.permissions.includes(permission);
+}
 
 // Agenda - protegida
-app.get('/agenda', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
-  const userPermissions = req.session.user?.permissions || [];
-  
+app.get('/agenda', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
   res.render('agenda', {
     currentPath: req.path,
-    canViewAgenda: userPermissions.includes('agenda.read') || userPermissions.includes('admin.users'),
-    canWriteAgenda: userPermissions.includes('agenda.write') || userPermissions.includes('admin.users'),
-    canImport: userPermissions.includes('data.import') || userPermissions.includes('admin.users'),
-    canExport: userPermissions.includes('data.export') || userPermissions.includes('admin.users'),
-    personalization: req.session.user?.personalization || {},
+    canViewAgenda: userHasPermission(req, 'agenda.read'),
+    canWriteAgenda: userHasPermission(req, 'agenda.write'),
+    canImport: userHasPermission(req, 'data.import'),
+    canExport: userHasPermission(req, 'data.export'),
+    personalization: res.locals.personalization || {},
     idToken: req.session.user?.idToken || ''
+    // nomenclatura ya está en res.locals gracias al middleware
   });
 });
 
 // Rutas de importar y exportar
-app.get('/importar', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('data.import'), (req, res) => {
+app.get('/importar', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.import'), (req, res) => {
   res.render('importar', { currentPath: req.path });
 });
 
-app.get('/exportar', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('data.export'), (req, res) => {
+app.get('/exportar', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.export'), (req, res) => {
   res.render('exportar', { currentPath: req.path });
 });
 
 // Rutas de calendario
-app.get('/calendario/box', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
-  const userPermissions = req.session.user?.permissions || [];
+app.get('/calendario/box', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
   res.render('calendario-box', { 
     currentPath: req.path,
-    canEdit: userPermissions.includes('agenda.write') || userPermissions.includes('admin.users')
+    canEdit: userHasPermission(req, 'agenda.write')
   });
 });
 
-app.get('/calendario/medico', requireAuth, attachApiClient, checkGrupoActivo, checkPermission('agenda.read'), (req, res) => {
-  const userPermissions = req.session.user?.permissions || [];
+app.get('/calendario/medico', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
   res.render('calendario-medico', { 
     currentPath: req.path,
-    canEdit: userPermissions.includes('agenda.write') || userPermissions.includes('admin.users')
+    canEdit: userHasPermission(req, 'agenda.write')
   });
 });
 
 // Box routes
 const boxRoutes = require('./routes/box');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, boxRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, boxRoutes);
 
 // Detalle de box
 const detalleBoxRoutes = require('./routes/detalle_box');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, detalleBoxRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, detalleBoxRoutes);
 
 // Consultas en curso
 const consultasRoutes = require('./routes/consultas');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, consultasRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, consultasRoutes);
 
 // Dashboard
 const dashboardRoutes = require('./routes/dashboard');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, dashboardRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, dashboardRoutes);
 
 // Historial notificaciones
 const notificacionesRoutes = require('./routes/notificaciones');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, notificacionesRoutes);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, notificacionesRoutes);
 
 // Calendario agenda
 const calendarioRouter = require('./routes/calendario');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, calendarioRouter);
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, calendarioRouter);
+
+const gestionGrupoRoutes = require('./routes/gestionGrupo');
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, gestionGrupoRoutes);
 
 // Configuración espacios (NO requiere grupo activo - es el onboarding)
 
-
 // Perfil (NO requiere grupo activo)
 app.get('/perfil', requireAuth, attachApiClient, (req, res) => {
+  console.log('📄 GET /perfil - Usuario:', req.session.user?.email);
+  console.log('📄 req.session.user.personalization:', req.session.user?.personalization);
+  console.log('📄 res.locals.personalization:', res.locals.personalization);
+  
   res.render('perfil', {
     currentPath: req.path,
-    personalization: req.session.user?.personalization || {},
+    personalization: res.locals.personalization || req.session.user?.personalization || {},
     idToken: req.session.user?.idToken,
     language: req.session.language || req.language
   });
 });
-
-// API de personalización - Versión simple
-app.post('/api/personalization', requireAuth, async (req, res) => {
-  try {
-    console.log('📡 POST /api/personalization - Usuario:', req.session.user?.email);
-    console.log('📡 Datos recibidos:', req.body);
-    console.log('📡 Parámetros a actualizar:', req.body.parameters);
-
-    // Validación de token
-    if (!req.session.user?.idToken) {
-      return res.status(401).json({
-        ok: false,
-        error: 'Usuario no autenticado'
-      });
-    }
-
-    const API_BASE_URL = process.env.API_BASE_URL;
-    console.log('📡 Enviando request a Lambda:', `${API_BASE_URL}/personalization`);
-
-    // Llamada a Lambda
-    const response = await fetch(`${API_BASE_URL}/personalization`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${req.session.user.idToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        parameters: req.body.parameters
-      })
-    });
-
-    console.log('📥 Response status de Lambda:', response.status);
-    const result = await response.json();
-    console.log('📥 Response data de Lambda:', result);
-
-    if (response.ok && result.ok) {
-      // Actualizar personalización en sesión
-      if (result.final_parameters) {
-        req.session.user.personalization = result.final_parameters;
-
-        // Manejo adicional de idioma (locale.language)
-        const newLang = result.final_parameters['locale.language'];
-        if (newLang && typeof newLang === 'string') {
-          req.session.language = newLang;
-
-          if (req.i18n?.language !== newLang) {
-            try {
-              req.i18n.changeLanguage(newLang);
-            } catch (e) {
-              console.warn('⚠️ No se pudo cambiar idioma en i18n:', e.message);
-            }
-          }
-
-          // Guardar cookie persistente en el navegador (30 días)
-          res.cookie('i18next', newLang, {
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
-          });
-        }
-      }
-
-      // Guardar sesión explícitamente antes de responder
-      req.session.save((err) => {
-        if (err) {
-          console.error('❌ Error guardando sesión:', err);
-          return res.status(500).json({
-            ok: false,
-            error: 'Error guardando la sesión'
-          });
-        }
-
-        return res.status(200).json({
-          ok: true,
-          message: 'Personalización actualizada correctamente',
-          saved_parameters: result.saved_parameters,
-          personalization: req.session.user.personalization
-        });
-      });
-
-    } else {
-      console.error('❌ Error del Lambda:', result);
-      return res.status(response.status || 400).json({
-        ok: false,
-        error: result.error || result.message || 'Error al actualizar personalización'
-      });
-    }
-
-  } catch (error) {
-    console.error('❌ Error en /api/personalization:', error);
-    res.status(500).json({
-      ok: false,
-      error: 'Error interno del servidor',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
 
 // Refrescar personalización en sesión
 app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
@@ -365,6 +363,41 @@ app.post('/api/refresh-personalization', requireAuth, async (req, res) => {
 });
 
 // === RUTAS DE UTILIDAD ===
+
+// Debug endpoint para verificar personalización
+app.get('/debug/personalization', requireAuth, async (req, res) => {
+  try {
+    const API_BASE_URL = process.env.API_BASE_URL;
+    const url = `${API_BASE_URL}/personalization`;
+    
+    console.log('🔍 DEBUG: Llamando a:', url);
+    console.log('🔍 DEBUG: Token:', req.session.user?.idToken?.substring(0, 20) + '...');
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${req.session.user.idToken}`
+      }
+    });
+    
+    const data = await response.json();
+    
+    console.log('🔍 DEBUG: Status:', response.status);
+    console.log('🔍 DEBUG: Respuesta completa:', JSON.stringify(data, null, 2));
+    
+    res.json({
+      status: response.status,
+      ok: response.ok,
+      data: data,
+      session_personalization: req.session.user?.personalization,
+      locals_personalization: res.locals.personalization
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 app.get('/test', (req, res) => {
   res.json({ 

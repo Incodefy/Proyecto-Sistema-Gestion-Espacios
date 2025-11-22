@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="<%= i18n.language %>">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Grupo</title>
+  <link rel="stylesheet" href="/css/navbar.css">
+  <link rel="stylesheet" href="/css/gestion-grupo.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <%- include('partials/personalization-styles') %>
+</head>
+<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
+
+<%- include('navbar') %>
+  
+  <div class="container-fluid">
+    <div class="row">
+      <div class="main">
+        <div class="management-container">
+          <!-- Page Header -->
+          <div class="page-header">
+            <h1 class="page-title">Gestión de Grupo</h1>
+            <p class="page-subtitle" id="grupoNombre">Cargando...</p>
+          </div>
+
+          <!-- Tabs Navigation -->
+          <div class="tabs-navigation">
+            <button class="tab-button active" data-tab="nomenclatura">
+              <i class="fas fa-tag"></i>
+              Nomenclatura
+            </button>
+            <button class="tab-button" data-tab="espacios">
+              <i class="fas fa-building"></i>
+              Espacios
+            </button>
+            <button class="tab-button" data-tab="especialidades">
+              <i class="fas fa-stethoscope"></i>
+              Especialidades
+            </button>
+            <button class="tab-button" data-tab="ocupantes">
+              <i class="fas fa-user-md"></i>
+              Ocupantes
+            </button>
+            <button class="tab-button" data-tab="instrumentos">
+              <i class="fas fa-tools"></i>
+              Instrumentos
+            </button>
+            <button class="tab-button" data-tab="miembros">
+              <i class="fas fa-users"></i>
+              Miembros
+            </button>
+          </div>
+
+          <!-- Tab 1: Nomenclatura -->
+          <div class="tab-content active" id="tab-nomenclatura">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">
+                    <i class="fas fa-edit"></i>
+                    Editar Nomenclatura
+                  </h2>
+                  <p class="section-description">
+                    Define cómo se llamarán los espacios generales y específicos en tu grupo
+                  </p>
+                </div>
+              </div>
+
+              <div class="nomenclatura-grid">
+                <div class="form-group">
+                  <label class="form-label">Nombre del espacio general</label>
+                  <input 
+                    type="text" 
+                    class="form-input" 
+                    id="nombreGeneral"
+                    placeholder="Ej: Pasillo, Piso, Área..."
+                  >
+                  <p class="form-hint">Este será el nombre para agrupar tus espacios</p>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Nombre del espacio específico</label>
+                  <input 
+                    type="text" 
+                    class="form-input" 
+                    id="nombreEspecifico"
+                    placeholder="Ej: Box, Consultorio, Oficina..."
+                  >
+                  <p class="form-hint">Este será el nombre de los espacios dentro de cada grupo</p>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Nombre del ocupante</label>
+                  <input 
+                    type="text" 
+                    class="form-input" 
+                    id="nombreOcupante"
+                    placeholder="Ej: Médico, Doctor, Profesional..."
+                  >
+                  <p class="form-hint">Este será el nombre para las personas que ocupan los espacios</p>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Nombre de la especialidad</label>
+                  <input 
+                    type="text" 
+                    class="form-input" 
+                    id="nombreEspecialidad"
+                    placeholder="Ej: Especialidad, Área, Disciplina..."
+                  >
+                  <p class="form-hint">Este será el nombre para las especialidades de los ocupantes</p>
+                </div>
+              </div>
+
+              <div class="action-buttons">
+                <button class="btn btn-secondary" id="btnCancelarNomenclatura">
+                  <i class="fas fa-times"></i>
+                  Cancelar
+                </button>
+                <button class="btn btn-primary" id="btnGuardarNomenclatura">
+                  <i class="fas fa-save"></i>
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Espacios -->
+          <div class="tab-content" id="tab-espacios">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">
+                    <i class="fas fa-layer-group"></i>
+                    Gestionar Espacios
+                  </h2>
+                  <p class="section-description" id="espaciosDescription">
+                    Agrega, edita o elimina espacios de tu grupo
+                  </p>
+                </div>
+              </div>
+
+              <div class="espacios-list" id="espaciosList">
+                <!-- Se llenará dinámicamente con JavaScript -->
+              </div>
+
+              <button class="btn btn-secondary btn-add-general" id="btnAddGeneral" style="width: 100%; margin-top: 1rem; justify-content: center;">
+                <i class="fas fa-plus"></i>
+                <span id="btnAddGeneralText">Agregar nuevo espacio</span>
+              </button>
+
+              <div class="action-buttons">
+                <button class="btn btn-primary" id="btnGuardarEspacios">
+                  <i class="fas fa-save"></i>
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Especialidades -->
+          <div class="tab-content" id="tab-especialidades">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">
+                    <i class="fas fa-stethoscope"></i>
+                    Gestionar Especialidades
+                  </h2>
+                  <p class="section-description" id="especialidadesDescription">
+                    Agrega, edita o elimina especialidades disponibles en tu grupo
+                  </p>
+                </div>
+                <button class="btn btn-primary" id="btnAgregarEspecialidad">
+                  <i class="fas fa-plus"></i>
+                  <span id="btnAgregarEspecialidadText">Agregar Especialidad</span>
+                </button>
+              </div>
+
+              <div id="especialidadesListContainer">
+                <!-- Se llenará dinámicamente con JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Ocupantes -->
+          <div class="tab-content" id="tab-ocupantes">
+            <div class="section-card">
+              <div class="section-header">
+                <div>
+                  <h2 class="section-title">
+                    <i class="fas fa-user-md"></i>
+                    Gestionar Ocupantes
+                  </h2>
+                  <p class="section-description" id="ocupantesDescription">
+                    Agrega, edita o elimina ocupantes de tu grupo
+                  </p>
+                </div>
+                <button class="btn btn-primary" id="btnAgregarOcupante">
+                  <i class="fas fa-plus"></i>
+                  <span id="btnAgregarOcupanteText">Agregar Ocupante</span>
+                </button>
+              </div>
+
+              <div id="ocupantesListContainer">
+                <!-- Se llenará dinámicamente con JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 5: Instrumentos -->
+          <div class="tab-content" id="tab-instrumentos">
+            <div class="instrumentos-layout">
+              <!-- Columna izquierda: Tipos de Instrumentos -->
+              <div class="tipos-column">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div>
+                      <h2 class="section-title">
+                        <i class="fas fa-list"></i>
+                        Tipos de Instrumentos
+                      </h2>
+                      <p class="section-description">
+                        Categorías para organizar tus instrumentos
+                      </p>
+                    </div>
+                  </div>
+
+                  <div id="tipos-list" class="items-list">
+                    <!-- Se llenará dinámicamente -->
+                  </div>
+
+                  <div class="add-item-section">
+                    <input 
+                      type="text" 
+                      class="form-input" 
+                      id="nuevoTipoNombre"
+                      placeholder="Nombre del tipo"
+                    >
+                    <button class="btn btn-primary" onclick="agregarTipo()">
+                      <i class="fas fa-plus"></i>
+                      Agregar Tipo
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Columna derecha: Instrumentos -->
+              <div class="instrumentos-column">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div>
+                      <h2 class="section-title">
+                        <i class="fas fa-tools"></i>
+                        Instrumentos
+                      </h2>
+                      <p class="section-description" id="instrumentos-subtitle">
+                        Selecciona un tipo para ver sus instrumentos
+                      </p>
+                    </div>
+                  </div>
+
+                  <div id="instrumentos-list" class="items-list">
+                    <div class="empty-state">
+                      <i class="fas fa-hand-pointer"></i>
+                      <p>Selecciona un tipo de la izquierda</p>
+                    </div>
+                  </div>
+
+                  <div class="add-item-section" id="add-instrumento-section" style="display: none;">
+                    <input 
+                      type="text" 
+                      class="form-input" 
+                      id="nuevoInstrumentoNombre"
+                      placeholder="Nombre del instrumento"
+                    >
+                    <button class="btn btn-primary" onclick="agregarInstrumento()">
+                      <i class="fas fa-plus"></i>
+                      Agregar Instrumento
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 6: Miembros -->
+            <div class="tab-content" id="tab-miembros">
+            <!-- Invite Form -->
+            <div class="section-card">
+                <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                    <i class="fas fa-user-plus"></i>
+                    Invitar Miembro
+                    </h2>
+                    <p class="section-description">
+                    Agrega nuevos miembros a tu grupo asignándoles un rol
+                    </p>
+                </div>
+                </div>
+
+                <div class="invite-form">
+                <div class="form-group">
+                    <label class="form-label">Correo electrónico</label>
+                    <input 
+                    type="email" 
+                    class="form-input" 
+                    id="inviteEmail"
+                    placeholder="usuario@ejemplo.com"
+                    >
+                </div>
+
+                <div class="form-group" style="min-width: 200px;">
+                    <label class="form-label">Rol</label>
+                    <select class="form-select" id="inviteRole">
+                    <option value="viewer" selected>Lector (Viewer)</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Administrador</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="btnInviteMember">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar Invitación
+                </button>
+                </div>
+            </div>
+
+            <!-- Members List -->
+            <div class="section-card">
+                <div class="section-header-3">
+                <div>
+                    <h2 class="section-title">
+                    <i class="fas fa-users"></i>
+                    Miembros Actuales
+                    </h2>
+                    <p class="section-description" id="membersCount">
+                    Cargando miembros...
+                    </p>
+                </div>
+                </div>
+
+                <div id="membersTableContainer">
+                <!-- Se llenará dinámicamente con JavaScript -->
+                </div>
+            </div>
+            </div>
+
+            <!-- Modal para cambiar rol -->
+            <div class="modal fade" id="changeRoleModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                    <i class="fas fa-user-shield"></i>
+                    Cambiar Rol de Miembro
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="member-modal-info">
+                    <div class="member-modal-avatar" id="modalMemberAvatar"></div>
+                    <div class="member-modal-details">
+                        <div class="member-modal-name" id="modalMemberName"></div>
+                        <div class="member-modal-email" id="modalMemberEmail"></div>
+                    </div>
+                    </div>
+
+                    <div class="role-selection">
+                    <label class="form-label">Selecciona el nuevo rol</label>
+                    
+                    <div class="role-options">
+                        <div class="role-option" data-role="admin">
+                        <div class="role-option-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="role-option-content">
+                            <div class="role-option-title">Administrador</div>
+                            <div class="role-option-description">
+                            Control total del grupo, espacios y miembros
+                            </div>
+                        </div>
+                        <div class="role-option-check">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        </div>
+
+                        <div class="role-option" data-role="editor">
+                        <div class="role-option-icon">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <div class="role-option-content">
+                            <div class="role-option-title">Editor</div>
+                            <div class="role-option-description">
+                            Puede crear y editar reservas y espacios
+                            </div>
+                        </div>
+                        <div class="role-option-check">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        </div>
+
+                        <div class="role-option" data-role="viewer">
+                        <div class="role-option-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="role-option-content">
+                            <div class="role-option-title">Lector</div>
+                            <div class="role-option-description">
+                            Solo puede ver reservas y espacios
+                            </div>
+                        </div>
+                        <div class="role-option-check">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmRoleChange">
+                    <i class="fas fa-save"></i>
+                    Guardar Cambios
+                    </button>
+                </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Modal para Ocupante -->
+            <div class="modal fade" id="ocupanteModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ocupanteModalTitle">
+                    <i class="fas fa-user-md"></i>
+                    Nuevo Ocupante
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                    <label for="ocupanteNombre" class="form-label">Nombre</label>
+                    <input type="text" class="form-control" id="ocupanteNombre" placeholder="Ingrese el nombre">
+                    </div>
+                    <div class="mb-3">
+                    <label for="ocupanteEspecialidad" class="form-label">Especialidad</label>
+                    <select class="form-select" id="ocupanteEspecialidad">
+                        <option value="">Seleccione una especialidad</option>
+                    </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarOcupante">
+                    <i class="fas fa-save"></i>
+                    Guardar
+                    </button>
+                </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Modal para confirmar eliminación -->
+            <div class="modal fade" id="removeMemberModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Remover Miembro
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="member-modal-info">
+                    <div class="member-modal-avatar" id="modalRemoveMemberAvatar"></div>
+                    <div class="member-modal-details">
+                        <div class="member-modal-name" id="modalRemoveMemberName"></div>
+                        <div class="member-modal-email" id="modalRemoveMemberEmail"></div>
+                    </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3">
+                    <i class="fas fa-info-circle"></i>
+                    ¿Estás seguro de que deseas remover a este miembro del grupo? Esta acción no se puede deshacer.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmRemove">
+                    <i class="fas fa-trash"></i>
+                    Remover Miembro
+                    </button>
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+      </div>
+      <%- include('footer') %>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+    window.grupoActivo = <%- JSON.stringify(grupoActivo || null) %>;
+    window.nomenclaturaInicial = <%- JSON.stringify(nomenclatura || null) %>;
+    
+    function showDevToast(event) {
+      event.preventDefault();
+      
+      const toastElement = document.getElementById('devToast');
+      const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 4000
+      });
+      
+      toast.show();
+    }
+  </script>
+  <script src="/js/gestion-grupo.js"></script>
+</body>
+</html>
