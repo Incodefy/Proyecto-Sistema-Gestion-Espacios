@@ -93,18 +93,44 @@ router.post('/signup', async (req, res) => {
       Permanent: true
     }).promise();
 
-    // Solicitar verificación del email en SES (AWS envía el email automáticamente)
+    // Verificar si el email ya está verificado en SES
+    let emailYaVerificado = false;
     try {
-      await ses.verifyEmailIdentity({
-        EmailAddress: email
+      const identityVerification = await ses.getIdentityVerificationAttributes({
+        Identities: [email]
       }).promise();
-      console.log('📧 Email de verificación de SES enviado a:', email);
+
+      const verificationStatus = identityVerification.VerificationAttributes?.[email]?.VerificationStatus;
+      emailYaVerificado = verificationStatus === 'Success';
       
-      req.flash('success', '¡Cuenta creada! Revisa tu correo para verificar tu dirección de email (revisa spam también).');
-      return res.redirect('/login');
-    } catch (sesError) {
-      console.error('⚠️ Error solicitando verificación SES:', sesError.message);
-      req.flash('success', '¡Cuenta creada! Por favor contacta al administrador para verificar tu email.');
+      if (emailYaVerificado) {
+        console.log('✅ Email ya está verificado en SES:', email);
+      } else {
+        console.log('📧 Email no verificado en SES, status:', verificationStatus || 'No existe');
+      }
+    } catch (checkError) {
+      console.error('⚠️ Error verificando estado en SES:', checkError.message);
+    }
+
+    // Solo solicitar verificación si no está verificado
+    if (!emailYaVerificado) {
+      try {
+        await ses.verifyEmailIdentity({
+          EmailAddress: email
+        }).promise();
+        console.log('📧 Email de verificación de SES enviado a:', email);
+        
+        req.flash('success', '¡Cuenta creada! Revisa tu correo para verificar tu dirección de email (revisa spam también).');
+        return res.redirect('/login');
+      } catch (sesError) {
+        console.error('⚠️ Error solicitando verificación SES:', sesError.message);
+        req.flash('success', '¡Cuenta creada! Por favor contacta al administrador para verificar tu email.');
+        return res.redirect('/login');
+      }
+    } else {
+      // Email ya verificado, no enviar correo
+      console.log('✅ Email ya verificado, omitiendo envío de correo de verificación');
+      req.flash('success', '¡Cuenta creada exitosamente! Tu email ya está verificado.');
       return res.redirect('/login');
     }
 

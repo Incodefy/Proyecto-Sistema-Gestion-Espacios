@@ -278,9 +278,11 @@ router.post('/api/grupos/invitar', async (req, res) => {
     }
 
     console.log(`[${TRACE_ID}] 📧 Enviando invitación a: ${email} (${rol})`);
+    console.log(`[${TRACE_ID}] 🔗 Llamando a API: ${req.apiClient.baseURL}/api/grupos/invitar`);
 
     const response = await req.apiClient.invitarMiembro(grupo_id, email, rol);
 
+    console.log(`[${TRACE_ID}] 📬 Respuesta del Lambda:`, JSON.stringify(response, null, 2));
     console.log(`[${TRACE_ID}] ✅ Invitación enviada`);
 
     res.json({

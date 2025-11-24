@@ -230,7 +230,7 @@
     padding: 0.5rem 1rem !important;
 }
 
-@media (min-width: 992px) and (max-width: 1200px) {
+@media (min-width: 992px) and (max-width: 1300px) {
     .navbar-menu {
         display: flex !important;
         align-items: center !important;

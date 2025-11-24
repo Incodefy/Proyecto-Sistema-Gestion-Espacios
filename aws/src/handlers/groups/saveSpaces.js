@@ -136,6 +136,7 @@ exports.handler = async (event) => {
             nombre: ocupante.nombre.trim(),
             tipo: ocupante.tipo || "General",
             email: ocupante.email || null,
+            especialidad_id: ocupante.especialidad_id || null,
             especialidad: ocupante.especialidad || null,
             created_at: timestamp,
             created_by: userEmail
@@ -209,8 +210,8 @@ exports.handler = async (event) => {
       tipoInstrumentoWrites.push({
         PutRequest: {
           Item: {
-            grupo_id: grupo_id,
-            tipo_instrumento_id: tipoId,
+            PK: grupo_id,
+            SK: tipoId,
             nombre: tipo.nombre.trim(),
             created_at: timestamp,
             created_by: userEmail
@@ -251,8 +252,8 @@ exports.handler = async (event) => {
       instrumentoWrites.push({
         PutRequest: {
           Item: {
-            grupo_id: grupo_id,
-            instrumento_id: instrumentoId,
+            PK: grupo_id,
+            SK: instrumentoId,
             nombre: inst.nombre.trim(),
             tipo_instrumento_id: tipoIdReal,
             created_at: timestamp,

@@ -1,4 +1,4 @@
-service: incodefy
+service: feli
 frameworkVersion: '3'
 
 provider:
@@ -16,29 +16,24 @@ provider:
   environment:
     USER_POOL_ID: { Ref: CognitoUserPool }
     USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
-    USER_ROLES_TABLE: ${self:service}-${sls:stage}-user-roles
-    PERMISSIONS_TABLE: ${self:service}-${sls:stage}-permissions
     PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
     ACTIVITY_LOGS_TABLE: ${self:service}-${sls:stage}-activity-logs
     PERSONALIZATION_TOPIC_ARN: { Ref: PersonalizationTopic }
     SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
     PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
     SERVICE_NAME: ${self:service}
-    DB_CATALOGO: ${self:service}-${sls:stage}-catalogo
-    DB_AGENDA: ${self:service}-${sls:stage}-agenda
-    DB_BOX_INSTRUMENTO: ${self:service}-${sls:stage}-box-instrumento
-    DB_NOTIFICACION: ${self:service}-${sls:stage}-notificacion
     STAGE: ${sls:stage}
     GROUPS_TABLE: ${self:service}-${sls:stage}-groups
     GROUP_MEMBERS_TABLE: ${self:service}-${sls:stage}-group-members
     GROUP_INVITATIONS_TABLE: ${self:service}-${sls:stage}-group-invitations
     ROLE_MAPPINGS_TABLE: ${self:service}-${sls:stage}-role-mappings
-    PERMISSIONS_CATALOG_TABLE: ${self:service}-${sls:stage}-permissions-catalog
     SPACES_TABLE: ${self:service}-${sls:stage}-spaces
     OCCUPANTS_TABLE: ${self:service}-${sls:stage}-occupants
     ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades
     TIPOS_INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-tipos-instrumentos
     INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-instrumentos
+    APPOINTMENTS_TABLE: ${self:service}-${sls:stage}-appointments
+    NOTIFICATIONS_TABLE: ${self:service}-${sls:stage}-notifications
     # SES Configuration
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
     APP_URL: ${env:APP_URL, 'http://localhost:3000'}
@@ -121,30 +116,6 @@ provider:
       Resource:
         - Fn::GetAtt: [ParametersTable, Arn]
     
-    # === USER ROLES TABLE - PERMISOS COMPLETOS ===
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:BatchGetItem
-        - dynamodb:BatchWriteItem
-      Resource:
-        - Fn::GetAtt: [UserRolesTable, Arn]
-        - Fn::Sub: '${UserRolesTable.Arn}/index/*'
-    
-    # === PERMISSIONS TABLE - SOLO LECTURA ===
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:Query
-        - dynamodb:Scan
-      Resource:
-        - Fn::GetAtt: [PermissionsTable, Arn]
-
     # === SQS PERMISSIONS ===
     - Effect: Allow
       Action:
@@ -164,61 +135,6 @@ provider:
         - dynamodb:UpdateItem
       Resource:
         - Fn::GetAtt: [ProcessedMessagesTable, Arn]
-    
-    # Lambda InvokeFunction - Solo para funciones específicas de DB
-    - Effect: Allow
-      Action:
-        - lambda:InvokeFunction
-      Resource:
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerPasillos'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxes'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorFecha'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEspecialidades'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicos'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorBox'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorMedico'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorId'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-verificarConflictoBox'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-verificarConflictoMedico'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEstadoNoAtendido'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-insertarAgenda'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-actualizarEstadoAgenda'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerInstrumentosPorBox'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxYPasillo'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerAgendaPorBoxYFecha'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerNotificaciones'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicoNombre'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxNombre'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerTotalConsultas'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerBoxesDisponibles'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerEspecialidadMasDemandada'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasPorEspecialidad'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasPorDia'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerRendimientoMedicos'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerMedicosPorEspecialidades'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-obtenerConsultasEnCurso'
-        - Fn::Sub: 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-eliminarAgenda'
-    
-    # === TABLAS DE DATOS: CATALOGO, AGENDA, BOX-INSTRUMENTO, NOTIFICACION ===
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:BatchGetItem
-        - dynamodb:BatchWriteItem
-      Resource:
-        - Fn::GetAtt: [CatalogoTable, Arn]
-        - Fn::Sub: '${CatalogoTable.Arn}/index/*'
-        - Fn::GetAtt: [AgendaTable, Arn]
-        - Fn::Sub: '${AgendaTable.Arn}/index/*'
-        - Fn::GetAtt: [BoxInstrumentoTable, Arn]
-        - Fn::Sub: '${BoxInstrumentoTable.Arn}/index/*'
-        - Fn::GetAtt: [NotificacionTable, Arn]
-        - Fn::Sub: '${NotificacionTable.Arn}/index/*'
     
     # Grupos
     - Effect: Allow
@@ -261,6 +177,10 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-especialidades
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-tipos-instrumentos
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-instrumentos
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-appointments
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-appointments/index/*
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-notifications
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-notifications/index/*
 
 functions:
   # === HEALTH CHECK ===
@@ -508,16 +428,6 @@ functions:
     timeout: 30
     description: Elimina una configuración completa de espacios
   
-  # === FUNCIONES DB ===
-  dbProxy:
-    handler: src/handlers/dbProxy.handler
-    events:
-      - httpApi:
-          path: /db/{proxy+}
-          method: any
-          authorizer:
-            name: cognitoJwt
-  
   # === ESPACIOS (reemplazo de pasillos/boxes) ===
   obtenerEspaciosGenerales:
     handler: src/handlers/db/obtenerEspaciosGenerales.handler
@@ -531,88 +441,6 @@ functions:
   obtenerOcupantes:
     handler: src/handlers/db/obtenerOcupantes.handler
     description: Obtiene ocupantes (OCCUPANT) de un grupo
-
-  # === FUNCIONES LEGACY (mantener para compatibilidad) ===
-  obtenerPasillos:
-    handler: src/handlers/db/obtenerPasillos.handler
-
-  obtenerBoxes:
-    handler: src/handlers/db/obtenerBoxes.handler
-
-  obtenerMedicos:
-    handler: src/handlers/db/obtenerMedicos.handler
-
-  obtenerAgendaPorFecha:
-    handler: src/handlers/db/obtenerAgendaPorFecha.handler
-
-  obtenerEspecialidades:
-    handler: src/handlers/db/obtenerEspecialidades.handler
-
-  obtenerAgendaPorBox:
-    handler: src/handlers/db/obtenerAgendaPorBox.handler
-  
-  obtenerAgendaPorMedico:
-    handler: src/handlers/db/obtenerAgendaPorMedico.handler
-  
-  obtenerAgendaPorId:
-    handler: src/handlers/db/obtenerAgendaPorId.handler
-
-  verificarConflictoBox:
-    handler: src/handlers/db/verificarConflictoBox.handler
-  
-  verificarConflictoMedico:
-    handler: src/handlers/db/verificarConflictoMedico.handler
-    
-  obtenerEstadoNoAtendido:
-    handler: src/handlers/db/obtenerEstadoNoAtendido.handler
-  
-  insertarAgenda:
-    handler: src/handlers/db/insertarAgenda.handler
-
-  actualizarEstadoAgenda:
-    handler: src/handlers/db/actualizarEstadoAgenda.handler
-
-  obtenerInstrumentosPorBox:
-    handler: src/handlers/db/obtenerInstrumentosPorBox.handler
-
-  obtenerBoxYPasillo:
-    handler: src/handlers/db/obtenerBoxYPasillo.handler
-  
-  obtenerAgendaPorBoxYFecha:
-    handler: src/handlers/db/obtenerAgendaPorBoxYFecha.handler
-
-  obtenerNotificaciones:
-    handler: src/handlers/db/obtenerNotificaciones.handler
-
-  obtenerMedicoNombre:
-    handler: src/handlers/db/obtenerMedicoNombre.handler
-
-  obtenerTotalConsultas:
-    handler: src/handlers/db/obtenerTotalConsultas.handler
-  
-  obtenerBoxesDisponibles:
-    handler: src/handlers/db/obtenerBoxesDisponibles.handler
-  
-  obtenerEspecialidadMasDemandada:
-    handler: src/handlers/db/obtenerEspecialidadMasDemandada.handler
-
-  obtenerConsultasPorEspecialidad:
-    handler: src/handlers/db/obtenerConsultasPorEspecialidad.handler
-  
-  obtenerConsultasPorDia:
-    handler: src/handlers/db/obtenerConsultasPorDia.handler
-  
-  obtenerRendimientoMedicos:
-    handler: src/handlers/db/obtenerRendimientoMedicos.handler
-
-  obtenerMedicosPorEspecialidades:
-    handler: src/handlers/db/obtenerMedicosPorEspecialidades.handler
-  
-  obtenerConsultasEnCurso:
-    handler: src/handlers/db/obtenerConsultasEnCurso.handler
-  
-  eliminarAgenda:
-    handler: src/handlers/db/eliminarAgenda.handler
 
   # === Funciones de Grupos ===
   createGroup:
@@ -701,6 +529,31 @@ functions:
       - httpApi:
           method: DELETE
           path: /groups/{group_id}/members/{user_sub}
+          authorizer: cognitoJwt
+
+  # === NOTIFICACIONES ===
+  listNotifications:
+    handler: src/handlers/notifications/listNotifications.handler
+    timeout: 10
+    description: Lista las notificaciones del usuario
+    events:
+      - httpApi:
+          method: GET
+          path: /notifications
+          authorizer: cognitoJwt
+
+  markNotificationAsRead:
+    handler: src/handlers/notifications/markAsRead.handler
+    timeout: 10
+    description: Marca una notificación como leída
+    events:
+      - httpApi:
+          method: PUT
+          path: /notifications/{id}/read
+          authorizer: cognitoJwt
+      - httpApi:
+          method: PUT
+          path: /notifications/read-all
           authorizer: cognitoJwt
 
   # === GESTIÓN DE ESPACIOS ===
@@ -898,6 +751,57 @@ functions:
           path: /groups/{grupo_id}/instrumentos/{id}
           authorizer: cognitoJwt
 
+  # === GESTIÓN DE APPOINTMENTS (AGENDAS) ===
+  listAppointments:
+    handler: src/handlers/appointments/listAppointments.handler
+    description: Lista appointments del grupo por fecha o espacio
+    timeout: 10
+    events:
+      - httpApi:
+          method: GET
+          path: /groups/{grupo_id}/appointments
+          authorizer: cognitoJwt
+
+  createAppointment:
+    handler: src/handlers/appointments/createAppointment.handler
+    description: Crea un nuevo appointment
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/appointments
+          authorizer: cognitoJwt
+
+  updateAppointment:
+    handler: src/handlers/appointments/updateAppointment.handler
+    description: Actualiza un appointment
+    timeout: 10
+    events:
+      - httpApi:
+          method: PUT
+          path: /groups/{grupo_id}/appointments/{id}
+          authorizer: cognitoJwt
+
+  deleteAppointment:
+    handler: src/handlers/appointments/deleteAppointment.handler
+    description: Elimina un appointment
+    timeout: 10
+    events:
+      - httpApi:
+          method: DELETE
+          path: /groups/{grupo_id}/appointments/{id}
+          authorizer: cognitoJwt
+
+  checkAppointmentConflict:
+    handler: src/handlers/appointments/checkConflict.handler
+    description: Verifica conflictos de horario para espacio u ocupante
+    timeout: 10
+    events:
+      - httpApi:
+          method: POST
+          path: /groups/{grupo_id}/appointments/check-conflict
+          authorizer: cognitoJwt
+
   # === GESTIÓN DE MIEMBROS (rutas alternativas) ===
   listGroupMembers:
     handler: src/handlers/groups/listMembers.handler
@@ -975,53 +879,6 @@ package:
 resources:
   Resources:
     # === DYNAMODB ===
-    UserRolesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-user-roles
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: user_email
-            AttributeType: S
-          - AttributeName: role
-            AttributeType: S
-        KeySchema:
-          - AttributeName: user_email
-            KeyType: HASH
-        PointInTimeRecoverySpecification:
-          PointInTimeRecoveryEnabled: true
-        Tags:
-          - Key: Environment
-            Value: ${sls:stage}
-          - Key: Project
-            Value: HospitalPadreHurtado
-        GlobalSecondaryIndexes:
-          - IndexName: RoleIndex
-            KeySchema:
-              - AttributeName: role
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-
-    PermissionsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-permissions
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: permission_id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: permission_id
-            KeyType: HASH
-        PointInTimeRecoverySpecification:
-          PointInTimeRecoveryEnabled: true
-        Tags:
-          - Key: Environment
-            Value: ${sls:stage}
-          - Key: Project
-            Value: HospitalPadreHurtado
-    
     ParametersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -1072,138 +929,6 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
-    
-    # === TABLA DE AGENDA ===
-    AgendaTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-agenda
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: PK
-            AttributeType: S
-          - AttributeName: SK
-            AttributeType: S
-          - AttributeName: GSI1PK
-            AttributeType: S
-          - AttributeName: GSI1SK
-            AttributeType: S
-          - AttributeName: GSI2PK
-            AttributeType: S
-          - AttributeName: GSI2SK
-            AttributeType: S
-        KeySchema:
-          - AttributeName: PK
-            KeyType: HASH
-          - AttributeName: SK
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: MedicoFechaIndex
-            KeySchema:
-              - AttributeName: GSI1PK
-                KeyType: HASH
-              - AttributeName: GSI1SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-          - IndexName: FechaIndex
-            KeySchema:
-              - AttributeName: GSI2PK
-                KeyType: HASH
-              - AttributeName: GSI2SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-
-    # === TABLA DE CATÁLOGOS ===
-    CatalogoTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-catalogo
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: PK
-            AttributeType: S
-          - AttributeName: SK
-            AttributeType: S
-          - AttributeName: GSI1PK
-            AttributeType: S
-          - AttributeName: GSI1SK
-            AttributeType: S
-        KeySchema:
-          - AttributeName: PK
-            KeyType: HASH
-          - AttributeName: SK
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: TipoEntidadIndex
-            KeySchema:
-              - AttributeName: GSI1PK
-                KeyType: HASH
-              - AttributeName: GSI1SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-
-    # === TABLA DE RELACIONES BOX-INSTRUMENTO ===
-    BoxInstrumentoTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-box-instrumento
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: PK
-            AttributeType: S
-          - AttributeName: SK
-            AttributeType: S
-          - AttributeName: GSI1PK
-            AttributeType: S
-          - AttributeName: GSI1SK
-            AttributeType: S
-        KeySchema:
-          - AttributeName: PK
-            KeyType: HASH
-          - AttributeName: SK
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: InstrumentoBoxIndex
-            KeySchema:
-              - AttributeName: GSI1PK
-                KeyType: HASH
-              - AttributeName: GSI1SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-
-    # === TABLA DE NOTIFICACIONES ===
-    NotificacionTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-notificacion
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: PK
-            AttributeType: S
-          - AttributeName: SK
-            AttributeType: S
-          - AttributeName: GSI1PK
-            AttributeType: S
-          - AttributeName: GSI1SK
-            AttributeType: S
-        KeySchema:
-          - AttributeName: PK
-            KeyType: HASH
-          - AttributeName: SK
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: TipoFechaIndex
-            KeySchema:
-              - AttributeName: GSI1PK
-                KeyType: HASH
-              - AttributeName: GSI1SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
     
     # === TABLA DE IDEMPOTENCIA ===
     ProcessedMessagesTable:
@@ -1287,18 +1012,6 @@ resources:
           - AttributeName: role
             KeyType: HASH
 
-    PermissionsCatalogTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-permissions-catalog
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: permission_id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: permission_id
-            KeyType: HASH
-    
     SpacesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -1404,6 +1117,113 @@ resources:
             KeyType: RANGE
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
+
+    AppointmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-appointments
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI2PK
+            AttributeType: S
+          - AttributeName: GSI2SK
+            AttributeType: S
+          - AttributeName: GSI3PK
+            AttributeType: S
+          - AttributeName: GSI3SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: OcupanteIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: EspacioIndex
+            KeySchema:
+              - AttributeName: GSI2PK
+                KeyType: HASH
+              - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: DateIndex
+            KeySchema:
+              - AttributeName: GSI3PK
+                KeyType: HASH
+              - AttributeName: GSI3SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
+
+    NotificationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-notifications
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: notification_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GroupIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: NotificationIdIndex
+            KeySchema:
+              - AttributeName: notification_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
 
     # === SQS PARA PERSONALIZACIÓN ===
     PersonalizationDLQ:

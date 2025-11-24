@@ -74,12 +74,38 @@ class ApiClient {
     return response.data;
   }
 
-  // ============ AGENDA ============
-  async obtenerAgendaPorFecha(fecha) {
-    const response = await this.client.get('/db/agenda', {
-      params: { fecha }
-    });
-    return response.data;
+  // ============ AGENDA (MIGRADO A APPOINTMENTS) ============
+  /**
+   * Obtiene appointments por fecha usando la nueva API
+   * Requiere que el usuario tenga un grupo activo
+   * @param {string} fecha - Fecha en formato YYYY-MM-DD
+   * @param {string} grupo_id - ID del grupo (opcional, se puede obtener del contexto)
+   * @returns {Promise<Array>} - Lista de appointments
+   */
+  async obtenerAgendaPorFecha(fecha, grupo_id = null) {
+    try {
+      // Si no se proporciona grupo_id, intentar obtener el grupo activo
+      if (!grupo_id) {
+        const grupoActivoResponse = await this.obtenerGrupoActivo();
+        if (grupoActivoResponse && grupoActivoResponse.grupo_activo) {
+          grupo_id = grupoActivoResponse.grupo_activo.grupo_id;
+        } else {
+          console.warn('⚠️ No hay grupo activo, retornando array vacío');
+          return [];
+        }
+      }
+
+      const response = await this.client.get(`/groups/${grupo_id}/appointments`, {
+        params: { fecha }
+      });
+      
+      // La nueva API retorna { ok, appointments, total }
+      return response.data.appointments || [];
+    } catch (error) {
+      console.error('❌ Error obteniendo appointments por fecha:', error.message);
+      // Retornar array vacío en caso de error para no romper la UI
+      return [];
+    }
   }
 
   async obtenerAgendaPorBox(box_id) {
@@ -186,39 +212,314 @@ class ApiClient {
   }
 
   // ============ NOTIFICACIONES ============
-  async obtenerNotificaciones() {
-    const response = await this.client.get('/db/notificaciones');
+  /**
+   * Obtiene las notificaciones del usuario autenticado
+   * @param {Object} filtros - { limit, grupo_id, solo_no_leidas }
+   * @returns {Promise<Array>} - Lista de notificaciones
+   */
+  async obtenerNotificaciones(filtros = {}) {
+    const params = new URLSearchParams();
+    
+    if (filtros.limit) params.append('limit', filtros.limit);
+    if (filtros.grupo_id) params.append('grupo_id', filtros.grupo_id);
+    if (filtros.solo_no_leidas) params.append('solo_no_leidas', 'true');
+    
+    const url = `/notifications${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await this.client.get(url);
     return response.data;
   }
 
-  // ============ ESTADÍSTICAS ============
+  /**
+   * Marca una notificación como leída
+   * @param {string} notificationId - ID de la notificación
+   * @returns {Promise<Object>} - Respuesta del servidor
+   */
+  async marcarNotificacionLeida(notificationId) {
+    const response = await this.client.put(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  /**
+   * Marca todas las notificaciones como leídas
+   * @returns {Promise<Object>} - Respuesta del servidor
+   */
+  async marcarTodasLeidas() {
+    const response = await this.client.put('/notifications/read-all');
+    return response.data;
+  }
+
+  // ============ ESTADÍSTICAS (USANDO NUEVA TABLA APPOINTMENTS) ============
+  /**
+   * Obtiene el total de consultas (appointments) en un rango de fechas
+   * @param {object} filtros - { fechaInicio, fechaFin, grupo_id }
+   * @returns {Promise<number>} - Total de consultas
+   */
   async obtenerTotalConsultas(filtros) {
-    const response = await this.client.post('/db/total-consultas', filtros);
-    return response.data.total;
+    try {
+      const { fechaInicio, fechaFin, grupo_id } = filtros;
+      
+      if (!grupo_id) {
+        console.warn('⚠️ obtenerTotalConsultas: grupo_id es requerido');
+        return 0;
+      }
+
+      // Obtener appointments del rango de fechas
+      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
+      return appointments.length;
+    } catch (error) {
+      console.error('❌ Error en obtenerTotalConsultas:', error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Obtiene la especialidad más demandada en un período
+   * @param {object} filtros - { fechaInicio, fechaFin, grupo_id }
+   * @returns {Promise<object>} - { nombre, consultas }
+   */
+  async obtenerEspecialidadMasDemandada(filtros) {
+    try {
+      const { fechaInicio, fechaFin, grupo_id } = filtros;
+      
+      if (!grupo_id) {
+        console.warn('⚠️ obtenerEspecialidadMasDemandada: grupo_id es requerido');
+        return null;
+      }
+
+      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
+      
+      // Agrupar por especialidad
+      const porEspecialidad = {};
+      appointments.forEach(apt => {
+        const esp = apt.especialidad_nombre || 'Sin especialidad';
+        porEspecialidad[esp] = (porEspecialidad[esp] || 0) + 1;
+      });
+
+      // Encontrar la más demandada
+      let maxEsp = null;
+      let maxCount = 0;
+      for (const [nombre, consultas] of Object.entries(porEspecialidad)) {
+        if (consultas > maxCount) {
+          maxCount = consultas;
+          maxEsp = nombre;
+        }
+      }
+
+      return maxEsp ? { nombre: maxEsp, consultas: maxCount } : null;
+    } catch (error) {
+      console.error('❌ Error en obtenerEspecialidadMasDemandada:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene consultas agrupadas por especialidad
+   * @param {object} filtros - { fechaInicio, fechaFin, grupo_id }
+   * @returns {Promise<Array>} - [{ nombre, consultas }, ...]
+   */
+  async obtenerConsultasPorEspecialidad(filtros) {
+    try {
+      const { fechaInicio, fechaFin, grupo_id } = filtros;
+      
+      if (!grupo_id) {
+        console.warn('⚠️ obtenerConsultasPorEspecialidad: grupo_id es requerido');
+        return [];
+      }
+
+      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
+      
+      // Agrupar por especialidad
+      const porEspecialidad = {};
+      appointments.forEach(apt => {
+        const esp = apt.especialidad_nombre || 'Sin especialidad';
+        porEspecialidad[esp] = (porEspecialidad[esp] || 0) + 1;
+      });
+
+      // Convertir a array y ordenar
+      return Object.entries(porEspecialidad)
+        .map(([nombre, consultas]) => ({ nombre, consultas }))
+        .sort((a, b) => b.consultas - a.consultas);
+    } catch (error) {
+      console.error('❌ Error en obtenerConsultasPorEspecialidad:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene consultas agrupadas por día de la semana
+   * @param {object} filtros - { fechaInicio, fechaFin, grupo_id }
+   * @returns {Promise<Array>} - [lun, mar, mie, jue, vie, sab, dom]
+   */
+  async obtenerConsultasPorDia(filtros) {
+    try {
+      const { fechaInicio, fechaFin, grupo_id } = filtros;
+      
+      if (!grupo_id) {
+        console.warn('⚠️ obtenerConsultasPorDia: grupo_id es requerido');
+        return [0, 0, 0, 0, 0, 0, 0];
+      }
+
+      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
+      
+      // Contar por día de semana (0=domingo, 1=lunes, ...)
+      const porDia = [0, 0, 0, 0, 0, 0, 0];
+      appointments.forEach(apt => {
+        const fecha = new Date(apt.fecha);
+        const dia = fecha.getDay(); // 0=domingo
+        porDia[dia]++;
+      });
+
+      // Reordenar: [lunes, martes, ..., domingo]
+      return [porDia[1], porDia[2], porDia[3], porDia[4], porDia[5], porDia[6], porDia[0]];
+    } catch (error) {
+      console.error('❌ Error en obtenerConsultasPorDia:', error.message);
+      return [0, 0, 0, 0, 0, 0, 0];
+    }
+  }
+
+  /**
+   * Obtiene rendimiento de ocupantes (médicos/profesores/etc)
+   * @param {object} filtros - { fechaInicio, fechaFin, grupo_id }
+   * @returns {Promise<Array>} - [{ nombre, especialidad, consultas }, ...]
+   */
+  async obtenerRendimientoMedicos(filtros) {
+    try {
+      const { fechaInicio, fechaFin, grupo_id } = filtros;
+      
+      if (!grupo_id) {
+        console.warn('⚠️ obtenerRendimientoMedicos: grupo_id es requerido');
+        return [];
+      }
+
+      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
+      
+      // Agrupar por ocupante
+      const porOcupante = {};
+      appointments.forEach(apt => {
+        const nombre = apt.ocupante_nombre || 'Sin ocupante';
+        const especialidad = apt.especialidad_nombre || 'Sin especialidad';
+        
+        if (!porOcupante[nombre]) {
+          porOcupante[nombre] = {
+            nombre,
+            especialidad,
+            consultas: 0
+          };
+        }
+        porOcupante[nombre].consultas++;
+      });
+
+      // Convertir a array y ordenar
+      return Object.values(porOcupante)
+        .sort((a, b) => b.consultas - a.consultas);
+    } catch (error) {
+      console.error('❌ Error en obtenerRendimientoMedicos:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Método auxiliar para obtener appointments en un rango de fechas
+   * Optimizado con cache en memoria para evitar requests duplicadas
+   * @param {string} grupo_id - ID del grupo
+   * @param {string} fechaInicio - Fecha inicio (YYYY-MM-DD)
+   * @param {string} fechaFin - Fecha fin (YYYY-MM-DD)
+   * @returns {Promise<Array>} - Lista de appointments
+   */
+  async obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin) {
+    try {
+      // Cache simple en memoria (válido por 30 segundos)
+      const cacheKey = `${grupo_id}:${fechaInicio}:${fechaFin}`;
+      const now = Date.now();
+      
+      if (!this._appointmentsCache) {
+        this._appointmentsCache = {};
+      }
+      
+      // Verificar si tenemos datos en cache y no han expirado
+      const cached = this._appointmentsCache[cacheKey];
+      if (cached && (now - cached.timestamp < 30000)) {
+        console.log(`📦 Cache hit para appointments ${fechaInicio} - ${fechaFin}`);
+        return cached.data;
+      }
+      
+      const allAppointments = [];
+      
+      // Generar todas las fechas del rango
+      const fechas = this.generarRangoFechas(fechaInicio, fechaFin);
+      
+      console.log(`🔄 Obteniendo appointments para ${fechas.length} fechas...`);
+      const startTime = Date.now();
+      
+      // Limitar concurrencia a 3 requests a la vez para evitar saturar el lambda
+      const batchSize = 3;
+      for (let i = 0; i < fechas.length; i += batchSize) {
+        const batch = fechas.slice(i, i + batchSize);
+        
+        const promises = batch.map(fecha => 
+          this.client.get(`/groups/${grupo_id}/appointments`, {
+            params: { fecha }
+          })
+          .then(response => response.data.appointments || [])
+          .catch(err => {
+            console.warn(`⚠️ Error obteniendo appointments para ${fecha}:`, err.message);
+            return [];
+          })
+        );
+
+        const results = await Promise.all(promises);
+        results.forEach(appointments => allAppointments.push(...appointments));
+        
+        // Pequeña pausa entre batches para no saturar
+        if (i + batchSize < fechas.length) {
+          await new Promise(resolve => setTimeout(resolve, 50)); // Reducido de 100ms a 50ms
+        }
+      }
+
+      const endTime = Date.now();
+      console.log(`✅ Obtenidos ${allAppointments.length} appointments en ${endTime - startTime}ms`);
+      
+      // Guardar en cache
+      this._appointmentsCache[cacheKey] = {
+        data: allAppointments,
+        timestamp: now
+      };
+      
+      // Limpiar cache viejo (más de 5 minutos)
+      Object.keys(this._appointmentsCache).forEach(key => {
+        if (now - this._appointmentsCache[key].timestamp > 300000) {
+          delete this._appointmentsCache[key];
+        }
+      });
+      
+      return allAppointments;
+    } catch (error) {
+      console.error('❌ Error en obtenerAppointmentsRango:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Genera un array de fechas entre inicio y fin
+   * @param {string} inicio - Fecha inicio (YYYY-MM-DD)
+   * @param {string} fin - Fecha fin (YYYY-MM-DD)
+   * @returns {Array<string>} - Array de fechas
+   */
+  generarRangoFechas(inicio, fin) {
+    const fechas = [];
+    const fechaActual = new Date(inicio);
+    const fechaFinal = new Date(fin);
+
+    while (fechaActual <= fechaFinal) {
+      fechas.push(fechaActual.toISOString().split('T')[0]);
+      fechaActual.setDate(fechaActual.getDate() + 1);
+    }
+
+    return fechas;
   }
 
   async obtenerBoxesDisponibles(boxes) {
     const response = await this.client.post('/db/boxes-disponibles', { boxes });
-    return response.data;
-  }
-
-  async obtenerEspecialidadMasDemandada(filtros) {
-    const response = await this.client.post('/db/especialidad-mas-demandada', filtros);
-    return response.data;
-  }
-
-  async obtenerConsultasPorEspecialidad(filtros) {
-    const response = await this.client.post('/db/consultas-especialidad', filtros);
-    return response.data;
-  }
-
-  async obtenerConsultasPorDia(filtros) {
-    const response = await this.client.post('/db/consultas-dia', filtros);
-    return response.data;
-  }
-
-  async obtenerRendimientoMedicos(filtros) {
-    const response = await this.client.post('/db/rendimiento-medicos', filtros);
     return response.data;
   }
 
@@ -372,6 +673,23 @@ class ApiClient {
   async aceptarInvitacion(token) {
     const response = await this.client.post('/api/invitaciones/aceptar', { token });
     return response.data;
+  }
+
+  // ============ MÉTODO GENÉRICO FETCH ============
+  /**
+   * Método genérico para hacer peticiones GET
+   * @param {string} path - Ruta relativa (ej: '/groups/123/appointments')
+   * @param {object} options - Opciones adicionales (headers, params, etc)
+   * @returns {Promise<object>} - Respuesta del servidor
+   */
+  async fetch(path, options = {}) {
+    try {
+      const response = await this.client.get(path, options);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error en fetch(${path}):`, error.message);
+      return { ok: false, error: error.message };
+    }
   }
 
 }

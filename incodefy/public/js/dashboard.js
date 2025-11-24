@@ -31,12 +31,29 @@ function obtenerSemanaActual() {
 async function cargarFiltrosIniciales() {
     try {
         const response = await fetch('/dashboard/filtros-iniciales');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('📊 Filtros iniciales recibidos:', data);
+        
+        if (!data.success) {
+            console.error('Error en respuesta:', data.error);
+            return;
+        }
         
         // Cargar especialidades
         const especialidadesList = document.getElementById('especialidades-list');
+        if (!especialidadesList) {
+            console.error('❌ Elemento #especialidades-list no encontrado en el DOM');
+            return;
+        }
+        
         especialidadesList.innerHTML = '';
-        data.especialidades.forEach((especialidad, index) => {
+        const especialidades = data.especialidades || [];
+        especialidades.forEach((especialidad, index) => {
             especialidadesList.innerHTML += `
                 <li>
                     <div class="form-check dropdown-item">
@@ -52,8 +69,14 @@ async function cargarFiltrosIniciales() {
         
         // Cargar boxes
         const boxesList = document.getElementById('boxes-list');
+        if (!boxesList) {
+            console.error('❌ Elemento #boxes-list no encontrado en el DOM');
+            return;
+        }
+        
         boxesList.innerHTML = '';
-        data.boxes.forEach((box, index) => {
+        const boxes = data.boxes || [];
+        boxes.forEach((box, index) => {
             const listItem = document.createElement('div');
             listItem.innerHTML = `
                 <div class="form-check">
@@ -72,8 +95,10 @@ async function cargarFiltrosIniciales() {
             boxesList.appendChild(listItem);
         });
         
-        // Configurar eventos después de cargar
-        configurarEventosFiltros();
+        console.log('✅ Filtros iniciales cargados:', {
+            especialidades: especialidades.length,
+            boxes: boxes.length
+        });
         
     } catch (error) {
         console.error('Error al cargar filtros iniciales:', error);
@@ -110,15 +135,28 @@ function configurarEventosFiltros() {
         }
     });
 
-    // Eventos para fechas
+    // Eventos para fechas - registrados aquí para asegurar que funcionen
     const fechaInicio = document.getElementById('fechaInicioFiltro');
     const fechaFin = document.getElementById('fechaFinFiltro');
     
     if (fechaInicio) {
-        fechaInicio.addEventListener('change', actualizarDatos);
+        console.log('✅ Event listener registrado para fechaInicio');
+        fechaInicio.addEventListener('change', function() {
+            console.log('📅 Fecha inicio cambiada a:', this.value);
+            actualizarDatos();
+        });
+    } else {
+        console.warn('⚠️ Elemento #fechaInicioFiltro no encontrado');
     }
+    
     if (fechaFin) {
-        fechaFin.addEventListener('change', actualizarDatos);
+        console.log('✅ Event listener registrado para fechaFin');
+        fechaFin.addEventListener('change', function() {
+            console.log('📅 Fecha fin cambiada a:', this.value);
+            actualizarDatos();
+        });
+    } else {
+        console.warn('⚠️ Elemento #fechaFinFiltro no encontrado');
     }
 
     // Evento para resetear filtros
@@ -154,7 +192,13 @@ function obtenerFiltrosActuales() {
 // Función para actualizar datos
 async function actualizarDatos() {
     try {
+        // Mostrar indicadores de carga
+        mostrarCargando();
+        
         const filtros = obtenerFiltrosActuales();
+        console.log('📊 Solicitando datos del dashboard...', filtros);
+        
+        const startTime = performance.now();
         const response = await fetch('/dashboard/datos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -162,11 +206,18 @@ async function actualizarDatos() {
         });
 
         const data = await response.json();
+        const endTime = performance.now();
+        console.log(`✅ Datos recibidos en ${Math.round(endTime - startTime)}ms`);
+        
         actualizarKPIs(data.kpis);
         actualizarGraficos(data.graficos);
+        
+        // Ocultar indicadores de carga
+        ocultarCargando();
 
     } catch (error) {
         console.error('Error al actualizar datos:', error);
+        ocultarCargando();
     }
 }
 
@@ -249,6 +300,45 @@ function actualizarGraficos(graficos) {
     
     // Actualizar gráfico de rendimiento de médicos
     actualizarGraficoMedicos(graficos.rendimiento_medicos);
+}
+
+// Funciones de loading state
+function mostrarCargando() {
+    // Agregar clase de loading a las tarjetas de KPI
+    document.querySelectorAll('.dashboard-kpi-card').forEach(card => {
+        card.style.opacity = '0.6';
+        card.style.pointerEvents = 'none';
+    });
+    
+    // Agregar clase de loading a los gráficos
+    document.querySelectorAll('.dashboard-chart-container').forEach(container => {
+        container.style.opacity = '0.6';
+    });
+    
+    // Mostrar spinner si existe
+    const spinner = document.getElementById('dashboard-loading-spinner');
+    if (spinner) {
+        spinner.style.display = 'block';
+    }
+}
+
+function ocultarCargando() {
+    // Quitar clase de loading de las tarjetas
+    document.querySelectorAll('.dashboard-kpi-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+    });
+    
+    // Quitar clase de loading de los gráficos
+    document.querySelectorAll('.dashboard-chart-container').forEach(container => {
+        container.style.opacity = '1';
+    });
+    
+    // Ocultar spinner si existe
+    const spinner = document.getElementById('dashboard-loading-spinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
 }
 
 // Función auxiliar para convertir color hex a RGB
@@ -834,13 +924,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función principal de inicialización
 async function inicializarDashboard() {
+    console.log('🚀 Inicializando dashboard...');
+    
     // Configurar fechas de la semana actual
     const semanaActual = obtenerSemanaActual();
     document.getElementById('fechaInicioFiltro').value = semanaActual.inicio;
     document.getElementById('fechaFinFiltro').value = semanaActual.fin;
     
-    // Cargar filtros iniciales
+    console.log('📅 Fechas inicializadas:', semanaActual);
+    
+    // Cargar filtros iniciales (especialidades y boxes)
     await cargarFiltrosIniciales();
+    
+    // Configurar eventos de filtros (incluyendo fechas)
+    // Llamado aquí para asegurar que el DOM esté listo
+    configurarEventosFiltros();
     
     // Cargar datos iniciales
     actualizarDatos();

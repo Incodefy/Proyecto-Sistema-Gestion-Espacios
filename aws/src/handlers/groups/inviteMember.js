@@ -6,6 +6,7 @@ const cognito = new CognitoIdentityProviderClient({});
 const ses = new SESv2Client({});
 const crypto = require("crypto");
 const { getInvitationEmailTemplate, getInvitationEmailText } = require("../../utils/emailTemplates");
+const { notifyMiembroInvitado } = require('../../utils/notificationHelper');
 
 exports.handler = async (event) => {
   const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -215,6 +216,24 @@ exports.handler = async (event) => {
     }
 
     console.log(`[${TRACE_ID}] ✅ Invitación creada exitosamente`);
+
+    // Crear notificación para el usuario invitado (si tiene sub)
+    if (invitedUserSub) {
+      try {
+        await notifyMiembroInvitado({
+          invitedUserSub,
+          grupoId: grupo_id,
+          grupoNombre: groupResult.Item.name || 'sin nombre',
+          createdBy: userSub,
+          rol,
+          invitedEmail: email
+        });
+        console.log(`[${TRACE_ID}] 📬 Notificación creada para ${email}`);
+      } catch (notifError) {
+        console.error(`[${TRACE_ID}] ⚠️ Error creando notificación:`, notifError);
+        // No fallar si la notificación falla
+      }
+    }
 
     return {
       statusCode: 201,

@@ -1,28 +1,32 @@
 // middleware/nomenclatura.js
 
+const DEBUG = process.env.DEBUG_NOMENCLATURA === 'true';
+
 /**
  * Middleware para obtener la nomenclatura del grupo activo
  * y hacerla disponible en res.locals para todas las vistas
+ * OPTIMIZADO: Cache en sesión + logs opcionales + skip rutas API
  */
 async function nomenclaturaMiddleware(req, res, next) {
-  console.log('\n[Nomenclatura] ══════════ INICIO ══════════');
-  console.log('[Nomenclatura] 🛣️  Ruta:', req.path);
-  console.log('[Nomenclatura] 👤 Usuario:', req.session?.user?.email || 'NINGUNO');
-  console.log('[Nomenclatura] 📦 Grupo activo:', req.session?.grupoActivo?.grupo_id || 'NINGUNO');
-  console.log('[Nomenclatura] 🔌 API Client:', req.apiClient ? 'PRESENTE' : 'AUSENTE');
-
   // Valores por defecto
-  res.locals.nomenclatura = {
+  const defaults = {
     general: 'General',
     especifico: 'Específico',
-    ocupante: 'Ocupante'
+    ocupante: 'Ocupante',
+    especialidad: 'Especialidad',
+    instrumento: 'Instrumento'
   };
-  req.nomenclatura = res.locals.nomenclatura;
+
+  res.locals.nomenclatura = defaults;
+  req.nomenclatura = defaults;
+
+  // Skip para rutas API (no necesitan nomenclatura)
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
 
   // Solo ejecutar si hay usuario autenticado y grupo activo
   if (!req.session.user || !req.session.grupoActivo) {
-    console.log('[Nomenclatura] ⚠️ Sin usuario o grupo activo, usando defaults');
-    console.log('[Nomenclatura] ══════════ FIN ══════════\n');
     return next();
   }
 
@@ -30,42 +34,58 @@ async function nomenclaturaMiddleware(req, res, next) {
     const grupoActivo = req.session.grupoActivo;
     const grupoId = typeof grupoActivo === 'string' ? grupoActivo : grupoActivo?.grupo_id;
     
-    console.log('[Nomenclatura] 🔍 Grupo ID extraído:', grupoId);
+    if (!grupoId) {
+      return next();
+    }
 
-    if (grupoId && req.apiClient) {
-      console.log('[Nomenclatura] 📡 Llamando a obtenerGrupo()...');
+    // Verificar cache en sesión (dura toda la sesión)
+    if (req.session.nomenclaturaCache && 
+        req.session.nomenclaturaCache.grupoId === grupoId) {
+      res.locals.nomenclatura = req.session.nomenclaturaCache.data;
+      req.nomenclatura = req.session.nomenclaturaCache.data;
+      if (DEBUG) console.log('[Nomenclatura] ✅ Usando cache de sesión');
+      return next();
+    }
+
+    // Si ya está en grupoActivo.nomenclatura, usar directamente
+    if (grupoActivo.nomenclatura) {
+      res.locals.nomenclatura = grupoActivo.nomenclatura;
+      req.nomenclatura = grupoActivo.nomenclatura;
       
-      // Agregar timeout de 5 segundos
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout obtaining group')), 5000)
-      );
+      // Guardar en cache de sesión
+      req.session.nomenclaturaCache = {
+        grupoId,
+        data: grupoActivo.nomenclatura
+      };
       
+      if (DEBUG) console.log('[Nomenclatura] ✅ Usando nomenclatura de grupoActivo');
+      return next();
+    }
+
+    // Último recurso: llamar a API (solo si no hay cache)
+    if (req.apiClient) {
       const grupoResponse = await Promise.race([
         req.apiClient.obtenerGrupo(grupoId),
-        timeoutPromise
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
       ]);
       
-      console.log('[Nomenclatura] ✅ Respuesta recibida:', grupoResponse?.ok);
-      
-      if (grupoResponse && grupoResponse.ok && grupoResponse.group?.nomenclatura) {
+      if (grupoResponse?.ok && grupoResponse.group?.nomenclatura) {
         res.locals.nomenclatura = grupoResponse.group.nomenclatura;
-        req.nomenclatura = grupoResponse.group.nomenclatura; // También en req para acceso directo
-        console.log('[Nomenclatura] ✅ Nomenclatura actualizada:', res.locals.nomenclatura);
-      } else {
-        console.log('[Nomenclatura] ⚠️ Respuesta inválida, usando defaults');
-        req.nomenclatura = res.locals.nomenclatura;
+        req.nomenclatura = grupoResponse.group.nomenclatura;
+        
+        // Guardar en cache de sesión
+        req.session.nomenclaturaCache = {
+          grupoId,
+          data: grupoResponse.group.nomenclatura
+        };
+        
+        if (DEBUG) console.log('[Nomenclatura] ✅ Cargado desde API y cacheado');
       }
-    } else {
-      console.log('[Nomenclatura] ⚠️ Sin grupoId o apiClient, usando defaults');
-      req.nomenclatura = res.locals.nomenclatura;
     }
   } catch (error) {
-    console.log('[Nomenclatura] ❌ Error:', error.message);
-    console.log('[Nomenclatura] ⚠️ Usando nomenclatura por defecto');
-    req.nomenclatura = res.locals.nomenclatura;
+    if (DEBUG) console.log('[Nomenclatura] ⚠️ Error:', error.message);
   }
 
-  console.log('[Nomenclatura] ══════════ FIN ══════════\n');
   next();
 }
 

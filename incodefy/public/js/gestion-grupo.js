@@ -17,6 +17,7 @@ class GestionGrupo {
     this.tiposInstrumentos = [];
     this.instrumentos = [];
     this.tipoSeleccionado = null;
+    this.especialidadSeleccionada = null; // Para el diseño master-detail de recursos médicos
     this.editingId = null;
     this.editingValue = '';
     
@@ -31,15 +32,19 @@ class GestionGrupo {
   async init() {
     console.log('🚀 Iniciando Gestión de Grupo');
     
-    // Cargar datos iniciales
+    // Cargar grupo activo y nomenclatura primero (necesarios para las siguientes llamadas)
     await this.cargarGrupoActivo();
     await this.cargarNomenclatura();
-    await this.cargarEspacios();
-    await this.cargarEspecialidades();
-    await this.cargarOcupantes();
-    await this.cargarTiposInstrumentos();
-    await this.cargarInstrumentos();
-    await this.cargarMiembros();
+    
+    // Cargar todos los datos restantes en paralelo para mejorar el rendimiento
+    await Promise.all([
+      this.cargarEspacios(),
+      this.cargarEspecialidades(),
+      this.cargarOcupantes(),
+      this.cargarTiposInstrumentos(),
+      this.cargarInstrumentos(),
+      this.cargarMiembros()
+    ]);
     
     // Inicializar event listeners
     this.initEventListeners();
@@ -244,11 +249,6 @@ class GestionGrupo {
       this.guardarNomenclatura();
     });
     
-    // Modal de ocupantes
-    document.getElementById('btnGuardarOcupante').addEventListener('click', () => {
-      this.guardarOcupanteDesdeModal();
-    });
-    
     document.getElementById('btnCancelarNomenclatura').addEventListener('click', () => {
       this.cargarNomenclatura();
     });
@@ -265,16 +265,6 @@ class GestionGrupo {
     
     document.getElementById('btnGuardarEspacios').addEventListener('click', () => {
       this.guardarEspacios();
-    });
-
-    // Especialidades
-    document.getElementById('btnAgregarEspecialidad').addEventListener('click', () => {
-      this.mostrarFormularioEspecialidad();
-    });
-
-    // Ocupantes
-    document.getElementById('btnAgregarOcupante').addEventListener('click', () => {
-      this.mostrarFormularioOcupante();
     });
 
     // Miembros
@@ -1278,48 +1268,62 @@ class GestionGrupo {
     }
   }
 
-  // ============= ESPECIALIDADES =============
+  // ============= ESPECIALIDADES (MASTER-DETAIL) =============
 
   renderEspecialidades() {
-    const container = document.getElementById('especialidadesListContainer');
-    const btnText = document.getElementById('btnAgregarEspecialidadText');
-    const description = document.getElementById('especialidadesDescription');
+    const container = document.getElementById('especialidades-list');
     
-    // Actualizar textos según nomenclatura
+    if (!container) return;
+    
     const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
-    btnText.textContent = `Agregar ${nombreEspecialidad}`;
-    description.textContent = `Agrega, edita o elimina ${nombreEspecialidad.toLowerCase()}es disponibles en tu grupo`;
     
     if (this.especialidades.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-stethoscope"></i>
-          <h3>No hay ${nombreEspecialidad.toLowerCase()}es registradas</h3>
-          <p>Agrega las ${nombreEspecialidad.toLowerCase()}es que estarán disponibles para los ${(this.nomenclatura.ocupante || 'ocupante').toLowerCase()}s</p>
+          <p>No hay ${nombreEspecialidad.toLowerCase()}es registradas</p>
         </div>
       `;
       return;
     }
     
-    container.innerHTML = `
-      <div class="items-grid">
-        ${this.especialidades.map(esp => `
-          <div class="item-card">
-            <div class="item-content">
-              <div class="item-name">${esp.nombre}</div>
-            </div>
-            <div class="item-actions">
-              <button class="btn-icon edit" onclick="gestionGrupo.editarEspecialidad('${esp.id}')" title="Editar">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="btn-icon delete" onclick="gestionGrupo.eliminarEspecialidad('${esp.id}')" title="Eliminar">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          </div>
-        `).join('')}
+    container.innerHTML = this.especialidades.map(esp => `
+      <div class="item-card ${this.especialidadSeleccionada === esp.id ? 'selected' : ''}" 
+           onclick="gestionGrupo.seleccionarEspecialidad('${esp.id}')">
+        <div class="item-info">
+          <div class="item-name">${esp.nombre}</div>
+          <div class="item-count">${this.ocupantes.filter(o => o.especialidad_id === esp.id).length} ${(this.nomenclatura.ocupante || 'ocupante').toLowerCase()}(s)</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn-icon edit" onclick="event.stopPropagation(); gestionGrupo.editarEspecialidad('${esp.id}')" title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn-icon delete" onclick="event.stopPropagation(); gestionGrupo.eliminarEspecialidad('${esp.id}')" title="Eliminar">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
-    `;
+    `).join('');
+  }
+
+  seleccionarEspecialidad(especialidadId) {
+    this.especialidadSeleccionada = especialidadId;
+    this.renderEspecialidades();
+    this.renderOcupantes();
+    
+    // Mostrar el formulario de agregar ocupante
+    const addSection = document.getElementById('add-ocupante-section');
+    if (addSection) {
+      addSection.style.display = 'flex';
+    }
+    
+    // Actualizar el subtitle
+    const especialidad = this.especialidades.find(e => e.id === especialidadId);
+    const subtitle = document.getElementById('ocupantes-subtitle');
+    if (subtitle && especialidad) {
+      const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
+      subtitle.textContent = `${nombreOcupante}s de ${especialidad.nombre}`;
+    }
   }
 
   mostrarFormularioEspecialidad(especialidadId = null) {
@@ -1337,6 +1341,19 @@ class GestionGrupo {
         this.crearEspecialidad(nuevoNombre.trim());
       }
     }
+  }
+
+  async agregarEspecialidad() {
+    const nombreInput = document.getElementById('nuevaEspecialidadNombre');
+    const nombre = nombreInput.value.trim();
+
+    if (!nombre) {
+      this.showNotification('El nombre es requerido', 'error');
+      return;
+    }
+
+    await this.crearEspecialidad(nombre);
+    nombreInput.value = '';
   }
 
   async crearEspecialidad(nombre) {
@@ -1417,60 +1434,72 @@ class GestionGrupo {
     }
   }
 
-  // ============= OCUPANTES =============
+  // ============= OCUPANTES (MASTER-DETAIL) =============
 
   renderOcupantes() {
-    console.log('🔍 renderOcupantes() llamado');
-    console.log('📦 Ocupantes array:', this.ocupantes);
-    console.log('📦 Especialidades array:', this.especialidades);
+    const container = document.getElementById('ocupantes-list');
     
-    const container = document.getElementById('ocupantesListContainer');
-    const btnText = document.getElementById('btnAgregarOcupanteText');
-    const description = document.getElementById('ocupantesDescription');
+    if (!container) return;
     
-    console.log('🎯 Container encontrado:', container !== null);
-    
-    // Actualizar textos según nomenclatura
     const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
-    if (btnText) btnText.textContent = `Agregar ${nombreOcupante}`;
-    if (description) description.textContent = `Agrega, edita o elimina ${nombreOcupante.toLowerCase()}s de tu grupo`;
     
-    if (this.ocupantes.length === 0) {
+    // Si no hay especialidad seleccionada, mostrar estado vacío
+    if (!this.especialidadSeleccionada) {
       container.innerHTML = `
         <div class="empty-state">
-          <i class="fas fa-user-md"></i>
-          <h3>No hay ${nombreOcupante.toLowerCase()}s registrados</h3>
-          <p>Agrega los ${nombreOcupante.toLowerCase()}s que ocuparán los ${(this.nomenclatura.especifico || 'espacio').toLowerCase()}s</p>
+          <i class="fas fa-hand-pointer"></i>
+          <p>Selecciona una especialidad</p>
         </div>
       `;
       return;
     }
     
-    container.innerHTML = `
-      <div class="items-grid">
-        ${this.ocupantes.map(ocup => {
-          const especialidad = this.especialidades.find(e => e.id === ocup.especialidad_id);
-          return `
-            <div class="item-card">
-              <div class="item-content">
-                <div>
-                  <div class="item-name">${ocup.nombre}</div>
-                  ${especialidad ? `<div class="item-meta">${especialidad.nombre}</div>` : ''}
-                </div>
-              </div>
-              <div class="item-actions">
-                <button class="btn-icon edit" onclick="gestionGrupo.editarOcupante('${ocup.id}')" title="Editar">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-icon delete" onclick="gestionGrupo.eliminarOcupante('${ocup.id}')" title="Eliminar">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          `;
-        }).join('')}
+    // Filtrar ocupantes por especialidad seleccionada
+    const ocupantesFiltrados = this.ocupantes.filter(o => o.especialidad_id === this.especialidadSeleccionada);
+    
+    if (ocupantesFiltrados.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-user-md"></i>
+          <p>No hay ${nombreOcupante.toLowerCase()}s en esta especialidad</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = ocupantesFiltrados.map(ocup => `
+      <div class="item-card">
+        <div class="item-info">
+          <div class="item-name">${ocup.nombre}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn-icon edit" onclick="gestionGrupo.editarOcupante('${ocup.id}')" title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn-icon delete" onclick="gestionGrupo.eliminarOcupante('${ocup.id}')" title="Eliminar">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
-    `;
+    `).join('');
+  }
+
+  async agregarOcupante() {
+    const nombreInput = document.getElementById('nuevoOcupanteNombre');
+    const nombre = nombreInput.value.trim();
+
+    if (!nombre) {
+      this.showNotification('El nombre es requerido', 'error');
+      return;
+    }
+
+    if (!this.especialidadSeleccionada) {
+      this.showNotification('Debes seleccionar una especialidad primero', 'error');
+      return;
+    }
+
+    await this.crearOcupante(nombre, this.especialidadSeleccionada);
+    nombreInput.value = '';
   }
 
   mostrarFormularioOcupante(ocupanteId = null) {
@@ -1554,12 +1583,16 @@ class GestionGrupo {
 
   async crearOcupante(nombre, especialidadId) {
     try {
+      // Obtener el nombre de la especialidad
+      const especialidad = this.especialidades.find(e => e.id === especialidadId);
+      
       const response = await fetch(`/api/grupos/${this.grupoId}/ocupantes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           nombre, 
           especialidad_id: especialidadId,
+          especialidad: especialidad?.nombre || '',
           tipo: this.nomenclatura.ocupante || 'Ocupante'
         })
       });
@@ -1580,17 +1613,29 @@ class GestionGrupo {
   }
 
   editarOcupante(id) {
-    this.mostrarFormularioOcupante(id);
+    const ocupante = this.ocupantes.find(o => o.id === id);
+    if (!ocupante) return;
+
+    const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
+    const nuevoNombre = prompt(`Editar ${nombreOcupante}:`, ocupante.nombre);
+    
+    if (nuevoNombre && nuevoNombre.trim()) {
+      this.actualizarOcupante(id, nuevoNombre.trim(), ocupante.especialidad_id);
+    }
   }
 
   async actualizarOcupante(id, nombre, especialidadId) {
     try {
+      // Obtener el nombre de la especialidad
+      const especialidad = this.especialidades.find(e => e.id === especialidadId);
+      
       const response = await fetch(`/api/grupos/${this.grupoId}/ocupantes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           nombre, 
           especialidad_id: especialidadId,
+          especialidad: especialidad?.nombre || '',
           tipo: this.nomenclatura.ocupante || 'Ocupante'
         })
       });
@@ -1829,7 +1874,7 @@ class GestionGrupo {
       instrumentosList.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-hand-pointer"></i>
-          <p>Selecciona un tipo de la izquierda</p>
+          <p>Selecciona un tipo</p>
         </div>
       `;
       return;
@@ -1996,3 +2041,21 @@ document.addEventListener('DOMContentLoaded', () => {
   gestionGrupo = new GestionGrupo();
   window.gestionGrupo = gestionGrupo; // Exponer globalmente para onclick handlers
 });
+
+// ============= FUNCIONES GLOBALES PARA ONCLICK HANDLERS =============
+
+function agregarEspecialidad() {
+  gestionGrupo.agregarEspecialidad();
+}
+
+function agregarOcupante() {
+  gestionGrupo.agregarOcupante();
+}
+
+function agregarTipo() {
+  gestionGrupo.agregarTipo();
+}
+
+function agregarInstrumento() {
+  gestionGrupo.agregarInstrumento();
+}

@@ -163,6 +163,10 @@ app.use((req, res, next) => {
 app.use(personalizationMiddleware);
 app.use(setLanguage);
 
+// Inyectar funciones de permisos en las vistas
+const injectPermissions = require('./middleware/injectPermissions');
+app.use(injectPermissions);
+
 
 // === RUTAS PÚBLICAS (sin autenticación) ===
 
@@ -310,12 +314,26 @@ app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddlew
 const notificacionesRoutes = require('./routes/notificaciones');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, notificacionesRoutes);
 
+// Test notificaciones (development only)
+if (process.env.NODE_ENV === 'development') {
+  const testNotificacionesRoutes = require('./routes/test-notificaciones');
+  app.use('/', testNotificacionesRoutes);
+}
+
 // Calendario agenda
 const calendarioRouter = require('./routes/calendario');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, calendarioRouter);
 
 const gestionGrupoRoutes = require('./routes/gestionGrupo');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, gestionGrupoRoutes);
+
+// Ruta de test para instrumentos
+const testInstrumentosRoutes = require('./routes/test-instrumentos');
+app.use('/', testInstrumentosRoutes);
+
+// Proxy para instrumentos (permite que el frontend llame a /groups/.../instrumentos)
+const instrumentosProxyRoutes = require('./routes/instrumentos-proxy');
+app.use('/', instrumentosProxyRoutes);
 
 // Configuración espacios (NO requiere grupo activo - es el onboarding)
 

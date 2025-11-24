@@ -1,18 +1,17 @@
-// public/js/onboarding-espacios.js
-
+// ==================== CLASE PRINCIPAL ==================== //
 class OnboardingEspacios {
   constructor() {
-    this.step = 'loading'; // loading, seleccion-grupo, creacion-nomenclatura, creacion-espacios, creacion-tipos-instrumentos, creacion-instrumentos, creacion-especialidades, creacion-ocupantes
+    this.step = 'loading';
     this.generalSpaceName = '';
     this.specificSpaceName = '';
-    this.occupantName = 'Ocupante'; // Valor por defecto
-    this.especialidadName = 'Especialidad'; // Valor por defecto
-    this.instrumentName = 'Instrumento'; // Valor por defecto
+    this.occupantName = 'Ocupante';
+    this.especialidadName = 'Especialidad';
+    this.instrumentName = 'Instrumento';
     this.spaces = [];
-    this.tiposInstrumentos = []; // Array de tipos de instrumentos
-    this.instrumentos = []; // Array de instrumentos
-    this.especialidades = []; // Array de especialidades
-    this.ocupantes = []; // Array de ocupantes
+    this.tiposInstrumentos = [];
+    this.instrumentos = [];
+    this.especialidades = [];
+    this.ocupantes = [];
     this.editingId = null;
     this.editingValue = '';
     this.root = document.getElementById('onboarding-root');
@@ -24,85 +23,95 @@ class OnboardingEspacios {
     this.init();
   }
 
-  async init() {
-      this.step = "loading";
-      this.render();
-
-      await this.cargarGruposUsuario();
-
-      if (this.gruposDisponibles.length === 0) {
-        // No hay grupos → crear uno
-        this.step = "crear-grupo";
-        return this.render();
-      }
-
-      this.step = "seleccion-grupo";
-      this.render();
+  // ==================== HELPER: PLURALIZACIÓN ==================== //
+  pluralize(word) {
+    if (!word || word.trim() === '') return word;
+    
+    const lastChar = word.slice(-1).toLowerCase();
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    
+    // Si termina en vocal, agregar 's'
+    if (vowels.includes(lastChar)) {
+      return word + 's';
     }
+    
+    // Si termina en consonante, agregar 'es'
+    return word + 'es';
+  }
+
+  // ==================== INICIALIZACIÓN ==================== //
+  async init() {
+    this.step = 'loading';
+    this.render();
+    
+    await this.cargarGruposUsuario();
+    
+    if (this.gruposDisponibles.length === 0) {
+      this.step = 'crear-grupo';
+    } else {
+      this.step = 'seleccion-grupo';
+    }
+    this.render();
+  }
 
   async cargarGruposUsuario() {
     try {
       const response = await fetch('/onboarding-espacios/api/espacios/grupos-usuario', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
         const data = await response.json();
         this.gruposDisponibles = data.grupos || [];
-        console.log('📋 Grupos disponibles:', this.gruposDisponibles);
-      } else {
-        console.warn('⚠️ Error HTTP al cargar grupos:', response.status);
-        this.gruposDisponibles = [];
       }
     } catch (error) {
-      console.error('❌ Error cargando grupos:', error);
+      console.error('Error cargando grupos:', error);
       this.gruposDisponibles = [];
     }
   }
 
+  // ==================== RENDER PRINCIPAL ==================== //
   render() {
-    switch (this.step) {
-      case 'crear-grupo':
-        this.renderCrearGrupo();
-        break;
-      case 'loading':
-        this.renderLoading();
-        break;
-      case 'seleccion-grupo':
-        this.renderSeleccionGrupo();
-        break;
-      case 'creacion-nomenclatura':
-        this.renderCreacionNomenclatura();
-        break;
-      case 'creacion-espacios':
-        this.renderCreacionEspacios();
-        break;
-      case 'creacion-tipos-instrumentos':
-        this.renderCreacionTiposInstrumentos();
-        break;
-      case 'creacion-instrumentos':
-        this.renderCreacionInstrumentos();
-        break;
-      case 'creacion-especialidades':
-        this.renderCreacionEspecialidades();
-        break;
-      case 'creacion-ocupantes':
-        this.renderCreacionOcupantes();
-        break;
+    const renders = {
+      'loading': () => this.renderLoading(),
+      'crear-grupo': () => this.renderCrearGrupo(),
+      'seleccion-grupo': () => this.renderSeleccionGrupo(),
+      'creacion-nomenclatura': () => this.renderCreacionNomenclatura(),
+      'creacion-espacios': () => this.renderCreacionEspacios(),
+      'creacion-tipos-instrumentos': () => this.renderCreacionTiposInstrumentos(),
+      'creacion-instrumentos': () => this.renderCreacionInstrumentos(),
+      'creacion-especialidades': () => this.renderCreacionEspecialidades(),
+      'creacion-ocupantes': () => this.renderCreacionOcupantes()
+    };
+
+    if (renders[this.step]) {
+      renders[this.step]();
     }
   }
 
+  // ==================== PASO 0: LOADING ==================== //
+  renderLoading() {
+    this.root.innerHTML = `
+      <div class="onboarding-card">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Cargando tu configuración...</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // ==================== PASO 0: CREAR GRUPO ==================== //
   renderCrearGrupo() {
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
+      <div class="onboarding-card">
+        <div class="onboarding-header">
+          <h1><i class="fas fa-layer-group"></i> Crear Nuevo Grupo</h1>
+          <p>Este será el nombre que identificará tu organización o equipo</p>
+        </div>
 
-          <h1 class="welcome-title">Crear un nuevo Grupo</h1>
-          <p class="welcome-subtitle">Este será el nombre que identificarà tu organización o equipo</p>
-
+        <div class="form-container">
           <div class="form-group">
             <label class="form-label">Nombre del grupo</label>
             <input 
@@ -111,142 +120,109 @@ class OnboardingEspacios {
               class="form-input"
               placeholder="Ej: Clínica Santa María, Centro Médico XYZ..."
               value="${this.groupName}"
+              autofocus
             >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Usa un nombre único y representativo</p>
           </div>
 
           <div class="action-buttons">
-            <button class="btn-secondary" id="btnCancelar">
+            <button class="btn btn-secondary" id="btnCancelar">
               <i class="fas fa-arrow-left"></i> Volver
             </button>
-
-            <button class="btn-primary" id="btnCrearGrupo" ${!this.groupName.trim() ? 'disabled' : ''}>
-              Crear grupo <i class="fas fa-check"></i>
+            <button class="btn btn-primary" id="btnCrearGrupo" ${!this.groupName.trim() ? 'disabled' : ''}>
+              Crear grupo <i class="fas fa-arrow-right"></i>
             </button>
           </div>
-
         </div>
       </div>
     `;
 
-    document.getElementById('inputGroupName').addEventListener('input', e => {
+    this.attachEvent('inputGroupName', 'input', (e) => {
       this.groupName = e.target.value;
       document.getElementById('btnCrearGrupo').disabled = !this.groupName.trim();
     });
 
-    document.getElementById('btnCancelar').addEventListener('click', () => {
+    this.attachEvent('btnCancelar', 'click', () => {
       this.step = 'seleccion-grupo';
       this.render();
     });
 
-    document.getElementById('btnCrearGrupo').addEventListener('click', () => {
-      this.crearGrupo();
-    });
+    this.attachEvent('btnCrearGrupo', 'click', () => this.crearGrupo());
   }
 
   async crearGrupo() {
     try {
+      // Deshabilitar botón antes de hacer fetch
+      const btn = document.getElementById('btnCrearGrupo');
+      if (btn) btn.disabled = true;
+      
       this.isLoading = true;
-      this.renderLoading();
-
-      console.log("🔄 Creando grupo...");
+      this.render();
 
       const response = await fetch('/onboarding-espacios/api/grupos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: this.groupName }) // Cambiado de 'name' a 'nombre'
+        body: JSON.stringify({ nombre: this.groupName })
       });
 
-      console.log("📡 Respuesta recibida:", response.status);
-
       const data = await response.json();
-      console.log("📦 Data:", data);
 
       if (!response.ok || !data.ok) {
         throw new Error(data.error || 'Error creando grupo');
       }
 
-      console.log("✅ Grupo creado exitosamente:", data.group_id);
-
-      // Guardar el nuevo grupo como seleccionado
       this.grupoSeleccionado = data.group_id;
-
-      // Pasar a crear nomenclatura
+      
+      // Cambiar estado ANTES de render para evitar doble render
+      this.isLoading = false;
       this.step = 'creacion-nomenclatura';
       this.render();
 
     } catch (err) {
-      console.error("❌ Error en crearGrupo:", err);
-      this.showErrorMessage(err.message);
+      console.error('Error:', err);
+      this.showNotification(err.message, 'error');
       this.isLoading = false;
-      this.step = 'crear-grupo';
       this.render();
     }
   }
 
-  renderLoading() {
+  // ==================== PASO 0: SELECCIONAR GRUPO ==================== //
+  renderSeleccionGrupo() {
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Cargando...</p>
-          </div>
+      <div class="onboarding-card">
+        <div class="onboarding-header">
+          <h1><i class="fas fa-layer-group"></i> Selecciona tu Grupo</h1>
+          <p>Elige el grupo con el que deseas trabajar</p>
         </div>
+
+        <div class="items-list">
+          ${this.gruposDisponibles.map(grupo => `
+            <div class="item-card" data-grupo-id="${grupo.grupo_id}">
+              <div class="item-info">
+                <div class="item-name">${grupo.nombre}</div>
+                <div class="item-subtitle">
+                  <i class="fas fa-calendar-alt"></i>
+                  Creado: ${new Date(grupo.created_at).toLocaleDateString('es-CL')}
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="onboardingApp.seleccionarGrupo('${grupo.grupo_id}')">
+                Seleccionar <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+
+        <button class="btn-add-large" onclick="onboardingApp.irACrearGrupo()">
+          <i class="fas fa-plus-circle"></i> Crear Nuevo Grupo
+        </button>
       </div>
     `;
   }
 
-  renderSeleccionGrupo() {
-    this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="welcome-header">
-            <h1 class="welcome-title">Selecciona tu Grupo de Trabajo</h1>
-            <p class="welcome-subtitle">Elige el grupo con el que deseas trabajar</p>
-          </div>
-
-          <div class="grupos-lista">
-            ${this.gruposDisponibles.map(grupo => `
-              <div class="grupo-card" data-grupo-id="${grupo.grupo_id}">
-                <div class="grupo-info">
-                  <h3 class="grupo-nombre">${grupo.nombre}</h3>
-                  <div class="grupo-detalles">
-                    <span class="grupo-fecha">
-                      <i class="fas fa-calendar"></i>
-                      Creado: ${new Date(grupo.created_at).toLocaleDateString('es-CL')}
-                    </span>
-                  </div>
-                </div>
-                <button class="btn-select-grupo" data-grupo-id="${grupo.grupo_id}">
-                  Seleccionar
-                  <i class="fas fa-arrow-right"></i>
-                </button>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="action-buttons-center">
-            <button class="btn-create-new" id="btnCrearNuevoGrupo">
-              <i class="fas fa-plus-circle"></i>
-              Crear Nuevo Grupo
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Event listeners
-    document.querySelectorAll('.btn-select-grupo').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const grupoId = e.currentTarget.dataset.grupoId;
-        this.seleccionarGrupo(grupoId);
-      });
-    });
-
-    document.getElementById('btnCrearNuevoGrupo').addEventListener('click', () => {
-      this.step = 'crear-grupo';
-      this.render();
-    });
+  irACrearGrupo() {
+    this.step = 'crear-grupo';
+    this.groupName = '';
+    this.render();
   }
 
   async seleccionarGrupo(grupoId) {
@@ -254,29 +230,26 @@ class OnboardingEspacios {
     this.render();
 
     try {
-      // 🔥 Obtener información real del grupo y asignarlo como activo si está configurado
       const response = await fetch(`/onboarding-espacios/api/grupos/${grupoId}?asignar_activo=true`);
       const data = await response.json();
 
       if (!data.ok || !data.group) {
-        throw new Error("No se pudo obtener la información del grupo");
+        throw new Error('No se pudo obtener la información del grupo');
       }
 
       const grupo = data.group;
       this.grupoSeleccionado = grupoId;
 
-      // 📌 Lógica de flujo
       if (grupo.configured === true) {
-        console.log('✅ Grupo configurado, redirigiendo al dashboard...');
-        // Usar replace para evitar que el usuario vuelva atrás al onboarding
         setTimeout(() => {
-          window.location.replace("/dashboard");
-        }, 100);
+          window.location.replace('/dashboard');
+        }, 500);
         return;
       }
 
       if (!grupo.nomenclatura) {
-        this.step = "creacion-nomenclatura";
+        this.isLoading = false;
+        this.step = 'creacion-nomenclatura';
         return this.render();
       }
 
@@ -284,166 +257,195 @@ class OnboardingEspacios {
       this.specificSpaceName = grupo.nomenclatura.especifico;
       this.occupantName = grupo.nomenclatura.ocupante || 'Ocupante';
       this.especialidadName = grupo.nomenclatura.especialidad || 'Especialidad';
+      this.instrumentName = grupo.nomenclatura.instrumento || 'Instrumento';
 
-      this.step = "creacion-espacios";
+      this.isLoading = false;
+      this.step = 'creacion-espacios';
       return this.render();
 
     } catch (err) {
-      console.error(err);
-      this.showErrorMessage(err.message);
+      console.error('Error:', err);
+      this.showNotification(err.message, 'error');
       this.isLoading = false;
-      this.step = "seleccion-grupo";
+      this.step = 'seleccion-grupo';
       this.render();
     }
   }
 
+  // ==================== PASO 1: NOMENCLATURA ==================== //
   renderCreacionNomenclatura() {
     const tieneGrupos = this.gruposDisponibles.length > 0;
-    
+
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="welcome-header">
-            <h1 class="welcome-title">
-              ${tieneGrupos ? 'Crear Nuevo Grupo de Espacios' : 'Bienvenido a tu Sistema de Gestión'}
-            </h1>
-            <p class="welcome-subtitle">
-              ${tieneGrupos 
-                ? 'Define la nomenclatura para tu nuevo grupo de espacios' 
-                : 'Comencemos definiendo cómo llamarás a tus espacios'}
-            </p>
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step active">
+            <span>1</span>
+            <span>Nomenclatura</span>
+          </div>
+          <div class="progress-step">
+            <span>2</span>
+            <span>Espacios</span>
+          </div>
+          <div class="progress-step">
+            <span>3</span>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+          <div class="progress-step">
+            <span>4</span>
+            <span>${this.pluralize(this.occupantName)}</span>
+          </div>
+        </div>
+
+        <div class="onboarding-header">
+          <h1><i class="fas fa-text-height"></i> Define tu Nomenclatura</h1>
+          <p>Personaliza cómo se llamarán los elementos en tu sistema</p>
+        </div>
+
+        <div class="form-container">
+          <div class="form-group">
+            <label class="form-label">Espacio General (Ej: Piso, Área, Sector)</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="generalSpaceName"
+              placeholder="Ej: Pasillo, Piso, Área..."
+              value="${this.generalSpaceName}"
+            >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Será el agrupador principal</p>
           </div>
 
-          <div class="form-container">
-            <div class="form-group">
-              <label class="form-label">¿Cómo llamarás al espacio general?</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                id="generalSpaceName"
-                placeholder="Ej: Pasillo, Piso, Área, Sector..."
-                value="${this.generalSpaceName}"
-              >
-              <p class="form-hint">Este será el nombre para agrupar tus espacios</p>
-            </div>
+          <div class="form-group">
+            <label class="form-label">Espacio Específico (Ej: Box, Consultorio, Oficina)</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="specificSpaceName"
+              placeholder="Ej: Box, Consultorio, Oficina..."
+              value="${this.specificSpaceName}"
+            >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Unidades individuales dentro de cada grupo</p>
+          </div>
 
-            <div class="form-group">
-              <label class="form-label">¿Cómo llamarás al espacio específico?</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                id="specificSpaceName"
-                placeholder="Ej: Box, Consultorio, Oficina, Sala..."
-                value="${this.specificSpaceName}"
-              >
-              <p class="form-hint">Este será el nombre de los espacios dentro de cada grupo</p>
-            </div>
+          <div class="form-group">
+            <label class="form-label">Ocupante del Espacio</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="occupantName"
+              placeholder="Ej: Médico, Profesor, Terapeuta..."
+              value="${this.occupantName}"
+            >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Quien ocupa los espacios</p>
+          </div>
 
-            <div class="form-group">
-              <label class="form-label">¿Cómo llamarás al ocupante del espacio?</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                id="occupantName"
-                placeholder="Ej: Médico, Profesor, Terapeuta..."
-                value="${this.occupantName}"
-              >
-              <p class="form-hint">Este será el nombre para quien ocupa el espacio</p>
-            </div>
+          <div class="form-group">
+            <label class="form-label">${this.especialidadName}</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="especialidadName"
+              placeholder="Ej: Especialidad, Área, Materia..."
+              value="${this.especialidadName}"
+            >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Categorías o clasificaciones</p>
+          </div>
 
-            <div class="form-group">
-              <label class="form-label">¿Cómo llamarás a la especialidad?</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                id="especialidadName"
-                placeholder="Ej: Especialidad, Área, Materia..."
-                value="${this.especialidadName}"
-              >
-              <p class="form-hint">Este será el nombre para las especialidades de los ocupantes</p>
-            </div>
+          <div class="form-group">
+            <label class="form-label">${this.instrumentName}</label>
+            <input 
+              type="text" 
+              class="form-input" 
+              id="instrumentName"
+              placeholder="Ej: Instrumento, Equipo, Herramienta..."
+              value="${this.instrumentName}"
+            >
+            <p class="form-hint"><i class="fas fa-info-circle"></i> Recursos o herramientas disponibles</p>
+          </div>
 
-            <div class="form-group">
-              <label class="form-label">¿Cómo llamarás a los instrumentos?</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                id="instrumentName"
-                placeholder="Ej: Instrumento, Equipo, Herramienta..."
-                value="${this.instrumentName}"
-              >
-              <p class="form-hint">Este será el nombre para los instrumentos que usarás en tus espacios</p>
-            </div>
-
-            <div class="action-buttons">
-              ${tieneGrupos ? `
-                <button class="btn-secondary" id="btnVolver">
-                  <i class="fas fa-arrow-left"></i>
-                  Volver
-                </button>
-              ` : ''}
-              <button class="btn-primary" id="btnContinue" ${!this.generalSpaceName.trim() || !this.specificSpaceName.trim() ? 'disabled' : ''}>
-                Continuar
-                <i class="fas fa-arrow-right"></i>
+          <div class="action-buttons">
+            ${tieneGrupos ? `
+              <button class="btn btn-secondary" onclick="onboardingApp.volverASeleccion()">
+                <i class="fas fa-arrow-left"></i> Volver
               </button>
-            </div>
+            ` : ''}
+            <button class="btn btn-primary" id="btnContinue" ${!this.generalSpaceName.trim() || !this.specificSpaceName.trim() ? 'disabled' : ''}>
+              Continuar <i class="fas fa-arrow-right"></i>
+            </button>
           </div>
         </div>
       </div>
     `;
 
-    // Event listeners
-    const generalInput = document.getElementById('generalSpaceName');
-    const specificInput = document.getElementById('specificSpaceName');
-    const occupantInput = document.getElementById('occupantName');
-    const especialidadInput = document.getElementById('especialidadName');
-    const instrumentInput = document.getElementById('instrumentName');
-    const btnContinue = document.getElementById('btnContinue');
-    const btnVolver = document.getElementById('btnVolver');
+    const inputs = {
+      'generalSpaceName': 'generalSpaceName',
+      'specificSpaceName': 'specificSpaceName',
+      'occupantName': 'occupantName',
+      'especialidadName': 'especialidadName',
+      'instrumentName': 'instrumentName'
+    };
 
-    generalInput.addEventListener('input', (e) => {
-      this.generalSpaceName = e.target.value;
-      btnContinue.disabled = !this.generalSpaceName.trim() || !this.specificSpaceName.trim();
-    });
-
-    specificInput.addEventListener('input', (e) => {
-      this.specificSpaceName = e.target.value;
-      btnContinue.disabled = !this.generalSpaceName.trim() || !this.specificSpaceName.trim();
-    });
-
-    occupantInput.addEventListener('input', (e) => {
-      this.occupantName = e.target.value || 'Ocupante';
-    });
-
-    especialidadInput.addEventListener('input', (e) => {
-      this.especialidadName = e.target.value || 'Especialidad';
-    });
-
-    instrumentInput.addEventListener('input', (e) => {
-      this.instrumentName = e.target.value || 'Instrumento';
-    });
-
-    btnContinue.addEventListener('click', async () => {
-      if (this.generalSpaceName.trim() && this.specificSpaceName.trim()) {
-        console.log('✅ Nombres definidos:', {
-          general: this.generalSpaceName,
-          especifico: this.specificSpaceName,
-          ocupante: this.occupantName
-        });
-        
-        // Guardar nomenclatura en el backend antes de continuar
-        await this.guardarNomenclatura();
-      }
-    });
-
-    if (btnVolver) {
-      btnVolver.addEventListener('click', () => {
-        this.step = 'seleccion-grupo';
-        this.render();
+    Object.entries(inputs).forEach(([id, prop]) => {
+      this.attachEvent(id, 'input', (e) => {
+        this[prop] = e.target.value || (prop === 'occupantName' ? 'Ocupante' : 
+                                        prop === 'especialidadName' ? 'Especialidad' : 
+                                        prop === 'instrumentName' ? 'Instrumento' : '');
+        const btn = document.getElementById('btnContinue');
+        if (btn) btn.disabled = !this.generalSpaceName.trim() || !this.specificSpaceName.trim();
       });
+    });
+
+    this.attachEvent('btnContinue', 'click', () => this.guardarNomenclatura());
+  }
+
+  volverASeleccion() {
+    this.step = 'seleccion-grupo';
+    this.render();
+  }
+
+  async guardarNomenclatura() {
+    try {
+      // Deshabilitar botón antes de hacer fetch
+      const btn = document.getElementById('btnContinue');
+      if (btn) btn.disabled = true;
+      
+      this.isLoading = true;
+      this.render();
+
+      const response = await fetch(`/onboarding-espacios/api/grupos/${this.grupoSeleccionado}/nomenclatura`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomenclatura: {
+            general: this.generalSpaceName,
+            especifico: this.specificSpaceName,
+            ocupante: this.occupantName || 'Ocupante',
+            especialidad: this.especialidadName || 'Especialidad',
+            instrumento: this.instrumentName || 'Instrumento'
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.ok) {
+        // Cambiar estado ANTES de render para evitar doble render
+        this.isLoading = false;
+        this.step = 'creacion-espacios';
+        this.render();
+      } else {
+        throw new Error(data.error || 'Error al guardar');
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      this.showNotification(error.message, 'error');
+      this.isLoading = false;
+      this.render();
     }
   }
 
+  // ==================== PASO 2: ESPACIOS ==================== //
   renderCreacionEspacios() {
     const canSave = this.spaces.length > 0 && this.spaces.every(space => 
       space.name.trim() !== '' && 
@@ -452,39 +454,53 @@ class OnboardingEspacios {
     );
 
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="spaces-header">
-            <h2 class="spaces-title">Crea tus Espacios</h2>
-            <p class="spaces-subtitle">Define tus ${this.generalSpaceName.toLowerCase()}s y sus ${this.specificSpaceName.toLowerCase()}s correspondientes</p>
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Nomenclatura</span>
           </div>
-
-          ${this.isLoading ? `
-            <div class="loading-overlay">
-              <div class="spinner"></div>
-              <p>Guardando configuración...</p>
-            </div>
-          ` : ''}
-
-          <div class="spaces-list" id="spacesList">
-            ${this.renderSpaces()}
+          <div class="progress-step active">
+            <span>2</span>
+            <span>Espacios</span>
           </div>
+          <div class="progress-step">
+            <span>3</span>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+          <div class="progress-step">
+            <span>4</span>
+            <span>${this.pluralize(this.occupantName)}</span>
+          </div>
+        </div>
 
-          <button class="btn-add btn-add-general" id="btnAddGeneral" ${this.isLoading ? 'disabled' : ''}>
-            <i class="fas fa-plus"></i>
-            Agregar ${this.generalSpaceName.toLowerCase()}
+        <div class="onboarding-header">
+          <h1><i class="fas fa-door-open"></i> Crea tus Espacios</h1>
+          <p>Define tus ${this.generalSpaceName.toLowerCase()}s y sus ${this.specificSpaceName.toLowerCase()}s correspondientes</p>
+        </div>
+
+        ${this.isLoading ? `
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Guardando configuración...</p>
+          </div>
+        ` : ''}
+
+        <div id="spacesList">
+          ${this.renderSpaces()}
+        </div>
+
+        <button class="btn-add-large" id="btnAddGeneral" ${this.isLoading ? 'disabled' : ''}>
+          <i class="fas fa-plus"></i> Agregar ${this.generalSpaceName.toLowerCase()}
+        </button>
+
+        <div class="action-buttons">
+          <button class="btn btn-secondary" id="btnBack" ${this.isLoading ? 'disabled' : ''}>
+            <i class="fas fa-arrow-left"></i> Volver
           </button>
-
-          <div class="action-buttons">
-            <button class="btn-secondary" id="btnBack" ${this.isLoading ? 'disabled' : ''}>
-              <i class="fas fa-arrow-left"></i>
-              Volver
-            </button>
-            <button class="btn-save" id="btnSave" ${!canSave || this.isLoading ? 'disabled' : ''}>
-              ${this.isLoading ? 'Procesando...' : 'Continuar'}
-              ${!this.isLoading ? '<i class="fas fa-arrow-right"></i>' : ''}
-            </button>
-          </div>
+          <button class="btn btn-primary" id="btnSave" ${!canSave || this.isLoading ? 'disabled' : ''}>
+            Continuar <i class="fas fa-arrow-right"></i>
+          </button>
         </div>
       </div>
     `;
@@ -494,7 +510,12 @@ class OnboardingEspacios {
 
   renderSpaces() {
     if (this.spaces.length === 0) {
-      return '<div class="empty-state">No hay espacios creados. Haz clic en "Agregar" para comenzar.</div>';
+      return `
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>No hay espacios creados aún. ¡Comienza agregando uno!</p>
+        </div>
+      `;
     }
 
     return this.spaces.map(space => `
@@ -506,8 +527,7 @@ class OnboardingEspacios {
           ${this.renderSpecificSpaces(space)}
           ${space.name && !space.isEditing ? `
             <button class="btn-add" data-action="add-specific" data-space-id="${space.id}">
-              <i class="fas fa-plus"></i>
-              Agregar ${this.specificSpaceName.toLowerCase()}
+              <i class="fas fa-plus"></i> Agregar ${this.specificSpaceName.toLowerCase()}
             </button>
           ` : ''}
         </div>
@@ -522,15 +542,14 @@ class OnboardingEspacios {
           type="text" 
           class="space-general-input" 
           data-space-id="${space.id}"
-          data-action="edit-general-input"
           placeholder="Nombre del ${this.generalSpaceName.toLowerCase()}"
           value="${space.name}"
           autofocus
         >
-        <button class="icon-btn success" data-action="confirm-general" data-space-id="${space.id}" ${!space.name.trim() ? 'disabled' : ''}>
+        <button class="btn-icon success" data-action="confirm-general" data-space-id="${space.id}" ${!space.name.trim() ? 'disabled' : ''}>
           <i class="fas fa-check"></i>
         </button>
-        <button class="icon-btn danger" data-action="delete-general" data-space-id="${space.id}">
+        <button class="btn-icon danger" data-action="delete-general" data-space-id="${space.id}">
           <i class="fas fa-times"></i>
         </button>
       `;
@@ -539,26 +558,24 @@ class OnboardingEspacios {
         <input 
           type="text" 
           class="space-general-input" 
-          data-space-id="${space.id}"
-          data-action="editing-general-input"
           placeholder="Nombre del ${this.generalSpaceName.toLowerCase()}"
           value="${this.editingValue}"
           autofocus
         >
-        <button class="icon-btn success" data-action="save-edit-general" data-space-id="${space.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
+        <button class="btn-icon success" data-action="save-edit-general" data-space-id="${space.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
           <i class="fas fa-check"></i>
         </button>
-        <button class="icon-btn danger" data-action="cancel-edit">
+        <button class="btn-icon danger" data-action="cancel-edit">
           <i class="fas fa-times"></i>
         </button>
       `;
     } else {
       return `
         <div class="space-general-box">${space.name}</div>
-        <button class="icon-btn" data-action="edit-general" data-space-id="${space.id}" data-name="${space.name}">
-          <i class="fas fa-edit"></i>
+        <button class="btn-icon" data-action="edit-general" data-space-id="${space.id}">
+          <i class="fas fa-pen"></i>
         </button>
-        <button class="icon-btn danger" data-action="delete-general" data-space-id="${space.id}">
+        <button class="btn-icon danger" data-action="delete-general" data-space-id="${space.id}">
           <i class="fas fa-trash"></i>
         </button>
       `;
@@ -576,42 +593,42 @@ class OnboardingEspacios {
   renderSpecificSpace(spaceId, spec) {
     if (spec.isEditing) {
       return `
-        <div class="space-specific-input-group">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
           <input 
             type="text" 
             class="space-specific-input" 
             data-space-id="${spaceId}"
             data-spec-id="${spec.id}"
-            data-action="edit-specific-input"
             placeholder="Nombre del ${this.specificSpaceName.toLowerCase()}"
             value="${spec.name}"
             autofocus
+            style="flex: 1; margin: 0;"
           >
-          <button class="icon-btn success" data-action="confirm-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!spec.name.trim() ? 'disabled' : ''}>
+          <button class="btn-icon success" data-action="confirm-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!spec.name.trim() ? 'disabled' : ''}>
             <i class="fas fa-check"></i>
           </button>
-          <button class="icon-btn danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
+          <button class="btn-icon danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
             <i class="fas fa-times"></i>
           </button>
         </div>
       `;
     } else if (this.editingId === spec.id) {
       return `
-        <div class="space-specific-input-group">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
           <input 
             type="text" 
             class="space-specific-input" 
             data-space-id="${spaceId}"
             data-spec-id="${spec.id}"
-            data-action="editing-specific-input"
             placeholder="Nombre del ${this.specificSpaceName.toLowerCase()}"
             value="${this.editingValue}"
             autofocus
+            style="flex: 1; margin: 0;"
           >
-          <button class="icon-btn success" data-action="save-edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
+          <button class="btn-icon success" data-action="save-edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
             <i class="fas fa-check"></i>
           </button>
-          <button class="icon-btn danger" data-action="cancel-edit">
+          <button class="btn-icon danger" data-action="cancel-edit">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -621,10 +638,10 @@ class OnboardingEspacios {
         <div class="space-specific-box">
           ${spec.name}
           <div class="space-specific-actions">
-            <button class="icon-btn" data-action="edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" data-name="${spec.name}">
-              <i class="fas fa-edit"></i>
+            <button class="btn-icon" data-action="edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
+              <i class="fas fa-pen"></i>
             </button>
-            <button class="icon-btn danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
+            <button class="btn-icon danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -635,10 +652,8 @@ class OnboardingEspacios {
 
   attachStep2Listeners() {
     const spacesList = document.getElementById('spacesList');
-    
     if (!spacesList) return;
 
-    // Delegación de eventos para clicks
     spacesList.addEventListener('click', (e) => {
       const button = e.target.closest('button');
       if (!button) return;
@@ -647,128 +662,246 @@ class OnboardingEspacios {
       const spaceId = parseInt(button.dataset.spaceId);
       const specId = parseInt(button.dataset.specId);
 
-      switch (action) {
-        case 'edit-general':
-          this.startEditingGeneral(spaceId, button.dataset.name);
-          break;
-        case 'save-edit-general':
-          this.saveEditGeneral(spaceId);
-          break;
-        case 'confirm-general':
-          this.confirmGeneral(spaceId);
-          break;
-        case 'delete-general':
-          this.deleteGeneralSpace(spaceId);
-          break;
-        case 'edit-specific':
-          this.startEditingSpecific(specId, button.dataset.name);
-          break;
-        case 'save-edit-specific':
-          this.saveEditSpecific(spaceId, specId);
-          break;
-        case 'confirm-specific':
-          this.confirmSpecific(spaceId, specId);
-          break;
-        case 'delete-specific':
-          this.deleteSpecificSpace(spaceId, specId);
-          break;
-        case 'add-specific':
-          this.addSpecificSpace(spaceId);
-          break;
-        case 'cancel-edit':
-          this.cancelEditing();
-          break;
-      }
+      const actions = {
+        'edit-general': () => this.startEditingGeneral(spaceId, button.parentElement.querySelector('.space-general-box')?.textContent || ''),
+        'save-edit-general': () => this.saveEditGeneral(spaceId),
+        'confirm-general': () => this.confirmGeneral(spaceId),
+        'delete-general': () => this.deleteGeneralSpace(spaceId),
+        'edit-specific': () => this.startEditingSpecific(specId, button.parentElement.parentElement.querySelector('.space-specific-box')?.textContent || ''),
+        'save-edit-specific': () => this.saveEditSpecific(spaceId, specId),
+        'confirm-specific': () => this.confirmSpecific(spaceId, specId),
+        'delete-specific': () => this.deleteSpecificSpace(spaceId, specId),
+        'add-specific': () => this.addSpecificSpace(spaceId),
+        'cancel-edit': () => this.cancelEditing()
+      };
+
+      if (actions[action]) actions[action]();
     });
 
-    // Delegación para inputs
     spacesList.addEventListener('input', (e) => {
-      const input = e.target;
-      const action = input.dataset.action;
-      const spaceId = parseInt(input.dataset.spaceId);
-      const specId = parseInt(input.dataset.specId);
-
-      if (action === 'edit-general-input') {
-        this.updateGeneralInputValue(spaceId, input.value);
-      } else if (action === 'editing-general-input') {
-        this.updateEditingValue(input.value);
-      } else if (action === 'edit-specific-input') {
-        this.updateSpecificInputValue(spaceId, specId, input.value);
-      } else if (action === 'editing-specific-input') {
-        this.updateEditingValue(input.value);
+      if (e.target.classList.contains('space-general-input')) {
+        const spaceId = parseInt(e.target.dataset.spaceId);
+        this.updateGeneralInputValue(spaceId, e.target.value);
+      } else if (e.target.classList.contains('space-specific-input')) {
+        const value = e.target.value;
+        const button = e.target.nextElementSibling;
+        if (button) {
+          button.disabled = !value.trim();
+        }
+        
+        // Actualizar el valor en el array de espacios
+        const spaceId = parseInt(e.target.dataset.spaceId);
+        const specId = parseInt(e.target.dataset.specId);
+        
+        if (spaceId && specId) {
+          this.spaces = this.spaces.map(s => {
+            if (s.id === spaceId) {
+              return {
+                ...s,
+                specificSpaces: s.specificSpaces.map(sp => 
+                  sp.id === specId ? { ...sp, name: value } : sp
+                )
+              };
+            }
+            return s;
+          });
+        }
+        
+        // Si está en modo edición normal, actualizar editingValue
+        if (this.editingId === specId) {
+          this.editingValue = value;
+        }
       }
     });
 
-    // Soporte para Enter y Escape
     spacesList.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const input = e.target;
-        const action = input.dataset.action;
-        const spaceId = parseInt(input.dataset.spaceId);
-        const specId = parseInt(input.dataset.specId);
-
-        if (action === 'edit-general-input' && input.value.trim()) {
-          this.confirmGeneral(spaceId);
-        } else if (action === 'editing-general-input' && this.editingValue.trim()) {
-          this.saveEditGeneral(spaceId);
-        } else if (action === 'edit-specific-input' && input.value.trim()) {
-          this.confirmSpecific(spaceId, specId);
-        } else if (action === 'editing-specific-input' && this.editingValue.trim()) {
-          this.saveEditSpecific(spaceId, specId);
+        if (input.classList.contains('space-general-input')) {
+          const spaceId = parseInt(input.dataset.spaceId);
+          if (input.value.trim()) {
+            this.confirmGeneral(spaceId);
+          }
+        } else if (input.classList.contains('space-specific-input')) {
+          if (!input.value.trim()) return;
+          
+          // Buscar el botón de confirmar asociado
+          const confirmButton = input.nextElementSibling;
+          if (confirmButton && confirmButton.dataset.action === 'confirm-specific') {
+            const spaceId = parseInt(confirmButton.dataset.spaceId);
+            const specId = parseInt(confirmButton.dataset.specId);
+            this.confirmSpecific(spaceId, specId);
+          } else if (confirmButton && confirmButton.dataset.action === 'save-edit-specific') {
+            const spaceId = parseInt(confirmButton.dataset.spaceId);
+            const specId = parseInt(confirmButton.dataset.specId);
+            this.saveEditSpecific(spaceId, specId);
+          }
         }
       } else if (e.key === 'Escape') {
         this.cancelEditing();
       }
     });
 
-    document.getElementById('btnAddGeneral').addEventListener('click', () => {
-      this.addGeneralSpace();
-    });
-
-    document.getElementById('btnBack').addEventListener('click', () => {
+    this.attachEvent('btnAddGeneral', 'click', () => this.addGeneralSpace());
+    this.attachEvent('btnBack', 'click', () => {
       this.step = 'creacion-nomenclatura';
       this.render();
     });
-
-    document.getElementById('btnSave').addEventListener('click', () => {
-      this.continuarAOcupantes();
-    });
+    this.attachEvent('btnSave', 'click', () => this.continuarATiposInstrumentos());
   }
 
-  // Métodos de actualización (sin re-renderizar todo)
   updateGeneralInputValue(spaceId, value) {
     const space = this.spaces.find(s => s.id === spaceId);
     if (space) {
       space.name = value;
-      const btn = document.querySelector(`button[data-action="confirm-general"][data-space-id="${spaceId}"]`);
-      if (btn) {
-        btn.disabled = !value.trim();
+      
+      // Actualizar el estado del botón de confirmar
+      const confirmButton = document.querySelector(`button[data-action="confirm-general"][data-space-id="${spaceId}"]`);
+      if (confirmButton) {
+        confirmButton.disabled = !value.trim();
       }
+      
+      // Si está en modo edición, actualizar editingValue también
+      if (this.editingId === spaceId) {
+        this.editingValue = value;
+        const saveButton = document.querySelector(`button[data-action="save-edit-general"][data-space-id="${spaceId}"]`);
+        if (saveButton) {
+          saveButton.disabled = !value.trim();
+        }
+      }
+    }
+  }
+
+  addGeneralSpace() {
+    this.spaces.push({
+      id: Date.now(),
+      name: '',
+      isEditing: true,
+      specificSpaces: []
+    });
+    this.updateSpacesList();
+  }
+
+  confirmGeneral(spaceId) {
+    const space = this.spaces.find(s => s.id === spaceId);
+    if (!space || !space.name.trim()) {
+      this.showNotification(`El nombre del ${this.generalSpaceName.toLowerCase()} no puede estar vacío`, 'error');
+      return;
+    }
+    this.spaces = this.spaces.map(s => s.id === spaceId ? { ...s, isEditing: false } : s);
+    this.updateSpacesList();
+    this.updateSaveButton();
+  }
+
+  startEditingGeneral(spaceId, currentName) {
+    // Limpiar el texto del nombre (puede contener espacios en blanco por el HTML)
+    const cleanName = currentName.trim();
+    this.editingId = spaceId;
+    this.editingValue = cleanName;
+    this.updateSpacesList();
+  }
+
+  saveEditGeneral(spaceId) {
+    this.spaces = this.spaces.map(s => s.id === spaceId ? { ...s, name: this.editingValue } : s);
+    this.cancelEditing();
+  }
+
+  deleteGeneralSpace(spaceId) {
+    if (confirm(`¿Eliminar este ${this.generalSpaceName.toLowerCase()} y todos sus ${this.specificSpaceName.toLowerCase()}s?`)) {
+      this.spaces = this.spaces.filter(s => s.id !== spaceId);
+      this.updateSpacesList();
       this.updateSaveButton();
     }
   }
 
-  updateEditingValue(value) {
-    this.editingValue = value;
-    const saveBtn = document.querySelector(`button[data-action="save-edit-general"]`) || 
-                    document.querySelector(`button[data-action="save-edit-specific"]`);
-    if (saveBtn) {
-      saveBtn.disabled = !value.trim();
+  addSpecificSpace(spaceId) {
+    this.spaces = this.spaces.map(s => {
+      if (s.id === spaceId) {
+        return {
+          ...s,
+          specificSpaces: [...s.specificSpaces, { id: Date.now(), name: '', isEditing: true }]
+        };
+      }
+      return s;
+    });
+    this.updateSpacesList();
+  }
+
+  confirmSpecific(spaceId, specId) {
+    // Validar que el espacio específico tenga nombre
+    const space = this.spaces.find(s => s.id === spaceId);
+    if (space) {
+      const spec = space.specificSpaces.find(sp => sp.id === specId);
+      if (!spec || !spec.name.trim()) {
+        this.showNotification(`El nombre del ${this.specificSpaceName.toLowerCase()} no puede estar vacío`, 'error');
+        return;
+      }
+    }
+    
+    this.spaces = this.spaces.map(s => {
+      if (s.id === spaceId) {
+        return {
+          ...s,
+          specificSpaces: s.specificSpaces.map(sp => sp.id === specId ? { ...sp, isEditing: false } : sp)
+        };
+      }
+      return s;
+    });
+    this.updateSpacesList();
+    this.updateSaveButton();
+  }
+
+  startEditingSpecific(specId, currentName) {
+    // Limpiar el texto del nombre (puede contener espacios en blanco por el HTML)
+    const cleanName = currentName.trim();
+    this.editingId = specId;
+    this.editingValue = cleanName;
+    this.render();
+  }
+
+  saveEditSpecific(spaceId, specId) {
+    this.spaces = this.spaces.map(s => {
+      if (s.id === spaceId) {
+        return {
+          ...s,
+          specificSpaces: s.specificSpaces.map(sp => sp.id === specId ? { ...sp, name: this.editingValue } : sp)
+        };
+      }
+      return s;
+    });
+    this.cancelEditing();
+  }
+
+  deleteSpecificSpace(spaceId, specId) {
+    if (confirm(`¿Eliminar este ${this.specificSpaceName.toLowerCase()}?`)) {
+      this.spaces = this.spaces.map(s => {
+        if (s.id === spaceId) {
+          return {
+            ...s,
+            specificSpaces: s.specificSpaces.filter(sp => sp.id !== specId)
+          };
+        }
+        return s;
+      });
+      this.updateSpacesList();
+      this.updateSaveButton();
     }
   }
 
-  updateSpecificInputValue(spaceId, specId, value) {
-    const space = this.spaces.find(s => s.id === spaceId);
-    if (space) {
-      const spec = space.specificSpaces.find(s => s.id === specId);
-      if (spec) {
-        spec.name = value;
-        const btn = document.querySelector(`button[data-action="confirm-specific"][data-spec-id="${specId}"]`);
-        if (btn) {
-          btn.disabled = !value.trim();
-        }
-        this.updateSaveButton();
-      }
+  cancelEditing() {
+    this.editingId = null;
+    this.editingValue = '';
+    this.updateSpacesList();
+  }
+
+  updateSpacesList() {
+    const spacesList = document.getElementById('spacesList');
+    if (spacesList) {
+      // Clonar y reemplazar el elemento para eliminar todos los listeners antiguos
+      const newSpacesList = spacesList.cloneNode(false);
+      newSpacesList.innerHTML = this.renderSpaces();
+      spacesList.parentNode.replaceChild(newSpacesList, spacesList);
+      this.attachStep2Listeners();
     }
   }
 
@@ -778,305 +911,293 @@ class OnboardingEspacios {
       space.specificSpaces.length > 0 &&
       space.specificSpaces.every(spec => spec.name.trim() !== '')
     );
-    const saveBtn = document.getElementById('btnSave');
-    if (saveBtn) {
-      saveBtn.disabled = !canSave;
+    const saveButton = document.getElementById('btnSave');
+    if (saveButton) {
+      saveButton.disabled = !canSave;
     }
   }
 
-  // Métodos CRUD
-  addGeneralSpace() {
-    const newSpace = {
-      id: Date.now(),
-      name: '',
-      isEditing: true,
-      specificSpaces: []
-    };
-    this.spaces.push(newSpace);
-    this.render();
-  }
-
-  confirmGeneral(spaceId) {
-    this.spaces = this.spaces.map(space => 
-      space.id === spaceId ? { ...space, isEditing: false } : space
-    );
-    this.render();
-  }
-
-  startEditingGeneral(spaceId, currentName) {
-    this.editingId = spaceId;
-    this.editingValue = currentName;
-    this.render();
-  }
-
-  saveEditGeneral(spaceId) {
-    this.spaces = this.spaces.map(space => 
-      space.id === spaceId ? { ...space, name: this.editingValue } : space
-    );
-    this.cancelEditing();
-  }
-
-  deleteGeneralSpace(spaceId) {
-    if (confirm('¿Estás seguro de eliminar este espacio y todos sus sub-espacios?')) {
-      this.spaces = this.spaces.filter(space => space.id !== spaceId);
-      this.render();
-    }
-  }
-
-  addSpecificSpace(spaceId) {
-    this.spaces = this.spaces.map(space => {
-      if (space.id === spaceId) {
-        return {
-          ...space,
-          specificSpaces: [
-            ...space.specificSpaces,
-            { id: Date.now(), name: '', isEditing: true }
-          ]
-        };
-      }
-      return space;
-    });
-    this.render();
-  }
-
-  confirmSpecific(spaceId, specId) {
-    this.spaces = this.spaces.map(space => {
-      if (space.id === spaceId) {
-        return {
-          ...space,
-          specificSpaces: space.specificSpaces.map(spec =>
-            spec.id === specId ? { ...spec, isEditing: false } : spec
-          )
-        };
-      }
-      return space;
-    });
-    this.render();
-  }
-
-  startEditingSpecific(specId, currentName) {
-    this.editingId = specId;
-    this.editingValue = currentName;
-    this.render();
-  }
-
-  saveEditSpecific(spaceId, specId) {
-    this.spaces = this.spaces.map(space => {
-      if (space.id === spaceId) {
-        return {
-          ...space,
-          specificSpaces: space.specificSpaces.map(spec =>
-            spec.id === specId ? { ...spec, name: this.editingValue } : spec
-          )
-        };
-      }
-      return space;
-    });
-    this.cancelEditing();
-  }
-
-  deleteSpecificSpace(spaceId, specId) {
-    if (confirm('¿Estás seguro de eliminar este espacio específico?')) {
-      this.spaces = this.spaces.map(space => {
-        if (space.id === spaceId) {
-          return {
-            ...space,
-            specificSpaces: space.specificSpaces.filter(spec => spec.id !== specId)
-          };
-        }
-        return space;
-      });
-      this.render();
-    }
-  }
-
-  cancelEditing() {
-    this.editingId = null;
-    this.editingValue = '';
-    this.render();
-  }
-
-  async guardarNomenclatura() {
-    try {
-      console.log('🔄 Guardando nomenclatura...');
-      console.log('  - Grupo ID:', this.grupoSeleccionado);
-      console.log('  - General:', this.generalSpaceName);
-      console.log('  - Específico:', this.specificSpaceName);
-
-      if (!this.grupoSeleccionado) {
-        throw new Error('No hay un grupo seleccionado');
-      }
-
-      this.isLoading = true;
-      this.renderLoading();
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos
-
-      const response = await fetch(`/onboarding-espacios/api/grupos/${this.grupoSeleccionado}/nomenclatura`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          nomenclatura: {
-            general: this.generalSpaceName,
-            especifico: this.specificSpaceName,
-            ocupante: this.occupantName || 'Ocupante',
-            especialidad: this.especialidadName || 'Especialidad',
-            instrumento: this.instrumentName || 'Instrumento'
-          }
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('📥 Respuesta nomenclatura:', response.status);
-
-      const data = await response.json();
-      console.log('📦 Data nomenclatura:', data);
-
-      if (response.ok && data.ok) {
-        console.log('✅ Nomenclatura guardada exitosamente');
-        
-        // Ahora sí pasar a la creación de espacios
-        this.isLoading = false;
-        this.step = 'creacion-espacios';
-        this.render();
-      } else {
-        throw new Error(data.error || 'Error al guardar la nomenclatura');
-      }
-
-    } catch (error) {
-      console.error('❌ Error guardando nomenclatura:', error);
-      this.isLoading = false;
-      
-      let errorMessage = error.message;
-      if (error.name === 'AbortError') {
-        errorMessage = 'La operación tardó demasiado tiempo. Por favor, intenta nuevamente.';
-      } else if (error.message.includes('Failed to fetch')) {
-        errorMessage = 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
-      }
-      
-      this.showErrorMessage(errorMessage);
-      this.render();
-    }
-  }
-
-  continuarAOcupantes() {
-    // Validar que hay espacios creados
-    if (this.spaces.length === 0) {
-      this.showErrorMessage('Debes crear al menos un espacio antes de continuar');
-      return;
-    }
-
-    const allValid = this.spaces.every(space => 
-      space.name.trim() !== '' && 
-      space.specificSpaces.length > 0 &&
-      space.specificSpaces.every(spec => spec.name.trim() !== '')
-    );
-
-    if (!allValid) {
-      this.showErrorMessage('Completa todos los espacios antes de continuar');
-      return;
-    }
-
-    // Pasar al paso de tipos de instrumentos
-    this.step = 'creacion-tipos-instrumentos';
-    this.render();
-  }
-
-  // ==================== TIPOS DE INSTRUMENTOS ====================
-  renderCreacionTiposInstrumentos() {
-    this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="onboarding-header">
-            <h2>Crear Tipos de ${this.instrumentName}s</h2>
-            <p>Define los tipos de ${this.instrumentName.toLowerCase()}s que se usarán en tu organización (opcional)</p>
+  updateTiposList() {
+    const tiposList = document.getElementById('tiposInstrumentosList');
+    if (tiposList) {
+      tiposList.innerHTML = this.tiposInstrumentos.length === 0 ? `
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>No hay tipos de ${this.instrumentName.toLowerCase()}s creados aún</p>
+        </div>
+      ` : this.tiposInstrumentos.map((tipo, idx) => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">${tipo.nombre}</div>
           </div>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="onboardingApp.editTipoInstrumento(${idx})">
+              <i class="fas fa-pen"></i>
+            </button>
+            <button class="btn-icon danger" onclick="onboardingApp.deleteTipoInstrumento(${idx})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 
-          <div class="especialidades-container">
-            ${this.tiposInstrumentos.length === 0 ? `
+  updateInstrumentosList() {
+    const container = document.getElementById('instrumentosContainer');
+    if (container) {
+      container.innerHTML = this.tiposInstrumentos.map((tipo, tipoIndex) => `
+        <div style="border: 1px solid var(--gray-300); border-radius: 0.5rem; padding: 1.5rem; background: var(--gray-100);">
+          <h3 style="margin-bottom: 1rem; color: var(--text-dark);">${tipo.nombre}</h3>
+          
+          <div class="items-list" style="margin-bottom: 1rem;">
+            ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).length === 0 ? `
               <div class="empty-state">
-                <p>No hay tipos de ${this.instrumentName.toLowerCase()}s creados aún</p>
-                <p class="text-muted">Puedes añadir tipos o omitir este paso</p>
+                <i class="fas fa-inbox"></i>
+                <p>No hay ${this.instrumentName.toLowerCase()}s para este tipo</p>
               </div>
             ` : `
-              <div class="especialidades-list">
-                ${this.tiposInstrumentos.map((tipo, index) => `
-                  <div class="especialidad-item" data-index="${index}">
-                    <div class="especialidad-info">
-                      <span class="especialidad-name">${tipo.nombre}</span>
+              ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).map((inst) => {
+                const globalIndex = this.instrumentos.findIndex(i => i.id === inst.id);
+                return `
+                  <div class="item-card">
+                    <div class="item-info">
+                      <div class="item-name">${inst.nombre}</div>
                     </div>
-                    <div class="especialidad-actions">
-                      <button class="btn-icon btn-edit" onclick="onboardingApp.editTipoInstrumento(${index})" title="Editar">
-                        <i class="fas fa-edit"></i>
+                    <div class="item-actions">
+                      <button class="btn-icon" onclick="onboardingApp.editInstrumento(${globalIndex})">
+                        <i class="fas fa-pen"></i>
                       </button>
-                      <button class="btn-icon btn-delete" onclick="onboardingApp.deleteTipoInstrumento(${index})" title="Eliminar">
+                      <button class="btn-icon danger" onclick="onboardingApp.deleteInstrumento(${globalIndex})">
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
                   </div>
-                `).join('')}
-              </div>
+                `;
+              }).join('')}
             `}
-
-            <div class="add-especialidad-section">
-              <input 
-                type="text" 
-                id="nombreTipoInstrumento" 
-                class="form-input" 
-                placeholder="Nombre del tipo de ${this.instrumentName.toLowerCase()}"
-                value="${this.editingValue}"
-              >
-              <button 
-                class="btn btn-primary" 
-                onclick="onboardingApp.${this.editingId !== null ? 'updateTipoInstrumento' : 'addTipoInstrumento'}()"
-              >
-                ${this.editingId !== null ? 'Actualizar' : 'Agregar'}
-              </button>
-              ${this.editingId !== null ? `
-                <button class="btn btn-secondary" onclick="onboardingApp.cancelEditTipoInstrumento()">
-                  Cancelar
-                </button>
-              ` : ''}
-            </div>
           </div>
 
-          <div class="onboarding-actions">
-            <button class="btn btn-secondary" onclick="onboardingApp.omitirTiposInstrumentos()">
-              Omitir
-            </button>
+          <div style="display: flex; gap: 0.75rem;">
+            <input 
+              type="text" 
+              id="nombreInstrumento_${tipoIndex}" 
+              class="form-input" 
+              placeholder="Nombre del ${this.instrumentName.toLowerCase()}"
+              style="flex: 1; margin: 0;"
+            >
             <button 
               class="btn btn-primary" 
-              onclick="onboardingApp.continuarAInstrumentos()"
+              onclick="onboardingApp.addInstrumento('${tipo.id}', ${tipoIndex})"
+              style="flex: 0 0 auto;"
             >
-              Continuar
+              <i class="fas fa-plus"></i> Agregar
             </button>
           </div>
         </div>
+      `).join('');
+    }
+  }
+
+  updateEspecialidadesList() {
+    const especialidadesList = document.getElementById('especialidadesList');
+    if (especialidadesList) {
+      especialidadesList.innerHTML = this.especialidades.length === 0 ? `
+        <div class="empty-state">
+          <i class="fas fa-star"></i>
+          <p>Aún no hay ${this.especialidadName.toLowerCase()}es. ¡Agrega una para comenzar!</p>
+        </div>
+      ` : this.especialidades.map((esp, idx) => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">${esp.nombre}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="onboardingApp.editEspecialidad(${idx})">
+              <i class="fas fa-pen"></i>
+            </button>
+            <button class="btn-icon danger" onclick="onboardingApp.deleteEspecialidad(${idx})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Actualizar estado del botón continuar
+    const continuarBtn = document.querySelector('.action-buttons .btn-primary[onclick*="continuarAOcupantes"]');
+    if (continuarBtn) {
+      continuarBtn.disabled = this.especialidades.length === 0;
+    }
+  }
+
+  updateOcupantesList() {
+    const ocupantesList = document.getElementById('ocupantesList');
+    if (ocupantesList) {
+      ocupantesList.innerHTML = this.ocupantes.length === 0 ? `
+        <div class="empty-state">
+          <i class="fas fa-user-plus"></i>
+          <p>No hay ${this.occupantName.toLowerCase()}s agregados aún</p>
+        </div>
+      ` : this.ocupantes.map((ocu, idx) => `
+        <div class="item-card">
+          ${ocu.isEditing ? `
+            <div style="display: flex; gap: 0.75rem; width: 100%; align-items: flex-start;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                <input 
+                  type="text" 
+                  class="form-input" 
+                  data-ocupante-index="${idx}"
+                  data-field="nombre"
+                  value="${ocu.nombre}"
+                  placeholder="Nombre del ${this.occupantName.toLowerCase()}"
+                  style="margin: 0;"
+                >
+                <select 
+                  class="form-select" 
+                  data-ocupante-index="${idx}"
+                  data-field="especialidad_id"
+                  style="margin: 0;"
+                >
+                  <option value="">Seleccionar ${this.especialidadName.toLowerCase()}...</option>
+                  ${this.especialidades.map(esp => `
+                    <option value="${esp.id}" ${ocu.especialidad_id === esp.id ? 'selected' : ''}>
+                      ${esp.nombre}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+              <div class="item-actions">
+                <button class="btn-icon success" data-action="confirm-ocupante" data-ocupante-index="${idx}" ${!ocu.nombre.trim() || !ocu.especialidad_id ? 'disabled' : ''}>
+                  <i class="fas fa-check"></i>
+                </button>
+                <button class="btn-icon danger" data-action="cancel-ocupante" data-ocupante-index="${idx}">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          ` : `
+            <div class="item-info">
+              <div class="item-name">${ocu.nombre}</div>
+              <div class="item-subtitle">${ocu.especialidad || this.especialidades.find(e => e.id === ocu.especialidad_id)?.nombre || 'Sin especialidad'}</div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" data-action="edit-ocupante" data-ocupante-index="${idx}">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button class="btn-icon danger" data-action="delete-ocupante" data-ocupante-index="${idx}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          `}
+        </div>
+      `).join('');
+      
+      // Re-attach listeners después de actualizar el HTML
+      this.attachOcupantesListeners();
+    }
+  }
+
+  continuarATiposInstrumentos() {
+    if (this.spaces.length === 0) {
+      this.showNotification(`Debes crear al menos un ${this.generalSpaceName.toLowerCase()}`, 'error');
+      return;
+    }
+    this.step = 'creacion-tipos-instrumentos';
+    this.render();
+  }
+
+  // ==================== PASO 2.5: TIPOS DE INSTRUMENTOS ==================== //
+  renderCreacionTiposInstrumentos() {
+    this.root.innerHTML = `
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Nomenclatura</span>
+          </div>
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Espacios</span>
+          </div>
+          <div class="progress-step active">
+            <span>2.5</span>
+            <span>Tipos ${this.pluralize(this.instrumentName)}</span>
+          </div>
+          <div class="progress-step">
+            <span>3</span>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+        </div>
+
+        <div class="onboarding-header">
+          <h1><i class="fas fa-cubes"></i> Crear Tipos de ${this.pluralize(this.instrumentName)}</h1>
+          <p>Define los tipos de ${this.pluralize(this.instrumentName.toLowerCase())} que se usarán en tu organización (opcional)</p>
+        </div>
+
+        <div class="items-list" id="tiposInstrumentosList">
+          ${this.tiposInstrumentos.length === 0 ? `
+            <div class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>No hay tipos de ${this.pluralize(this.instrumentName.toLowerCase())} creados aún</p>
+            </div>
+          ` : this.tiposInstrumentos.map((tipo, idx) => `
+            <div class="item-card">
+              <div class="item-info">
+                <div class="item-name">${tipo.nombre}</div>
+              </div>
+              <div class="item-actions">
+                <button class="btn-icon" onclick="onboardingApp.editTipoInstrumento(${idx})">
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button class="btn-icon danger" onclick="onboardingApp.deleteTipoInstrumento(${idx})">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <input 
+            type="text" 
+            id="nombreTipoInstrumento" 
+            class="form-input" 
+            placeholder="Nombre del tipo de ${this.instrumentName.toLowerCase()}"
+            style="flex: 1; margin: 0;"
+          >
+          <button class="btn btn-primary" onclick="onboardingApp.addTipoInstrumento()" style="flex: 0 0 auto;">
+            <i class="fas fa-plus"></i> Agregar
+          </button>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-secondary" onclick="onboardingApp.volverATiposDesdeEspacios()">
+            <i class="fas fa-arrow-left"></i> Volver
+          </button>
+          <button class="btn btn-primary" onclick="onboardingApp.continuarAInstrumentos()">
+            Continuar <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
       </div>
     `;
+
+    document.getElementById('nombreTipoInstrumento').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.addTipoInstrumento();
+    });
   }
 
   addTipoInstrumento() {
-    const nombreInput = document.getElementById('nombreTipoInstrumento');
-    const nombre = nombreInput.value.trim();
+    const input = document.getElementById('nombreTipoInstrumento');
+    const nombre = input.value.trim();
 
-    if (nombre === '') {
-      this.showErrorMessage(`El nombre del tipo de ${this.instrumentName.toLowerCase()} no puede estar vacío`);
+    if (!nombre) {
+      this.showNotification(`El nombre no puede estar vacío`, 'error');
       return;
     }
 
-    // Verificar si ya existe
-    const existe = this.tiposInstrumentos.some(tipo => 
-      tipo.nombre.toLowerCase() === nombre.toLowerCase()
-    );
-
-    if (existe) {
-      this.showErrorMessage(`El tipo de ${this.instrumentName.toLowerCase()} "${nombre}" ya existe`);
+    if (this.tiposInstrumentos.some(t => t.nombre.toLowerCase() === nombre.toLowerCase())) {
+      this.showNotification('Este tipo ya existe', 'error');
       return;
     }
 
@@ -1084,62 +1205,52 @@ class OnboardingEspacios {
       id: Date.now().toString(), 
       nombre 
     });
-    nombreInput.value = '';
-    this.render();
+    input.value = '';
+    this.showNotification('Tipo agregado', 'success');
+    this.updateTiposList();
   }
 
   editTipoInstrumento(index) {
-    this.editingId = index;
-    this.editingValue = this.tiposInstrumentos[index].nombre;
-    this.render();
-  }
+    const nuevoNombre = prompt(`Editar tipo de ${this.instrumentName.toLowerCase()}:`, this.tiposInstrumentos[index].nombre);
+    if (!nuevoNombre) return;
 
-  updateTipoInstrumento() {
-    const nombreInput = document.getElementById('nombreTipoInstrumento');
-    const nombre = nombreInput.value.trim();
-
-    if (nombre === '') {
-      this.showErrorMessage(`El nombre del tipo de ${this.instrumentName.toLowerCase()} no puede estar vacío`);
+    const nombre = nuevoNombre.trim();
+    if (!nombre) {
+      this.showNotification('El nombre no puede estar vacío', 'error');
       return;
     }
 
-    // Verificar si ya existe (excluyendo el actual)
-    const existe = this.tiposInstrumentos.some((tipo, idx) => 
-      idx !== this.editingId && tipo.nombre.toLowerCase() === nombre.toLowerCase()
-    );
-
-    if (existe) {
-      this.showErrorMessage(`El tipo de ${this.instrumentName.toLowerCase()} "${nombre}" ya existe`);
+    if (this.tiposInstrumentos.some((t, i) => i !== index && t.nombre.toLowerCase() === nombre.toLowerCase())) {
+      this.showNotification('Este tipo ya existe', 'error');
       return;
     }
 
-    this.tiposInstrumentos[this.editingId].nombre = nombre;
-    this.editingId = null;
-    this.editingValue = '';
-    this.render();
-  }
-
-  cancelEditTipoInstrumento() {
-    this.editingId = null;
-    this.editingValue = '';
-    this.render();
+    this.tiposInstrumentos[index].nombre = nombre;
+    this.showNotification('Tipo actualizado', 'success');
+    this.updateTiposList();
   }
 
   deleteTipoInstrumento(index) {
-    if (confirm(`¿Estás seguro de que deseas eliminar este tipo de ${this.instrumentName.toLowerCase()}?`)) {
+    if (confirm(`¿Eliminar este tipo de ${this.instrumentName.toLowerCase()}?`)) {
       this.tiposInstrumentos.splice(index, 1);
-      this.render();
+      this.showNotification('Tipo eliminado', 'success');
+      this.updateTiposList();
     }
   }
 
   omitirTiposInstrumentos() {
-    // Omitir tipos de instrumentos e instrumentos, ir directo a especialidades
+    this.tiposInstrumentos = [];
+    this.instrumentos = [];
     this.step = 'creacion-especialidades';
     this.render();
   }
 
+  volverATiposDesdeEspacios() {
+    this.step = 'creacion-espacios';
+    this.render();
+  }
+
   continuarAInstrumentos() {
-    // Si no hay tipos creados, ir directo a especialidades
     if (this.tiposInstrumentos.length === 0) {
       this.step = 'creacion-especialidades';
     } else {
@@ -1148,229 +1259,94 @@ class OnboardingEspacios {
     this.render();
   }
 
-  // ==================== ESPECIALIDADES ====================
-  renderCreacionEspecialidades() {
-    this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="onboarding-header">
-            <h2>Crear ${this.especialidadName}es</h2>
-            <p>Define las ${this.especialidadName.toLowerCase()}es disponibles para tus ${this.occupantName.toLowerCase()}s</p>
-          </div>
-
-          <div class="especialidades-container">
-            ${this.especialidades.length === 0 ? `
-              <div class="empty-state">
-                <p>No hay ${this.especialidadName.toLowerCase()}es creadas aún</p>
-                <p class="text-muted">Añade al menos una ${this.especialidadName.toLowerCase()}</p>
-              </div>
-            ` : `
-              <div class="especialidades-list">
-                ${this.especialidades.map((esp, index) => `
-                  <div class="especialidad-item" data-index="${index}">
-                    <div class="especialidad-info">
-                      <span class="especialidad-name">${esp.nombre}</span>
-                    </div>
-                    <div class="especialidad-actions">
-                      <button class="btn-icon btn-edit" onclick="onboardingApp.editEspecialidad(${index})" title="Editar">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button class="btn-icon btn-delete" onclick="onboardingApp.deleteEspecialidad(${index})" title="Eliminar">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-
-            <div class="add-especialidad-section">
-              <input 
-                type="text" 
-                id="nuevaEspecialidad" 
-                class="especialidad-input" 
-                placeholder="Nombre de la ${this.especialidadName.toLowerCase()}"
-                onkeydown="if(event.key==='Enter') onboardingApp.addEspecialidad()"
-              >
-              <button class="btn-add-large" onclick="onboardingApp.addEspecialidad()">
-                <i class="fas fa-plus"></i>
-                Añadir ${this.especialidadName}
-              </button>
-            </div>
-          </div>
-
-          <div class="onboarding-actions">
-            <button class="btn btn-secondary" onclick="onboardingApp.volverAEspacios()">
-              <i class="fas fa-arrow-left"></i>
-              Volver
-            </button>
-            <button class="btn btn-primary" onclick="onboardingApp.continuarDesdeEspecialidades()">
-              Continuar
-              <i class="fas fa-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  addEspecialidad() {
-    const input = document.getElementById('nuevaEspecialidad');
-    const nombre = input.value.trim();
-
-    if (nombre === '') {
-      this.showErrorMessage(`El nombre de la ${this.especialidadName.toLowerCase()} no puede estar vacío`);
-      return;
-    }
-
-    // Verificar duplicados
-    if (this.especialidades.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
-      this.showErrorMessage('Ya existe una especialidad con ese nombre');
-      return;
-    }
-
-    this.especialidades.push({ nombre });
-    input.value = '';
-    this.render();
-    this.showNotification(`${this.especialidadName} añadida correctamente`, 'success');
-  }
-
-  editEspecialidad(index) {
-    const especialidad = this.especialidades[index];
-    const nuevoNombre = prompt(`Editar ${this.especialidadName}:`, especialidad.nombre);
-
-    if (nuevoNombre === null) return; // Canceló
-
-    if (nuevoNombre.trim() === '') {
-      this.showErrorMessage('El nombre no puede estar vacío');
-      return;
-    }
-
-    // Verificar duplicados (excepto el actual)
-    if (this.especialidades.some((e, i) => i !== index && e.nombre.toLowerCase() === nuevoNombre.trim().toLowerCase())) {
-      this.showErrorMessage('Ya existe una especialidad con ese nombre');
-      return;
-    }
-
-    this.especialidades[index].nombre = nuevoNombre.trim();
-    this.render();
-    this.showNotification(`${this.especialidadName} actualizada`, 'success');
-  }
-
-  deleteEspecialidad(index) {
-    if (confirm(`¿Eliminar la ${this.especialidadName.toLowerCase()} "${this.especialidades[index].nombre}"?`)) {
-      this.especialidades.splice(index, 1);
-      this.render();
-      this.showNotification(`${this.especialidadName} eliminada`, 'success');
-    }
-  }
-
-  volverAEspacios() {
-    this.step = 'creacion-espacios';
-    this.render();
-  }
-
-  continuarDesdeEspecialidades() {
-    if (this.especialidades.length === 0) {
-      this.showErrorMessage(`Debes crear al menos una ${this.especialidadName.toLowerCase()} antes de continuar`);
-      return;
-    }
-
-    this.step = 'creacion-ocupantes';
-    this.render();
-  }
-
-  // ==================== INSTRUMENTOS ====================
+  // ==================== PASO 2.7: INSTRUMENTOS ==================== //
   renderCreacionInstrumentos() {
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="onboarding-header">
-            <h2>Crear ${this.instrumentName}s</h2>
-            <p>Asigna ${this.instrumentName.toLowerCase()}s a cada tipo creado</p>
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Nomenclatura</span>
           </div>
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Espacios</span>
+          </div>
+          <div class="progress-step active">
+            <span>2.7</span>
+            <span>${this.pluralize(this.instrumentName)}</span>
+          </div>
+          <div class="progress-step">
+            <span>3</span>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+        </div>
 
-          <div class="instrumentos-section">
-            ${this.tiposInstrumentos.map((tipo, tipoIndex) => `
-              <div class="tipo-instrumento-card">
-                <h3>${tipo.nombre}</h3>
-                
-                <div class="instrumentos-list">
-                  ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).length === 0 ? `
-                    <div class="empty-state-small">
-                      <p>No hay ${this.instrumentName.toLowerCase()}s para este tipo</p>
-                    </div>
-                  ` : `
-                    ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).map((inst, instIndex) => {
-                      const globalIndex = this.instrumentos.findIndex(i => i.id === inst.id);
-                      return `
-                        <div class="instrumento-item">
-                          <span class="instrumento-name">${inst.nombre}</span>
-                          <div class="instrumento-actions">
-                            <button class="btn-icon btn-edit" onclick="onboardingApp.editInstrumento(${globalIndex})" title="Editar">
-                              <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon btn-delete" onclick="onboardingApp.deleteInstrumento(${globalIndex})" title="Eliminar">
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </div>
+        <div class="onboarding-header">
+          <h1><i class="fas fa-wrench"></i> Crear ${this.pluralize(this.instrumentName)}</h1>
+          <p>Asigna ${this.pluralize(this.instrumentName.toLowerCase())} a cada tipo creado</p>
+        </div>
+
+        <div id="instrumentosContainer" style="display: flex; flex-direction: column; gap: 1.5rem;">
+          ${this.tiposInstrumentos.map((tipo, tipoIndex) => `
+            <div style="border: 1px solid var(--gray-300); border-radius: 0.5rem; padding: 1.5rem; background: var(--gray-100);">
+              <h3 style="margin-bottom: 1rem; color: var(--text-dark);">${tipo.nombre}</h3>
+              
+              <div class="items-list" style="margin-bottom: 1rem;">
+                ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).length === 0 ? `
+                  <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>No hay ${this.pluralize(this.instrumentName.toLowerCase())} para este tipo</p>
+                  </div>
+                ` : `
+                  ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).map((inst) => {
+                    const globalIndex = this.instrumentos.findIndex(i => i.id === inst.id);
+                    return `
+                      <div class="item-card">
+                        <div class="item-info">
+                          <div class="item-name">${inst.nombre}</div>
                         </div>
-                      `;
-                    }).join('')}
-                  `}
-                </div>
-
-                <div class="add-instrumento-section">
-                  <input 
-                    type="text" 
-                    id="nombreInstrumento_${tipoIndex}" 
-                    class="form-input" 
-                    placeholder="Nombre del ${this.instrumentName.toLowerCase()}"
-                  >
-                  <button 
-                    class="btn btn-primary btn-sm" 
-                    onclick="onboardingApp.addInstrumento('${tipo.id}', ${tipoIndex})"
-                  >
-                    Agregar
-                  </button>
-                </div>
+                        <div class="item-actions">
+                          <button class="btn-icon" onclick="onboardingApp.editInstrumento(${globalIndex})">
+                            <i class="fas fa-pen"></i>
+                          </button>
+                          <button class="btn-icon danger" onclick="onboardingApp.deleteInstrumento(${globalIndex})">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                `}
               </div>
-            `).join('')}
-          </div>
 
-          ${this.editingId !== null ? `
-            <div class="edit-instrumento-modal">
-              <div class="modal-content">
-                <h3>Editar ${this.instrumentName}</h3>
+              <div style="display: flex; gap: 0.75rem;">
                 <input 
                   type="text" 
-                  id="editNombreInstrumento" 
+                  id="nombreInstrumento_${tipoIndex}" 
                   class="form-input" 
-                  value="${this.editingValue}"
+                  placeholder="Nombre del ${this.instrumentName.toLowerCase()}"
+                  style="flex: 1; margin: 0;"
                 >
-                <div class="modal-actions">
-                  <button class="btn btn-secondary" onclick="onboardingApp.cancelEditInstrumento()">
-                    Cancelar
-                  </button>
-                  <button class="btn btn-primary" onclick="onboardingApp.updateInstrumento()">
-                    Actualizar
-                  </button>
-                </div>
+                <button 
+                  class="btn btn-primary" 
+                  onclick="onboardingApp.addInstrumento('${tipo.id}', ${tipoIndex})"
+                  style="flex: 0 0 auto;"
+                >
+                  <i class="fas fa-plus"></i> Agregar
+                </button>
               </div>
             </div>
-          ` : ''}
+          `).join('')}
+        </div>
 
-          <div class="onboarding-actions">
-            <button class="btn btn-secondary" onclick="onboardingApp.omitirInstrumentos()">
-              Omitir
-            </button>
-            <button 
-              class="btn btn-primary" 
-              onclick="onboardingApp.continuarDesdeInstrumentos()"
-            >
-              Continuar
-            </button>
-          </div>
+        <div class="action-buttons" style="margin-top: 2rem;">
+          <button class="btn btn-secondary" onclick="onboardingApp.volverATiposInstrumentos()">
+            <i class="fas fa-arrow-left"></i> Volver
+          </button>
+          <button class="btn btn-primary" onclick="onboardingApp.continuarDesdeInstrumentos()">
+            Continuar <i class="fas fa-arrow-right"></i>
+          </button>
         </div>
       </div>
     `;
@@ -1380,18 +1356,17 @@ class OnboardingEspacios {
     const nombreInput = document.getElementById(`nombreInstrumento_${tipoIndex}`);
     const nombre = nombreInput.value.trim();
 
-    if (nombre === '') {
-      this.showErrorMessage(`El nombre del ${this.instrumentName.toLowerCase()} no puede estar vacío`);
+    if (!nombre) {
+      this.showNotification(`El nombre no puede estar vacío`, 'error');
       return;
     }
 
-    // Verificar si ya existe en este tipo
     const existe = this.instrumentos.some(inst => 
       inst.tipo_id === tipoId && inst.nombre.toLowerCase() === nombre.toLowerCase()
     );
 
     if (existe) {
-      this.showErrorMessage(`El ${this.instrumentName.toLowerCase()} "${nombre}" ya existe para este tipo`);
+      this.showNotification(`Este ${this.instrumentName.toLowerCase()} ya existe para este tipo`, 'error');
       return;
     }
 
@@ -1401,123 +1376,311 @@ class OnboardingEspacios {
       tipo_id: tipoId
     });
     nombreInput.value = '';
-    this.render();
+    this.showNotification(`${this.instrumentName} agregado`, 'success');
+    this.updateInstrumentosList();
   }
 
   editInstrumento(index) {
-    this.editingId = index;
-    this.editingValue = this.instrumentos[index].nombre;
-    this.render();
-    
-    // Focus en el input de edición
-    setTimeout(() => {
-      const input = document.getElementById('editNombreInstrumento');
-      if (input) input.focus();
-    }, 100);
-  }
+    const nuevoNombre = prompt(`Editar ${this.instrumentName.toLowerCase()}:`, this.instrumentos[index].nombre);
+    if (!nuevoNombre) return;
 
-  updateInstrumento() {
-    const nombreInput = document.getElementById('editNombreInstrumento');
-    const nombre = nombreInput.value.trim();
-
-    if (nombre === '') {
-      this.showErrorMessage(`El nombre del ${this.instrumentName.toLowerCase()} no puede estar vacío`);
+    const nombre = nuevoNombre.trim();
+    if (!nombre) {
+      this.showNotification('El nombre no puede estar vacío', 'error');
       return;
     }
 
-    const instrumento = this.instrumentos[this.editingId];
-    
-    // Verificar si ya existe (excluyendo el actual)
+    const instrumento = this.instrumentos[index];
     const existe = this.instrumentos.some((inst, idx) => 
-      idx !== this.editingId && 
+      idx !== index && 
       inst.tipo_id === instrumento.tipo_id && 
       inst.nombre.toLowerCase() === nombre.toLowerCase()
     );
 
     if (existe) {
-      this.showErrorMessage(`El ${this.instrumentName.toLowerCase()} "${nombre}" ya existe para este tipo`);
+      this.showNotification(`Este ${this.instrumentName.toLowerCase()} ya existe para este tipo`, 'error');
       return;
     }
 
-    this.instrumentos[this.editingId].nombre = nombre;
-    this.editingId = null;
-    this.editingValue = '';
-    this.render();
-  }
-
-  cancelEditInstrumento() {
-    this.editingId = null;
-    this.editingValue = '';
-    this.render();
+    this.instrumentos[index].nombre = nombre;
+    this.showNotification(`${this.instrumentName} actualizado`, 'success');
+    this.updateInstrumentosList();
   }
 
   deleteInstrumento(index) {
-    if (confirm(`¿Estás seguro de que deseas eliminar este ${this.instrumentName.toLowerCase()}?`)) {
+    if (confirm(`¿Eliminar este ${this.instrumentName.toLowerCase()}?`)) {
       this.instrumentos.splice(index, 1);
-      this.render();
+      this.showNotification(`${this.instrumentName} eliminado`, 'success');
+      this.updateInstrumentosList();
     }
   }
 
   omitirInstrumentos() {
+    this.instrumentos = [];
     this.step = 'creacion-especialidades';
+    this.render();
+  }
+
+  volverATiposInstrumentos() {
+    this.step = 'creacion-tipos-instrumentos';
     this.render();
   }
 
   continuarDesdeInstrumentos() {
-    // Permitir continuar aunque no haya instrumentos
     this.step = 'creacion-especialidades';
     this.render();
   }
 
-  // ==================== OCUPANTES ====================
+  // ==================== PASO 3: ESPECIALIDADES ==================== //
+  renderCreacionEspecialidades() {
+    this.root.innerHTML = `
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Nomenclatura</span>
+          </div>
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Espacios</span>
+          </div>
+          <div class="progress-step active">
+            <span>3</span>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+          <div class="progress-step">
+            <span>4</span>
+            <span>${this.pluralize(this.occupantName)}</span>
+          </div>
+        </div>
 
+        <div class="onboarding-header">
+          <h1><i class="fas fa-certificate"></i> Crea ${this.pluralize(this.especialidadName)}</h1>
+          <p>Define ${this.pluralize(this.especialidadName.toLowerCase())} disponibles para tus ${this.pluralize(this.occupantName.toLowerCase())}</p>
+        </div>
+
+        <div class="items-list" id="especialidadesList">
+          ${this.especialidades.length === 0 ? `
+            <div class="empty-state">
+              <i class="fas fa-star"></i>
+              <p>Aún no hay ${this.pluralize(this.especialidadName.toLowerCase())}. ¡Agrega una para comenzar!</p>
+            </div>
+          ` : this.especialidades.map((esp, idx) => `
+            <div class="item-card">
+              <div class="item-info">
+                <div class="item-name">${esp.nombre}</div>
+              </div>
+              <div class="item-actions">
+                <button class="btn-icon" onclick="onboardingApp.editEspecialidad(${idx})">
+                  <i class="fas fa-pen"></i>
+                </button>
+                <button class="btn-icon danger" onclick="onboardingApp.deleteEspecialidad(${idx})">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <input 
+            type="text" 
+            id="nuevaEspecialidad" 
+            class="form-input" 
+            placeholder="Nombre de la ${this.especialidadName.toLowerCase()}"
+            style="flex: 1; margin: 0;"
+          >
+          <button class="btn btn-primary" onclick="onboardingApp.addEspecialidad()" style="flex: 0 0 auto;">
+            <i class="fas fa-plus"></i> Agregar
+          </button>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-secondary" onclick="onboardingApp.volverAEspacios()">
+            <i class="fas fa-arrow-left"></i> Volver
+          </button>
+          <button class="btn btn-primary" onclick="onboardingApp.continuarAOcupantes()" ${this.especialidades.length === 0 ? 'disabled' : ''}>
+            Continuar <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('nuevaEspecialidad').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.addEspecialidad();
+    });
+  }
+
+  addEspecialidad() {
+    const input = document.getElementById('nuevaEspecialidad');
+    const nombre = input.value.trim();
+
+    if (!nombre) {
+      this.showNotification(`El nombre no puede estar vacío`, 'error');
+      return;
+    }
+
+    if (this.especialidades.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
+      this.showNotification('Esta especialidad ya existe', 'error');
+      return;
+    }
+
+    // Generar ID único para la especialidad
+    const especialidadId = `ESP#${this.especialidades.length + 1}`;
+    this.especialidades.push({ id: especialidadId, nombre });
+    input.value = '';
+    this.showNotification('Especialidad agregada', 'success');
+    this.updateEspecialidadesList();
+  }
+
+  editEspecialidad(index) {
+    const nuevoNombre = prompt(`Editar ${this.especialidadName}:`, this.especialidades[index].nombre);
+    if (!nuevoNombre) return;
+
+    const nombre = nuevoNombre.trim();
+    if (!nombre) {
+      this.showNotification('El nombre no puede estar vacío', 'error');
+      return;
+    }
+
+    if (this.especialidades.some((e, i) => i !== index && e.nombre.toLowerCase() === nombre.toLowerCase())) {
+      this.showNotification('Esta especialidad ya existe', 'error');
+      return;
+    }
+
+    this.especialidades[index].nombre = nombre;
+    this.showNotification('Especialidad actualizada', 'success');
+    this.updateEspecialidadesList();
+  }
+
+  deleteEspecialidad(index) {
+    if (confirm(`¿Eliminar la ${this.especialidadName.toLowerCase()} "${this.especialidades[index].nombre}"?`)) {
+      this.especialidades.splice(index, 1);
+      this.showNotification('Especialidad eliminada', 'success');
+      this.updateEspecialidadesList();
+    }
+  }
+
+  volverAEspacios() {
+    // Si hay tipos de instrumentos, volver a instrumentos
+    if (this.tiposInstrumentos.length > 0) {
+      this.step = 'creacion-instrumentos';
+    } else {
+      // Si no hay tipos, volver a tipos-instrumentos
+      this.step = 'creacion-tipos-instrumentos';
+    }
+    this.render();
+  }
+
+  continuarAOcupantes() {
+    if (this.especialidades.length === 0) {
+      this.showNotification(`Debes crear al menos una ${this.especialidadName.toLowerCase()}`, 'error');
+      return;
+    }
+    this.step = 'creacion-ocupantes';
+    this.render();
+  }
+
+  // ==================== PASO 4: OCUPANTES ==================== //
   renderCreacionOcupantes() {
     this.root.innerHTML = `
-      <div class="onboarding-container">
-        <div class="onboarding-card">
-          <div class="progress-indicator">
-            <div class="progress-step completed">
-              <i class="fas fa-check"></i>
-              <span>Nomenclatura</span>
-            </div>
-            <div class="progress-step completed">
-              <i class="fas fa-check"></i>
-              <span>Espacios</span>
-            </div>
-            <div class="progress-step completed">
-              <i class="fas fa-check"></i>
-              <span>${this.especialidadName}es</span>
-            </div>
-            <div class="progress-step active">
-              <span>4</span>
-              <span>${this.occupantName}s</span>
-            </div>
+      <div class="onboarding-card">
+        <div class="progress-indicator">
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Nomenclatura</span>
           </div>
-
-          <h1 class="step-title">Agregar ${this.occupantName}s Iniciales</h1>
-          <p class="step-subtitle">Puedes agregar ${this.occupantName.toLowerCase()}s ahora o hacerlo después</p>
-
-          <div class="ocupantes-container">
-            <div id="ocupantes-list" class="ocupantes-list">
-              ${this.renderOcupantes()}
-            </div>
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>Espacios</span>
           </div>
+          <div class="progress-step completed">
+            <i class="fas fa-check"></i>
+            <span>${this.pluralize(this.especialidadName)}</span>
+          </div>
+          <div class="progress-step active">
+            <span>4</span>
+            <span>${this.pluralize(this.occupantName)}</span>
+          </div>
+        </div>
 
-          <button class="btn-add-large" id="btnAgregarOcupante">
-            <i class="fas fa-plus"></i>
-            Agregar ${this.occupantName.toLowerCase()}
+        <div class="onboarding-header">
+          <h1><i class="fas fa-users"></i> Agregar ${this.pluralize(this.occupantName)}</h1>
+          <p>Agrega ${this.pluralize(this.occupantName.toLowerCase())} a tu sistema (puedes hacerlo después si lo prefieres)</p>
+        </div>
+
+        <div class="items-list" id="ocupantesList">
+          ${this.ocupantes.length === 0 ? `
+            <div class="empty-state">
+              <i class="fas fa-user-plus"></i>
+              <p>No hay ${this.pluralize(this.occupantName.toLowerCase())} agregados aún</p>
+            </div>
+          ` : this.ocupantes.map((ocu, idx) => `
+            <div class="item-card">
+              ${ocu.isEditing ? `
+                <div style="display: flex; gap: 0.75rem; width: 100%; align-items: flex-start;">
+                  <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <input 
+                      type="text" 
+                      class="form-input" 
+                      data-ocupante-index="${idx}"
+                      data-field="nombre"
+                      value="${ocu.nombre}"
+                      placeholder="Nombre del ${this.occupantName.toLowerCase()}"
+                      style="margin: 0;"
+                    >
+                    <select 
+                      class="form-select" 
+                      data-ocupante-index="${idx}"
+                      data-field="especialidad_id"
+                      style="margin: 0;"
+                    >
+                      <option value="">Seleccionar ${this.especialidadName.toLowerCase()}...</option>
+                      ${this.especialidades.map(esp => `
+                        <option value="${esp.id}" ${ocu.especialidad_id === esp.id ? 'selected' : ''}>
+                          ${esp.nombre}
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div class="item-actions">
+                    <button class="btn-icon success" data-action="confirm-ocupante" data-ocupante-index="${idx}" ${!ocu.nombre.trim() || !ocu.especialidad_id ? 'disabled' : ''}>
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn-icon danger" data-action="cancel-ocupante" data-ocupante-index="${idx}">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              ` : `
+                <div class="item-info">
+                  <div class="item-name">${ocu.nombre}</div>
+                  <div class="item-subtitle">${ocu.especialidad || this.especialidades.find(e => e.id === ocu.especialidad_id)?.nombre || 'Sin especialidad'}</div>
+                </div>
+                <div class="item-actions">
+                  <button class="btn-icon" data-action="edit-ocupante" data-ocupante-index="${idx}">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  <button class="btn-icon danger" data-action="delete-ocupante" data-ocupante-index="${idx}">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              `}
+            </div>
+          `).join('')}
+        </div>
+
+        <button class="btn-add-large" onclick="onboardingApp.addOcupante()">
+          <i class="fas fa-plus"></i> Agregar ${this.occupantName.toLowerCase()}
+        </button>
+
+        <div class="action-buttons">
+          <button class="btn btn-secondary" onclick="onboardingApp.volverAEspecialidades()">
+            <i class="fas fa-arrow-left"></i> Volver
           </button>
-
-          <div class="action-buttons">
-            <button class="btn-secondary" id="btnBackOcupantes">
-              <i class="fas fa-arrow-left"></i>
-              Volver a ${this.especialidadName.toLowerCase()}es
-            </button>
-            <button class="btn-save" id="btnGuardarTodo">
-              Finalizar configuración
-              <i class="fas fa-check"></i>
-            </button>
-          </div>
+          <button class="btn btn-primary" onclick="onboardingApp.finalizarConfiguracion()">
+            Finalizar Configuración <i class="fas fa-check-circle"></i>
+          </button>
         </div>
       </div>
     `;
@@ -1525,359 +1688,252 @@ class OnboardingEspacios {
     this.attachOcupantesListeners();
   }
 
-  renderOcupantes() {
-    if (this.ocupantes.length === 0) {
-      return '<div class="empty-state">No hay ocupantes agregados. Haz clic en "Agregar" para comenzar (opcional).</div>';
-    }
-
-    return this.ocupantes.map((ocupante, index) => `
-      <div class="ocupante-item" data-ocupante-index="${index}">
-        ${ocupante.isEditing ? `
-          <div class="ocupante-form">
-            <input 
-              type="text" 
-              class="ocupante-input" 
-              data-ocupante-index="${index}"
-              data-field="nombre"
-              value="${ocupante.nombre}"
-              placeholder="Nombre del ${this.occupantName.toLowerCase()}"
-              autofocus
-            >
-            <select 
-              class="ocupante-select" 
-              data-ocupante-index="${index}"
-              data-field="especialidad"
-            >
-              <option value="">Seleccionar ${this.especialidadName.toLowerCase()}...</option>
-              ${this.especialidades.map(esp => `
-                <option value="${esp.nombre}" ${ocupante.especialidad === esp.nombre ? 'selected' : ''}>
-                  ${esp.nombre}
-                </option>
-              `).join('')}
-            </select>
-          </div>
-          <div class="ocupante-actions">
-            <button class="btn-icon btn-confirm" data-action="confirm-ocupante" data-ocupante-index="${index}" ${!ocupante.nombre.trim() || !ocupante.especialidad ? 'disabled' : ''}>
-              <i class="fas fa-check"></i>
-            </button>
-            <button class="btn-icon btn-cancel" data-action="cancel-ocupante" data-ocupante-index="${index}">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-        ` : `
-          <div class="ocupante-info">
-            <span class="ocupante-nombre">${ocupante.nombre}</span>
-            <span class="ocupante-especialidad">${ocupante.especialidad}</span>
-          </div>
-          <div class="ocupante-actions">
-            <button class="btn-icon" data-action="edit-ocupante" data-ocupante-index="${index}">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn-icon btn-delete" data-action="delete-ocupante" data-ocupante-index="${index}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        `}
-      </div>
-    `).join('');
-  }
-
   attachOcupantesListeners() {
-    const ocupantesList = document.getElementById('ocupantes-list');
+    const ocupantesList = document.getElementById('ocupantesList');
 
     ocupantesList.addEventListener('click', (e) => {
       const button = e.target.closest('button');
       if (!button) return;
 
       const action = button.dataset.action;
-      const index = parseInt(button.dataset.ocupanteIndex);
+      const idx = parseInt(button.dataset.ocupanteIndex);
 
       switch (action) {
         case 'confirm-ocupante':
-          this.confirmOcupante(index);
+          this.confirmOcupante(idx);
           break;
         case 'cancel-ocupante':
-          this.cancelOcupante(index);
+          this.cancelOcupante(idx);
           break;
         case 'edit-ocupante':
-          this.editOcupante(index);
+          this.editOcupante(idx);
           break;
         case 'delete-ocupante':
-          this.deleteOcupante(index);
+          this.deleteOcupante(idx);
           break;
       }
     });
 
     ocupantesList.addEventListener('input', (e) => {
-      if (e.target.classList.contains('ocupante-input') || e.target.classList.contains('ocupante-select')) {
-        const index = parseInt(e.target.dataset.ocupanteIndex);
+      if (e.target.dataset.ocupanteIndex !== undefined) {
+        const idx = parseInt(e.target.dataset.ocupanteIndex);
         const field = e.target.dataset.field;
-        this.updateOcupanteInput(index, field, e.target.value);
+        this.ocupantes[idx][field] = e.target.value;
+        
+        // Actualizar estado del botón de confirmar
+        const ocupante = this.ocupantes[idx];
+        const confirmButton = document.querySelector(`button[data-action="confirm-ocupante"][data-ocupante-index="${idx}"]`);
+        if (confirmButton) {
+          confirmButton.disabled = !ocupante.nombre.trim() || !ocupante.especialidad_id;
+        }
       }
     });
 
     ocupantesList.addEventListener('change', (e) => {
-      if (e.target.classList.contains('ocupante-select')) {
-        const index = parseInt(e.target.dataset.ocupanteIndex);
+      if (e.target.dataset.ocupanteIndex !== undefined) {
+        const idx = parseInt(e.target.dataset.ocupanteIndex);
         const field = e.target.dataset.field;
-        this.updateOcupanteInput(index, field, e.target.value);
-      }
-    });
-
-    ocupantesList.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.classList.contains('ocupante-input')) {
-        const index = parseInt(e.target.dataset.ocupanteIndex);
-        if (this.ocupantes[index].nombre.trim() && this.ocupantes[index].especialidad) {
-          this.confirmOcupante(index);
+        this.ocupantes[idx][field] = e.target.value;
+        
+        // Si cambió la especialidad, también guardar el nombre
+        if (field === 'especialidad_id') {
+          const especialidad = this.especialidades.find(esp => esp.id === e.target.value);
+          if (especialidad) {
+            this.ocupantes[idx].especialidad = especialidad.nombre;
+          }
         }
-      } else if (e.key === 'Escape' && e.target.classList.contains('ocupante-input')) {
-        const index = parseInt(e.target.dataset.ocupanteIndex);
-        this.cancelOcupante(index);
+        
+        // Actualizar estado del botón de confirmar
+        const ocupante = this.ocupantes[idx];
+        const confirmButton = document.querySelector(`button[data-action="confirm-ocupante"][data-ocupante-index="${idx}"]`);
+        if (confirmButton) {
+          confirmButton.disabled = !ocupante.nombre.trim() || !ocupante.especialidad_id;
+        }
       }
-    });
-
-    document.getElementById('btnAgregarOcupante').addEventListener('click', () => {
-      this.addOcupante();
-    });
-
-    document.getElementById('btnBackOcupantes').addEventListener('click', () => {
-      this.step = 'creacion-especialidades';
-      this.render();
-    });
-
-    document.getElementById('btnGuardarTodo').addEventListener('click', () => {
-      this.saveConfiguration();
     });
   }
 
   addOcupante() {
     this.ocupantes.push({
       nombre: '',
+      especialidad_id: '',
       especialidad: '',
       isEditing: true
     });
-    this.renderOcupantesOnly();
+    this.updateOcupantesList();
   }
 
-  confirmOcupante(index) {
-    if (!this.ocupantes[index].nombre.trim() || !this.ocupantes[index].especialidad) return;
-    this.ocupantes[index].isEditing = false;
-    this.renderOcupantesOnly();
-  }
-
-  cancelOcupante(index) {
-    if (!this.ocupantes[index].nombre) {
-      this.ocupantes.splice(index, 1);
-    } else {
-      this.ocupantes[index].isEditing = false;
+  confirmOcupante(idx) {
+    const ocupante = this.ocupantes[idx];
+    if (!ocupante.nombre.trim() || !ocupante.especialidad_id) {
+      this.showNotification('Debes completar todos los campos', 'error');
+      return;
     }
-    this.renderOcupantesOnly();
-  }
-
-  editOcupante(index) {
-    this.ocupantes[index].isEditing = true;
-    this.renderOcupantesOnly();
-  }
-
-  deleteOcupante(index) {
-    this.ocupantes.splice(index, 1);
-    this.renderOcupantesOnly();
-  }
-
-  updateOcupanteInput(index, field, value) {
-    this.ocupantes[index][field] = value;
-    const btn = document.querySelector(`button[data-action="confirm-ocupante"][data-ocupante-index="${index}"]`);
-    if (btn) {
-      btn.disabled = !this.ocupantes[index].nombre.trim() || !this.ocupantes[index].especialidad;
-    }
-  }
-
-  renderOcupantesOnly() {
-    const ocupantesList = document.getElementById('ocupantes-list');
-    if (ocupantesList) {
-      ocupantesList.innerHTML = this.renderOcupantes();
-    }
-  }
-
-  async saveConfiguration() {
-    // Validación previa
-    console.log('🔍 Validando antes de guardar...');
-    console.log('  - grupoSeleccionado:', this.grupoSeleccionado);
-    console.log('  - espacios:', this.spaces.length);
-    console.log('  - especialidades:', this.especialidades.length);
-    console.log('  - ocupantes:', this.ocupantes.length);
-    console.log('  - tipos de instrumentos:', this.tiposInstrumentos.length);
-    console.log('  - instrumentos:', this.instrumentos.length);
     
-    if (!this.grupoSeleccionado) {
-      console.error('❌ No hay grupo seleccionado');
-      this.showErrorMessage('No hay un grupo seleccionado');
-      return;
+    // Asegurar que también se guarde el nombre de la especialidad
+    const especialidad = this.especialidades.find(e => e.id === ocupante.especialidad_id);
+    if (especialidad) {
+      ocupante.especialidad = especialidad.nombre;
     }
+    
+    console.log('✅ Ocupante confirmado:', {
+      nombre: ocupante.nombre,
+      especialidad_id: ocupante.especialidad_id,
+      especialidad: ocupante.especialidad
+    });
+    
+    ocupante.isEditing = false;
+    this.updateOcupantesList();
+  }
 
-    if (this.spaces.length === 0) {
-      console.error('❌ No hay espacios creados');
-      this.showErrorMessage('Debes crear al menos un espacio antes de guardar');
-      return;
+  cancelOcupante(idx) {
+    if (!this.ocupantes[idx].nombre) {
+      this.ocupantes.splice(idx, 1);
+    } else {
+      this.ocupantes[idx].isEditing = false;
     }
+    this.updateOcupantesList();
+  }
 
-    // Filtrar ocupantes confirmados
-    const ocupantesConfirmados = this.ocupantes.filter(o => !o.isEditing && o.nombre.trim() && o.especialidad);
+  editOcupante(idx) {
+    this.ocupantes[idx].isEditing = true;
+    this.updateOcupantesList();
+  }
 
-    this.isLoading = true;
+  deleteOcupante(idx) {
+    this.ocupantes.splice(idx, 1);
+    this.updateOcupantesList();
+  }
+
+  volverAEspecialidades() {
+    this.step = 'creacion-especialidades';
     this.render();
+  }
 
-    const payload = {
-      grupo_id: this.grupoSeleccionado,
-      espacios: this.spaces.map(space => ({
-        name: space.name,
-        specificSpaces: space.specificSpaces.map(spec => ({
-          name: spec.name
-        }))
-      })),
-      especialidades: this.especialidades.map(esp => ({
-        nombre: esp.nombre
-      })),
-      ocupantes: ocupantesConfirmados.map(o => ({
-        nombre: o.nombre,
-        especialidad: o.especialidad,
-        tipo: this.occupantName
-      })),
-      tipos_instrumentos: this.tiposInstrumentos.map(tipo => ({
-        id: tipo.id,  // Incluir el ID temporal para mapeo en el backend
-        nombre: tipo.nombre
-      })),
-      instrumentos: this.instrumentos.map(inst => ({
-        nombre: inst.nombre,
-        tipo_id: inst.tipo_id  // Mantener referencia al ID temporal del tipo
-      }))
-    };
-
-    console.log('💾 Guardando configuración completa...', payload);
-    console.log('📊 Total espacios:', payload.espacios.length);
-    console.log('📊 Total específicos:', payload.espacios.reduce((acc, e) => acc + e.specificSpaces.length, 0));
-    console.log('📊 Total especialidades:', payload.especialidades.length);
-    console.log('📊 Total ocupantes:', payload.ocupantes.length);
-    console.log('📊 Total tipos de instrumentos:', payload.tipos_instrumentos.length);
-    console.log('📊 Total instrumentos:', payload.instrumentos.length);
-
+  // ==================== FINALIZAR CONFIGURACIÓN ==================== //
+  async finalizarConfiguracion() {
     try {
-      console.log('🌐 Enviando petición a /api/espacios/configuracion...');
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      const response = await fetch('/onboarding-espacios/api/espacios/configuracion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
+      this.isLoading = true;
+      this.render();
+
+      const ocupantesConfirmados = this.ocupantes.filter(o => !o.isEditing && o.nombre.trim() && o.especialidad_id);
+
+      const payload = {
+        grupo_id: this.grupoSeleccionado,
+        espacios: this.spaces.map(space => ({
+          name: space.name,
+          specificSpaces: space.specificSpaces.map(spec => ({
+            name: spec.name
+          }))
+        })),
+        especialidades: this.especialidades.map(esp => ({
+          nombre: esp.nombre
+        })),
+        ocupantes: ocupantesConfirmados.map(o => ({
+          nombre: o.nombre,
+          especialidad_id: o.especialidad_id,
+          especialidad: o.especialidad,
+          tipo: this.occupantName
+        })),
+        tipos_instrumentos: this.tiposInstrumentos.map(tipo => ({
+          id: tipo.id,
+          nombre: tipo.nombre
+        })),
+        instrumentos: this.instrumentos.map(inst => ({
+          nombre: inst.nombre,
+          tipo_id: inst.tipo_id
+        }))
+      };
+
+      console.log('📤 Enviando payload:', JSON.stringify(payload, null, 2));
+      console.log('📊 Resumen:', {
+        grupo_id: payload.grupo_id,
+        total_espacios: payload.espacios.length,
+        total_especialidades: payload.especialidades.length,
+        total_ocupantes: payload.ocupantes.length,
+        total_tipos_instrumentos: payload.tipos_instrumentos.length,
+        total_instrumentos: payload.instrumentos.length
       });
 
-      clearTimeout(timeoutId);
-      
-      console.log('📥 Respuesta recibida, status:', response.status);
+      const response = await fetch('/onboarding-espacios/api/espacios/configuracion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-      let data;
-      try {
-        data = await response.json();
-        console.log('📦 Data parseada:', data);
-      } catch (parseError) {
-        console.error('❌ Error parseando respuesta:', parseError);
-        throw new Error('Error de comunicación con el servidor');
-      }
+      const data = await response.json();
+      
+      console.log('📦 Respuesta del servidor:', data);
 
       if (response.ok && data.ok) {
-        console.log('✅ Configuración guardada exitosamente:', data);
         this.showSuccessMessage(data);
         setTimeout(() => {
           window.location.replace('/dashboard');
         }, 2000);
       } else {
-        console.error('❌ Respuesta no OK:', { status: response.status, ok: data.ok, error: data.error });
-        throw new Error(data.error || `Error al guardar la configuración (${response.status})`);
+        const errorMsg = data.error || data.details || 'Error al guardar la configuración';
+        console.error('❌ Error del servidor:', errorMsg);
+        throw new Error(errorMsg);
       }
+
     } catch (error) {
-      console.error('❌ Error en saveConfiguration:', error.message);
+      console.error('❌ Error completo:', error);
       console.error('❌ Stack:', error.stack);
-      this.isLoading = false;
       
-      // Manejar diferentes tipos de errores
-      let errorMessage = error.message;
-      if (error.name === 'AbortError') {
-        errorMessage = 'La operación tardó demasiado tiempo. Por favor, intenta nuevamente.';
+      let errorMsg = 'Error al guardar la configuración';
+      if (error.message && !error.message.includes('Failed to fetch')) {
+        errorMsg = error.message;
       } else if (error.message.includes('Failed to fetch')) {
-        errorMessage = 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
+        errorMsg = 'No se pudo conectar con el servidor';
       }
       
-      this.showErrorMessage(errorMessage);
+      this.showNotification(errorMsg, 'error');
+      this.isLoading = false;
       this.render();
     }
   }
 
+  // ==================== MENSAJES Y NOTIFICACIONES ==================== //
   showSuccessMessage(data) {
     const totalGenerales = data.total_generales;
     const totalEspecificos = data.total_especificos;
     const totalOcupantes = data.total_ocupantes || 0;
 
-    const message = `
-      <div class="success-message">
-        <i class="fas fa-check-circle"></i>
-        <h3>¡Configuración guardada exitosamente!</h3>
-        <p>Se han creado ${totalGenerales} ${this.generalSpaceName.toLowerCase()}(s) 
-        con ${totalEspecificos} ${this.specificSpaceName.toLowerCase()}(s)
-        ${totalOcupantes > 0 ? ` y ${totalOcupantes} ${this.occupantName.toLowerCase()}(s)` : ''}</p>
-        <p class="redirect-info">Redirigiendo al dashboard...</p>
+    this.root.innerHTML = `
+      <div class="onboarding-card">
+        <div class="success-message">
+          <i class="fas fa-check-circle"></i>
+          <h3>¡Configuración completada!</h3>
+          <p>Se han creado ${totalGenerales} ${this.generalSpaceName.toLowerCase()}(s) con ${totalEspecificos} ${this.specificSpaceName.toLowerCase()}(s)
+          ${totalOcupantes > 0 ? ` y ${totalOcupantes} ${this.occupantName.toLowerCase()}(s)` : ''}</p>
+          <p class="redirect-info"></i> Redirigiendo al dashboard...</p>
+        </div>
       </div>
     `;
-    
-    this.root.innerHTML = message;
   }
 
   showNotification(message, type = 'success') {
-    const notificationDiv = document.createElement('div');
-    notificationDiv.className = `notification-toast ${type}`;
-    notificationDiv.innerHTML = `
-      <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+    const notif = document.createElement('div');
+    notif.className = `notification-toast ${type}`;
+    notif.innerHTML = `
+      <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
       <span>${message}</span>
       <button class="close-notification">&times;</button>
     `;
-    
-    document.body.appendChild(notificationDiv);
-    
-    notificationDiv.querySelector('.close-notification').addEventListener('click', () => {
-      notificationDiv.remove();
-    });
-    
-    setTimeout(() => {
-      notificationDiv.remove();
-    }, 3000);
+
+    document.body.appendChild(notif);
+    notif.querySelector('.close-notification').addEventListener('click', () => notif.remove());
+    setTimeout(() => notif.remove(), 4000);
   }
 
-  showErrorMessage(errorMsg) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-notification';
-    errorDiv.innerHTML = `
-      <i class="fas fa-exclamation-triangle"></i>
-      <span>${errorMsg}</span>
-      <button class="close-error">&times;</button>
-    `;
-    
-    document.body.appendChild(errorDiv);
-    
-    errorDiv.querySelector('.close-error').addEventListener('click', () => {
-      errorDiv.remove();
-    });
-    
-    setTimeout(() => {
-      errorDiv.remove();
-    }, 5000);
+  // ==================== UTILIDADES ==================== //
+  attachEvent(id, event, callback) {
+    const element = document.getElementById(id);
+    if (element) element.addEventListener(event, callback);
   }
 }
 
-// Inicializar cuando el DOM esté listo
+// ==================== INICIALIZAR APP ==================== //
 document.addEventListener('DOMContentLoaded', () => {
   window.onboardingApp = new OnboardingEspacios();
 });

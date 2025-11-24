@@ -1,5 +1,6 @@
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
+const { notifyEspacioCreado } = require('../../utils/notificationHelper');
 
 exports.handler = async (event) => {
   const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -107,6 +108,32 @@ exports.handler = async (event) => {
     }));
 
     console.log(`[${TRACE_ID}] ✅ Espacio creado exitosamente`);
+
+    // Notificar a todos los miembros del grupo
+    try {
+      const membersResult = await db.send(new QueryCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        KeyConditionExpression: 'group_id = :gid',
+        ExpressionAttributeValues: { ':gid': grupo_id }
+      }));
+
+      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+      
+      if (userSubs.length > 0) {
+        await notifyEspacioCreado({
+          userSubs,
+          grupoId: grupo_id,
+          createdBy: userSub,
+          espacioId: nextId,
+          espacioNombre: nombre.trim(),
+          espacioTipo: tipo
+        });
+        console.log(`[${TRACE_ID}] 📬 Notificaciones enviadas a ${userSubs.length} miembros`);
+      }
+    } catch (notifError) {
+      console.error(`[${TRACE_ID}] ⚠️ Error enviando notificaciones:`, notifError);
+      // No fallar si las notificaciones fallan
+    }
 
     return {
       statusCode: 201,

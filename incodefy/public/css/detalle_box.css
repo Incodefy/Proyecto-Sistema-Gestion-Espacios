@@ -188,7 +188,7 @@ body {
     margin-right: 10px;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--text-color);
     min-width: 150px;
     text-align: center;
 }
@@ -266,7 +266,7 @@ body {
 
 .tab-btn.active {
     background: var(--primary-color);
-    color: var(--text-color);
+    color: white;
     box-shadow: 0 4px 15px rgba(20, 44, 89, 0.3);
 }
 
@@ -363,7 +363,7 @@ body {
 .chart-title {
     font-size: 1.2rem;
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--text-color)!important;
     margin-bottom: 30px;
     text-align: center;
 }
@@ -392,36 +392,57 @@ body {
 }
 
 .modal-content-enhanced {
-    background: var(--background-color)!important;
-    border-radius: 20px;
-    padding: 30px 30px 10px 30px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    transform: translateY(30px);
-    transition: transform 0.3s ease;
+  background: var(--background-color) !important;
+  border-radius: 20px;
+  padding: 30px 30px 20px 30px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  transform: translateY(30px);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .enhanced-modal.show .modal-content-enhanced {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 .modal-header-enhanced {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .modal-title-enhanced {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-color);
-    margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-title-enhanced {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .close-btn {
@@ -441,33 +462,49 @@ body {
 }
 
 .instrument-list-enhanced {
-    display: grid;
-    gap: 12px;
-    padding: 0;
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
 }
 
 .instrument-item-enhanced {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    background: var(--card-background)!important;
-    border-radius: 12px;
-    border-left: 4px solid var(--primary-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: var(--card-background) !important;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 4px solid var(--primary-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 
+              0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.instrument-item-enhanced:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+              0 2px 6px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.12);
+  border-left-color: var(--primary-color);
 }
 
 .instrument-name {
-    font-weight: 600;
-    color: var(--text-color);
+  font-weight: 600;
+  color: var(--text-color);
+  flex: 1;
 }
 
 .instrument-count {
-    background: var(--primary-color);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.9rem;
+  background: var(--primary-color);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 /* Responsivo */
@@ -581,6 +618,68 @@ body {
     }
 }
 
+@media (max-width: 768px) {
+  .modal-content-enhanced {
+    max-width: 95vw;
+    padding: 20px;
+  }
+
+  .modal-title-enhanced {
+    font-size: 1.3rem;
+  }
+
+  .instrument-tabs .tab-btn {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .instrument-item-enhanced {
+    padding: 12px;
+  }
+
+  .instrument-name {
+    font-size: 0.95rem;
+  }
+
+  .instrument-count {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content-enhanced {
+    max-width: 98vw;
+    padding: 15px;
+    max-height: 90vh;
+  }
+
+  .modal-title-enhanced {
+    font-size: 1.1rem;
+  }
+
+  .instrument-tabs .tab-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .instrument-tabs .tab-btn i {
+    font-size: 0.8rem;
+  }
+
+  .instrument-item-enhanced {
+    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .instrument-count {
+    align-self: flex-end;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
+
 .fade-in {
     animation: fadeInUp 0.6s ease forwards;
 }
@@ -602,29 +701,80 @@ body {
 /* Tabs del modal de instrumentos (scoped) */
 .instrument-tabs {
   display: flex;
-  gap: .5rem;
-  padding: 0.4rem 1rem 1.6rem;
+  gap: 0.5rem;
+  padding: 0.4rem 0 1.6rem 0!important;
   border-bottom: 2px solid var(--border-color);
-  margin-bottom: 40px;
+  margin-bottom: 30px !important;
+  
+  /* Scroll horizontal */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  
+  /* Estilos del scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26, 60, 124, 0.3) transparent;
+}
+
+/* Scrollbar para navegadores Chrome/Safari */
+.instrument-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.instrument-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.instrument-tabs::-webkit-scrollbar-thumb {
+  background-color: rgba(26, 60, 124, 0.3);
+  border-radius: 2px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.instrument-tabs::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(26, 60, 124, 0.6);
+}
+
+/* Contenedor con flex para evitar que se compriman */
+.instrument-tabs {
+  -webkit-overflow-scrolling: touch;
 }
 
 .instrument-tabs .tab-btn {
   border: 1px solid var(--border-color);
   background: var(--card-background);
-  padding: .5rem .9rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 999px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
+  gap: 0.5rem;
   cursor: pointer;
   color: var(--text-color);
+  white-space: nowrap;
+  flex-shrink: 0; /* Evita que se compriman */
+  transition: all 0.3s ease;
+}
+
+.instrument-tabs .tab-btn:hover:not(.active) {
+  background: color-mix(in srgb, var(--primary-color-light) 10%, var(--card-background));
+  border-color: var(--primary-color-light);
 }
 
 .instrument-tabs .tab-btn.active {
   background: var(--primary-color);
   color: #fff;
-  border-color: transparent;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(26, 60, 124, 0.25);
+}
+
+/* Indicador visual para scroll disponible */
+.instrument-tabs::after {
+  content: '';
+  display: block;
+  min-width: 1px;
+  flex-shrink: 0;
 }
 
 /* Mensaje vacío del modal */

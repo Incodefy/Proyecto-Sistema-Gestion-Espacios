@@ -143,7 +143,7 @@ body {
 /* Sección de títulos mejorada */
 .dashboard-section-title-container {
     text-align: center;
-    margin: 40px 0 30px 0;
+    margin: 30px 0 50px 0!important;
     position: relative;
     z-index: 1;
 }
@@ -313,7 +313,7 @@ body {
     flex-wrap: wrap;
     margin-bottom: 55px!important;
     min-width: 100%;
-    margin: 0 auto 30px auto;
+    margin: -45px auto 30px auto!important;
     position: flex;
     z-index: 1;
 }
@@ -420,7 +420,7 @@ body {
 .dashboard-visualization-row {
     margin: 0 auto;
     width: 100%;
-    padding: 20px 0;
+    padding: 0!important;
     position: relative;
     z-index: 1;
 }
@@ -434,13 +434,22 @@ body {
     margin-bottom: 20px;
 }
 
+.cr {
+    margin: 0 0 15px 0!important;
+}
+
+.re {
+    margin-top: 0px!important;
+}
+
 /* === BLOQUE AJUSTADO PARA ALTURA ESTABLE Y PLACEHOLDER === */
 .dashboard-chart-container-card {
     background: var(--card-background);
     border-radius: 16px;
-    padding: 20px 15px 15px 15px;
+    padding: 25px !important;
     box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
-    min-height: 380px; /* Mantiene altura estable desde el inicio */
+    min-height: 500px; /* Altura consistente y más grande */
+    height: 500px; /* Forzar altura consistente */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
@@ -450,15 +459,8 @@ body {
     position: relative;
     z-index: 1;
     overflow: hidden;
+    margin: 0 !important;
 }
-
-.dashboard-chart-container-card canvas {
-    width: 100% !important;
-    height: 280px !important; /* Altura fija estable */
-    display: none; /* oculto por defecto hasta que haya datos */
-    transition: opacity 0.3s ease;
-}
-
 
 .dashboard-chart-container-card::before {
     content: '';
@@ -478,13 +480,22 @@ body {
 }
 
 .dashboard-chart-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 15px;
+    margin-bottom: 0px!important;
     text-align: center;
     flex-shrink: 0; /* No reducir el tamaño del título */
-    line-height: 1.3;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.dashboard-chart-title i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
 }
 
 .dashboard-chart-container {
@@ -494,12 +505,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 300px; /* Altura mínima más grande */
+    min-height: 350px;
+    padding: 10px 0;
 }
 
 .dashboard-chart-container canvas {
     max-width: 100% !important;
-    max-height: 100% !important;
     width: 100% !important;
     height: 100% !important;
     display: block !important;
@@ -507,6 +518,7 @@ body {
 }
 
 .dashboard-chart-container-placeholder {
+    margin-top: -170px!important;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -520,7 +532,7 @@ body {
     padding: 20px;
     border: 2px dashed var(--border-color);
     flex: 1;
-    min-height: 300px;
+    min-height: 350px;
 }
 
 .dashboard-chart-container-placeholder i {
@@ -636,19 +648,39 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
-@media (max-width: 1199px) {
-    /* En pantallas medianas, mantener buen tamaño */
+@media (max-width: 1399px) {
     .dashboard-chart-container-card {
-        height: 380px;
-        margin-bottom: 25px;
+        min-height: 480px;
+        height: 480px;
     }
     
     .dashboard-chart-container {
-        min-height: 280px;
+        min-height: 340px;
     }
     
     .dashboard-chart-container-placeholder {
-        min-height: 280px;
+        min-height: 340px;
+    }
+}
+
+@media (max-width: 1199px) {
+    .dashboard-chart-container-card {
+        min-height: 460px;
+        height: 460px;
+        margin-bottom: 25px;
+    }
+    
+    .dashboard-chart-title {
+        font-size: 1.1rem;
+        margin-bottom: 18px;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 330px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 330px;
     }
 }
 
@@ -656,41 +688,48 @@ h1, h2, h3, h4, h5, h6 {
     .main {
         padding: 7.5rem 2rem 2rem 2rem!important;
     }
-    
-    /* En tablets, hacer los gráficos más compactos pero aún aprovechables */
+
     .dashboard-chart-container-card {
-        height: 350px;
+        min-height: 440px;
+        height: 440px;
         margin-bottom: 20px;
-        padding: 15px 10px 10px 10px;
-    }
-    
-    .dashboard-chart-container {
-        min-height: 250px;
-    }
-    
-    .dashboard-chart-container-placeholder {
-        min-height: 250px;
+        padding: 20px !important;
     }
     
     .dashboard-chart-title {
-        font-size: 1rem;
-        margin-bottom: 10px;
+        font-size: 1.05rem;
+        margin-bottom: 16px;
+        gap: 8px;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 310px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 310px;
     }
 }
 
 @media (max-width: 767px) {
-    /* En móviles, gráficos apilados pero con buen tamaño */
     .dashboard-chart-container-card {
-        height: 320px;
+        min-height: 420px;
+        height: 420px;
         margin-bottom: 20px;
+        padding: 18px !important;
+    }
+    
+    .dashboard-chart-title {
+        font-size: 1rem;
+        margin-bottom: 15px;
     }
     
     .dashboard-chart-container {
-        min-height: 220px;
+        min-height: 290px;
     }
     
     .dashboard-chart-container-placeholder {
-        min-height: 220px;
+        min-height: 290px;
     }
     
     .compact-chart-row {
@@ -699,6 +738,31 @@ h1, h2, h3, h4, h5, h6 {
     
     .compact-chart-row > [class*="col-"] {
         padding: 0 5px;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-chart-container-card {
+        min-height: 380px;
+        height: 380px;
+        padding: 15px !important;
+    }
+    
+    .dashboard-chart-title {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+    
+    .dashboard-chart-title i {
+        font-size: 1rem;
+    }
+    
+    .dashboard-chart-container {
+        min-height: 270px;
+    }
+    
+    .dashboard-chart-container-placeholder {
+        min-height: 270px;
     }
 }
 

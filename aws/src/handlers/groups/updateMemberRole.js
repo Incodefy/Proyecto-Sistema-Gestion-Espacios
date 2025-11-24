@@ -1,5 +1,6 @@
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
+const { notifyRolCambiado } = require('../../utils/notificationHelper');
 
 exports.handler = async (event) => {
   const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -96,7 +97,12 @@ exports.handler = async (event) => {
 
     const timestamp = new Date().toISOString();
 
-    console.log(`[${TRACE_ID}] 🔄 Actualizando rol del miembro`);
+    // Guardar rol anterior y datos del miembro
+    const rolAnterior = memberResult.Item.role;
+    const targetUserName = memberResult.Item.user_name || 'Usuario';
+    const targetUserEmail = memberResult.Item.user_email || '';
+
+    console.log(`[${TRACE_ID}] 🔄 Actualizando rol del miembro (${rolAnterior} → ${body.rol})`);
 
     await db.send(new UpdateCommand({
       TableName: process.env.GROUP_MEMBERS_TABLE,
@@ -116,6 +122,34 @@ exports.handler = async (event) => {
     }));
 
     console.log(`[${TRACE_ID}] ✅ Rol actualizado exitosamente`);
+
+    // Notificar a todos los miembros del grupo
+    try {
+      const membersResult = await db.send(new QueryCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        KeyConditionExpression: 'group_id = :gid',
+        ExpressionAttributeValues: { ':gid': grupoId }
+      }));
+
+      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+      
+      if (userSubs.length > 0) {
+        await notifyRolCambiado({
+          userSubs,
+          grupoId,
+          targetUserSub: miembroSub,
+          targetUserName,
+          targetUserEmail,
+          rolAnterior,
+          rolNuevo: body.rol,
+          createdBy: userSub
+        });
+        console.log(`[${TRACE_ID}] 📬 Notificaciones enviadas a ${userSubs.length} miembros`);
+      }
+    } catch (notifError) {
+      console.error(`[${TRACE_ID}] ⚠️ Error enviando notificaciones:`, notifError);
+      // No fallar si las notificaciones fallan
+    }
 
     return {
       statusCode: 200,

@@ -41,9 +41,8 @@ body {
 }
 
 .management-container {
-  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem!important;
+  padding: 3rem 3rem 3.5rem 3rem!important;
 }
 
 .page-header {
@@ -136,9 +135,8 @@ body[data-theme="dark"] .tab-button:hover {
 .section-card {
   background: var(--card-background);
   border-radius: 1rem;
-  padding: 1.8rem 2rem 1.8rem 2rem!important;
+  padding: 1.8rem 2rem 1rem 2rem!important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
 }
 
 .section-header {
@@ -414,6 +412,7 @@ body[data-theme="dark"] .space-specific-box {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 0.5rem;
+  margin-bottom: 0.6rem!important;
 }
 
 .members-table thead th {
@@ -528,6 +527,7 @@ body[data-theme="dark"] .members-table tbody tr:hover {
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 2px dashed var(--border-color);
+  margin-bottom: 1rem!important;
 }
 
 body[data-theme="dark"] .invite-form {
@@ -589,6 +589,7 @@ body[data-theme="dark"] .btn-secondary:hover {
   justify-content: flex-end;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border-color);
+  margin-bottom: 0.6rem!important;
 }
 
 /* Empty States */
@@ -1082,9 +1083,14 @@ body[data-theme="dark"] .item-meta {
 
 .instrumentos-layout {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 1fr!important;
   gap: 2rem;
   height: calc(100vh - 300px);
+}
+
+.members-layout {
+  display: grid;
+  gap: 2rem;
 }
 
 .tipos-column,
@@ -1157,7 +1163,7 @@ body[data-theme="dark"] .item-meta {
 }
 
 .add-item-section {
-  padding: 1rem;
+  padding: 2rem 1rem 1rem 1rem!important;
   border-top: 1px solid var(--border-color);
   display: flex;
   gap: 0.75rem;
@@ -1228,7 +1234,7 @@ body[data-theme="dark"] .empty-state {
 /* Responsive */
 @media (max-width: 992px) {
   .instrumentos-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr!important;
     height: auto;
   }
   

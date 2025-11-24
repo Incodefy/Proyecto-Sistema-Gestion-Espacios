@@ -63,10 +63,18 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
     console.log('🏢 Generales:', generales.length, generales.map(g => ({ nombre: g.nombre, SK: g.SK, PK: g.PK })));
     console.log('🚪 Específicos:', especificos.length, especificos.map(e => ({ nombre: e.nombre, SK: e.SK, parent: e.parent })));
     
-    // Obtener agenda del día
-    const agendasResponse = await req.apiClient.obtenerAgendaPorFecha(hoy);
-    const agendas = Array.isArray(agendasResponse) ? agendasResponse : (agendasResponse.agendas || []);
-    console.log('📅 Agendas obtenidas:', agendas.length);
+    // Obtener agenda del día (con manejo de errores graceful)
+    let agendas = [];
+    let agendasError = null;
+    try {
+      const agendasResponse = await req.apiClient.obtenerAgendaPorFecha(hoy);
+      agendas = Array.isArray(agendasResponse) ? agendasResponse : (agendasResponse.agendas || []);
+      console.log('📅 Agendas obtenidas:', agendas.length);
+    } catch (err) {
+      console.error('⚠️ Error obteniendo appointments (continuando sin ellos):', err.message);
+      agendasError = 'No se pudieron cargar los appointments. Los espacios se mostrarán sin información de ocupación.';
+      agendas = [];
+    }
 
     // Generar estructura de datos
     const general_especifico_map = generarGeneralesConEspecificos(
@@ -83,8 +91,6 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
 
     console.log('🗺️ Map generado:', JSON.stringify(general_especifico_map, null, 2));
 
-    const userPermissions = req.session.user?.permissions || [];
-    
     // Obtener nomenclatura
     const nomenclatura = req.nomenclatura || { general: 'General', especifico: 'Específico' };
     console.log('📋 Nomenclatura:', nomenclatura);
@@ -97,8 +103,7 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
       i18n: req.i18n,
       t: req.t,
       user: req.session.user,
-      canWrite: userPermissions.includes('box.write') || userPermissions.includes('admin.users'),
-      canViewDetail: userPermissions.includes('box.detalle.read') || userPermissions.includes('admin.users')
+      agendasError: agendasError // Pasar el error a la vista para mostrar advertencia
     });
   } catch (err) {
     console.error('❌ Error en /especifico:', err);

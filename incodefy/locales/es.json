@@ -75,7 +75,8 @@
       "active_group": "Grupo Activo",
       "loading": "Cargando información del grupo...",
       "change_group": "Cambiar Grupo",
-      "select_group": "Seleccionar Grupo"
+      "select_group": "Seleccionar Grupo",
+      "manage_spaces": "Gestionar Espacios"
     }
   },
   "navbar": {
@@ -296,7 +297,7 @@
     "medical": "Médica",
     "non_medical": "No médico",
     "confirm_appointment": "Confirmar Cita",
-  "unconfirm_appointment": "Desconfirmar",
+    "unconfirm_appointment": "Desconfirmar",
     "appointments": "Citas",
     "appointments_management": "Gestión de Agenda",
     "appointments_management_desc": "Visualiza y administra tus citas médicas",
@@ -354,6 +355,7 @@
     "box_usage_chart": "Uso de Box",
     "compliance_chart": "Cumplimiento de Consultas",
     "box_info": "Información del Box",
+    "info": "Información",
     "name": "Nombre",
     "corridor_label": "Pasillo",
     "state_label": "Estado",
