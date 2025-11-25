@@ -279,21 +279,6 @@ app.get('/exportar', requireAuth, attachApiClient, checkGrupoActivo, nomenclatur
   res.render('exportar', { currentPath: req.path });
 });
 
-// Rutas de calendario
-app.get('/calendario/box', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
-  res.render('calendario-box', { 
-    currentPath: req.path,
-    canEdit: userHasPermission(req, 'agenda.write')
-  });
-});
-
-app.get('/calendario/medico', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
-  res.render('calendario-medico', { 
-    currentPath: req.path,
-    canEdit: userHasPermission(req, 'agenda.write')
-  });
-});
-
 // Box routes
 const boxRoutes = require('./routes/box');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, boxRoutes);
@@ -321,9 +306,10 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Calendario agenda
-const calendarioRouter = require('./routes/calendario');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, calendarioRouter);
+const agendaGestionRoutes = require('./routes/agenda-gestion');
+app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, agendaGestionRoutes);
 
+// Gestión de grupos
 const gestionGrupoRoutes = require('./routes/gestionGrupo');
 app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, gestionGrupoRoutes);
 
