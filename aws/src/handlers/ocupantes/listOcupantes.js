@@ -40,6 +40,7 @@ exports.handler = async (event) => {
     const ocupantes = (result.Items || []).map(item => ({
       id: item.SK.replace('OCCUPANT#', ''),
       nombre: item.nombre,
+      especialidad: item.especialidad, // Nombre de la especialidad
       especialidad_id: item.especialidad_id ? item.especialidad_id.replace('ESP#', '') : null,
       grupo_id: item.PK,
       created_at: item.created_at,

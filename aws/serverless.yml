@@ -34,6 +34,9 @@ provider:
     INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-instrumentos
     APPOINTMENTS_TABLE: ${self:service}-${sls:stage}-appointments
     NOTIFICATIONS_TABLE: ${self:service}-${sls:stage}-notifications
+    CONNECTIONS_TABLE: ${self:service}-${sls:stage}-websocket-connections
+    WS_ENDPOINT: 
+      Fn::Sub: 'https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
     # SES Configuration
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
     APP_URL: ${env:APP_URL, 'http://localhost:3000'}
@@ -181,6 +184,34 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-appointments/index/*
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-notifications
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-notifications/index/*
+    
+    # === WEBSOCKET CONNECTIONS TABLE ===
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource:
+        - Fn::GetAtt: [WebSocketConnectionsTable, Arn]
+        - Fn::Sub: '${WebSocketConnectionsTable.Arn}/index/*'
+    
+    # === API GATEWAY WEBSOCKET MANAGEMENT ===
+    - Effect: Allow
+      Action:
+        - execute-api:ManageConnections
+      Resource:
+        - Fn::Sub: 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebsocketsApi}/*'
+    
+    # === DYNAMODB STREAMS ===
+    - Effect: Allow
+      Action:
+        - dynamodb:GetRecords
+        - dynamodb:GetShardIterator
+        - dynamodb:DescribeStream
+        - dynamodb:ListStreams
+      Resource:
+        - Fn::GetAtt: [AppointmentsTable, StreamArn]
 
 functions:
   # === HEALTH CHECK ===
@@ -801,6 +832,75 @@ functions:
           method: POST
           path: /groups/{grupo_id}/appointments/check-conflict
           authorizer: cognitoJwt
+  
+  # === WEBSOCKET HANDLERS ===
+  wsConnect:
+    handler: src/handlers/websocket/connect.handler
+    description: Maneja conexiones WebSocket
+    timeout: 10
+    events:
+      - websocket:
+          route: $connect
+  
+  wsDisconnect:
+    handler: src/handlers/websocket/disconnect.handler
+    description: Maneja desconexiones WebSocket
+    timeout: 10
+    events:
+      - websocket:
+          route: $disconnect
+  
+  wsStreamProcessor:
+    handler: src/handlers/websocket/streamProcessor.handler
+    description: Procesa DynamoDB Stream y notifica cambios vía WebSocket
+    timeout: 30
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [AppointmentsTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
+
+  wsSpacesStreamProcessor:
+    handler: src/handlers/websocket/spacesStreamProcessor.handler
+    description: Procesa cambios en Spaces y notifica vía WebSocket
+    timeout: 30
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [SpacesTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
+
+  wsOccupantsStreamProcessor:
+    handler: src/handlers/websocket/occupantsStreamProcessor.handler
+    description: Procesa cambios en Occupants y notifica vía WebSocket
+    timeout: 30
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [OccupantsTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
+
+  wsGroupMembersStreamProcessor:
+    handler: src/handlers/websocket/groupMembersStreamProcessor.handler
+    description: Procesa cambios en GroupMembers y notifica vía WebSocket
+    timeout: 30
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [GroupMembersTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
 
   # === GESTIÓN DE MIEMBROS (rutas alternativas) ===
   listGroupMembers:
@@ -976,6 +1076,8 @@ resources:
             KeyType: HASH
           - AttributeName: user_sub
             KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         GlobalSecondaryIndexes:
           - IndexName: UserGroupsIndex
             KeySchema:
@@ -1027,6 +1129,8 @@ resources:
             KeyType: HASH
           - AttributeName: SK
             KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         GlobalSecondaryIndexes:
           - IndexName: TypeIndex
             KeySchema:
@@ -1052,6 +1156,8 @@ resources:
             KeyType: HASH
           - AttributeName: SK
             KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         GlobalSecondaryIndexes:
           - IndexName: TypeIndex
             KeySchema:
@@ -1172,6 +1278,8 @@ resources:
               ProjectionType: ALL
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         Tags:
           - Key: Environment
             Value: ${sls:stage}
@@ -1219,6 +1327,36 @@ resources:
           Enabled: true
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: HospitalPadreHurtado
+    
+    # === WEBSOCKET CONNECTIONS TABLE ===
+    WebSocketConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-websocket-connections
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+          - AttributeName: grupo_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: GrupoIndex
+            KeySchema:
+              - AttributeName: grupo_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
         Tags:
           - Key: Environment
             Value: ${sls:stage}

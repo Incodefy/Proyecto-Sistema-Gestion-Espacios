@@ -32,20 +32,33 @@ module.exports.handler = async (event) => {
     TableName: tableName
   };
 
-  // Solo filtro de fecha
+  // Filtros de fecha y grupo
+  const filterExpressions = [];
+  const expressionAttributeValues = {};
+  const expressionAttributeNames = {};
+
+  if (filtros?.grupo_id) {
+    filterExpressions.push('#grupo_id = :grupo_id');
+    expressionAttributeValues[':grupo_id'] = filtros.grupo_id;
+    expressionAttributeNames['#grupo_id'] = 'grupo_id';
+  }
+
   if (filtros?.fechaInicio && filtros?.fechaFin) {
-    params.FilterExpression = '#fecha BETWEEN :fechaInicio AND :fechaFin';
-    params.ExpressionAttributeValues = {
-      ':fechaInicio': filtros.fechaInicio,
-      ':fechaFin': filtros.fechaFin
-    };
-    params.ExpressionAttributeNames = {
-      '#fecha': 'fecha'
-    };
+    filterExpressions.push('#fecha BETWEEN :fechaInicio AND :fechaFin');
+    expressionAttributeValues[':fechaInicio'] = filtros.fechaInicio;
+    expressionAttributeValues[':fechaFin'] = filtros.fechaFin;
+    expressionAttributeNames['#fecha'] = 'fecha';
+  }
+
+  if (filterExpressions.length > 0) {
+    params.FilterExpression = filterExpressions.join(' AND ');
+    params.ExpressionAttributeValues = expressionAttributeValues;
+    params.ExpressionAttributeNames = expressionAttributeNames;
     
-    logger.info('Date filter applied', {
-      fecha_inicio: filtros.fechaInicio,
-      fecha_fin: filtros.fechaFin
+    logger.info('Filters applied', {
+      grupo_id: filtros?.grupo_id,
+      fecha_inicio: filtros?.fechaInicio,
+      fecha_fin: filtros?.fechaFin
     });
   }
 

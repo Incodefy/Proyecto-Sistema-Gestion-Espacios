@@ -4,20 +4,75 @@ const router = express.Router();
 // const dynamoDB = require('../config/dynamodb');
 
 /**
- * GET /booking
- * Renderiza la vista de agendación
+ * GET /agenda/gestion
+ * Renderiza la vista de gestión de agenda (calendario)
  */
-router.get('/booking', (req, res) => {
-    // Obtener el groupId de la sesión o query params
-    const groupId = req.query.groupId || req.session?.groupId;
-    
-    res.render('agenda-gestion', {
-        currentPath: req.path,
-        title: 'Sistema de Agendación',
-        groupId: groupId,
-        personalization: res.locals.personalization || {},
-        idToken: req.session.user?.idToken || ''
-    });
+router.get('/agenda/gestion', async (req, res) => {
+    try {
+        // Obtener el groupId de la sesión o query params
+        const groupId = req.query.groupId || req.session?.grupoActivo?.grupo_id;
+        
+        let generalSpaces = [];
+        let occupants = [];
+        
+        // Pre-cargar datos si hay groupId
+        if (groupId) {
+            const ApiClient = require('../apiClient');
+            const apiClient = new ApiClient(req.session.user?.idToken || '');
+            
+            try {
+                // Cargar espacios generales
+                const spacesResponse = await apiClient.listarEspacios(groupId);
+                if (spacesResponse && spacesResponse.espacios) {
+                    generalSpaces = spacesResponse.espacios
+                        .filter(e => e.tipo === 'general')
+                        .map(e => ({
+                            id: e.SK,
+                            SK: e.SK,
+                            name: e.nombre
+                        }));
+                }
+                
+                // Cargar ocupantes
+                const occupantsResponse = await apiClient.client.get(`/groups/${groupId}/ocupantes`);
+                if (occupantsResponse.data && occupantsResponse.data.ocupantes) {
+                    console.log('[SSR] Ocupantes del Lambda:', JSON.stringify(occupantsResponse.data.ocupantes, null, 2));
+                    
+                    occupants = occupantsResponse.data.ocupantes.map(occ => {
+                        // El Lambda devuelve 'id' sin prefijo, construir occupant_id correcto
+                        const occupantId = occ.ocupante_id || occ.SK || (occ.id ? `OCCUPANT#${occ.id}` : undefined);
+                        
+                        const mapped = {
+                            occupant_id: occupantId,
+                            nombre: occ.nombre,
+                            especialidad: occ.especialidad, // Si el Lambda no lo envía, será undefined
+                            especialidad_id: occ.especialidad_id
+                        };
+                        console.log('[SSR] Ocupante mapeado:', mapped);
+                        return mapped;
+                    });
+                }
+            } catch (error) {
+                console.error('Error pre-cargando datos:', error);
+                // Continuar sin datos pre-cargados
+            }
+        }
+        
+        res.render('agenda-gestion', {
+            currentPath: req.path,
+            title: 'Sistema de Agendación',
+            groupId: groupId,
+            personalization: res.locals.personalization || {},
+            idToken: req.session.user?.idToken || '',
+            initialData: {
+                generalSpaces,
+                occupants
+            }
+        });
+    } catch (error) {
+        console.error('Error en ruta /agenda/gestion:', error);
+        res.status(500).send('Error al cargar la página');
+    }
 });
 
 /**
@@ -26,33 +81,29 @@ router.get('/booking', (req, res) => {
  */
 router.get('/api/groups/:groupId/spaces/general', async (req, res) => {
     try {
-        const { groupId } = req.params;
-        
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'SPACE_GENERAL#'
-            }
-        };
-        
-        const result = await dynamoDB.query(params).promise();
-        const spaces = result.Items.map(item => ({
-            id: item.space_id,
-            name: item.nombre,
-            // otros campos necesarios
-        }));
-        */
-        
-        // Datos de ejemplo - reemplazar con consulta real
-        const spaces = [
-            { id: 'GS1', name: 'Edificio Norte' },
-            { id: 'GS2', name: 'Edificio Sur' }
-        ];
-        
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const response = await apiClient.listarEspacios(groupId);
+        if (!response.ok) {
+            return res.status(500).json({ error: 'Error al obtener espacios generales' });
+        }
+        // Espacios generales: tipo === 'general'
+        const generales = (response.espacios || []).filter(e => e.tipo === 'general');
+        const spaces = generales.map(e => {
+            const sk = e.SK || e.id || e.space_id;
+            return {
+                id: sk,
+                SK: sk,
+                name: e.nombre || e.name
+            };
+        });
         res.json(spaces);
     } catch (error) {
         console.error('Error obteniendo espacios generales:', error);
@@ -66,45 +117,35 @@ router.get('/api/groups/:groupId/spaces/general', async (req, res) => {
  */
 router.get('/api/groups/:groupId/spaces/specific', async (req, res) => {
     try {
-        const { groupId } = req.params;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
         const { general_id } = req.query;
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const response = await apiClient.listarEspacios(groupId);
+        if (!response.ok) {
+            return res.status(500).json({ error: 'Error al obtener espacios específicos' });
+        }
+        // Espacios específicos: tipo === 'especifico'
+        let allSpecifics = (response.espacios || [])
+            .flatMap(e => Array.isArray(e.specificSpaces) ? e.specificSpaces : [])
+            .filter(e => e.tipo === 'especifico');
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'SPACE_SPECIFIC#'
-            },
-            FilterExpression: 'general_space_id = :generalId',
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'SPACE_SPECIFIC#',
-                ':generalId': general_id
-            }
-        };
+        let spaces = allSpecifics;
+        if (general_id) {
+            spaces = allSpecifics.filter(s => s.parent === general_id || s.general_id === general_id);
+        }
         
-        const result = await dynamoDB.query(params).promise();
-        const spaces = result.Items.map(item => ({
-            id: item.space_id,
-            general_id: item.general_space_id,
-            name: item.nombre
+        spaces = spaces.map(e => ({
+            id: e.SK || e.id || e.space_id,
+            general_id: e.parent || e.general_id,
+            name: e.nombre || e.name
         }));
-        */
-        
-        // Datos de ejemplo - reemplazar con consulta real
-        const allSpaces = [
-            { id: 'SS1', general_id: 'GS1', name: 'Sala de Reuniones A' },
-            { id: 'SS2', general_id: 'GS1', name: 'Sala de Reuniones B' },
-            { id: 'SS3', general_id: 'GS2', name: 'Sala de Conferencias' }
-        ];
-        
-        const spaces = general_id 
-            ? allSpaces.filter(s => s.general_id === general_id)
-            : allSpaces;
-        
         res.json(spaces);
     } catch (error) {
         console.error('Error obteniendo espacios específicos:', error);
@@ -118,37 +159,49 @@ router.get('/api/groups/:groupId/spaces/specific', async (req, res) => {
  */
 router.get('/api/groups/:groupId/occupants', async (req, res) => {
     try {
-        const { groupId } = req.params;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'OCCUPANT#'
-            }
-        };
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
-        const result = await dynamoDB.query(params).promise();
-        const occupants = result.Items.map(item => ({
-            occupant_id: item.occupant_id,
-            nombre: item.nombre,
-            especialidad: item.especialidad
-        }));
-        */
+        // Usar el endpoint de ocupantes del grupo
+        const response = await apiClient.client.get(`/groups/${groupId}/ocupantes`);
         
-        // Datos de ejemplo - reemplazar con consulta real
-        const occupants = [
-            { occupant_id: 'OCCUPANT#001', nombre: 'Ignacia Herrera', especialidad: 'Ciencias' },
-            { occupant_id: 'OCCUPANT#002', nombre: 'Carlos Pérez', especialidad: 'Matemáticas' },
-            { occupant_id: 'OCCUPANT#003', nombre: 'Ana González', especialidad: 'Historia' }
-        ];
+        console.log('=== DEBUG OCUPANTES API ===');
+        console.log('Response completa:', JSON.stringify(response.data, null, 2));
         
-        res.json(occupants);
+        if (response.data && response.data.ocupantes) {
+            console.log('Ocupantes del Lambda:', JSON.stringify(response.data.ocupantes, null, 2));
+            
+            const occupants = response.data.ocupantes.map(occ => {
+                // El Lambda devuelve 'id' sin prefijo, construir occupant_id correcto
+                const occupantId = occ.ocupante_id || occ.SK || (occ.id ? `OCCUPANT#${occ.id}` : undefined);
+                
+                const mapped = {
+                    occupant_id: occupantId,
+                    nombre: occ.nombre,
+                    especialidad: occ.especialidad, // Si el Lambda no lo envía, será undefined
+                    especialidad_id: occ.especialidad_id
+                };
+                console.log('Mapeado:', mapped);
+                return mapped;
+            });
+            console.log('=========================');
+            return res.json(occupants);
+        }
+        
+        console.log('No hay ocupantes en la respuesta');
+        console.log('=========================');
+        res.json([]);
     } catch (error) {
         console.error('Error obteniendo ocupantes:', error);
+        console.error('Error completo:', error.response?.data || error.message);
         res.status(500).json({ error: 'Error al obtener ocupantes' });
     }
 });
@@ -159,61 +212,88 @@ router.get('/api/groups/:groupId/occupants', async (req, res) => {
  */
 router.get('/api/groups/:groupId/bookings', async (req, res) => {
     try {
-        const { groupId } = req.params;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
+        
         const { space_id, date_from, date_to } = req.query;
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'BOOKING#'
-            },
-            FilterExpression: 'space_id = :spaceId AND #date BETWEEN :dateFrom AND :dateTo',
-            ExpressionAttributeNames: {
-                '#date': 'date'
-            },
-            ExpressionAttributeValues: {
-                ':pk': `grp_${groupId}`,
-                ':sk': 'BOOKING#',
-                ':spaceId': space_id,
-                ':dateFrom': date_from,
-                ':dateTo': date_to
-            }
-        };
+        console.log('[BOOKINGS API] Params:', { groupId, space_id, date_from, date_to });
         
-        const result = await dynamoDB.query(params).promise();
-        const bookings = result.Items.map(item => ({
-            id: item.booking_id,
-            space_id: item.space_id,
-            occupant_id: item.occupant_id,
-            date: item.date,
-            startTime: item.start_time,
-            endTime: item.end_time
+        if (!space_id) {
+            return res.status(400).json({ error: 'space_id es requerido' });
+        }
+        
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        
+        // Obtener appointments para cada fecha en el rango - EN PARALELO
+        const startDate = new Date(date_from);
+        const endDate = new Date(date_to);
+        
+        console.log('[BOOKINGS API] Fechas parseadas:', { startDate, endDate });
+        
+        // Crear array de fechas
+        const dates = [];
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            dates.push(d.toISOString().split('T')[0]);
+        }
+        
+        console.log('[BOOKINGS API] Total fechas a consultar:', dates.length);
+        console.log('[BOOKINGS API] Primera fecha:', dates[0], 'Última fecha:', dates[dates.length - 1]);
+        
+        // Hacer peticiones en lotes para evitar saturar el Lambda
+        const BATCH_SIZE = 5; // Máximo 5 peticiones simultáneas
+        const appointments = [];
+        
+        for (let i = 0; i < dates.length; i += BATCH_SIZE) {
+            const batch = dates.slice(i, i + BATCH_SIZE);
+            console.log(`[BOOKINGS API] Procesando lote ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(dates.length / BATCH_SIZE)}`);
+            
+            const batchPromises = batch.map(fecha => 
+                apiClient.client.get(`/groups/${groupId}/appointments`, {
+                    params: { fecha, espacio_id: space_id }
+                })
+                .then(response => {
+                    const apts = response.data?.appointments || [];
+                    if (apts.length > 0) {
+                        console.log(`[BOOKINGS API] ${fecha}: ${apts.length} appointments`);
+                    }
+                    return apts;
+                })
+                .catch(err => {
+                    console.log(`[BOOKINGS API] Error en ${fecha}:`, err.message);
+                    return [];
+                })
+            );
+            
+            const batchResults = await Promise.all(batchPromises);
+            appointments.push(...batchResults.flat());
+        }
+        
+        console.log('[BOOKINGS API] Total appointments encontrados:', appointments.length);
+        
+        // Adaptar formato de appointments a bookings
+        const bookings = appointments.map(apt => ({
+            id: apt.appointment_id || apt.SK,
+            space_id: apt.espacio_id,
+            occupant_id: apt.ocupante_id,
+            occupant_name: apt.ocupante_nombre,
+            date: apt.fecha,
+            startTime: apt.hora_inicio,
+            endTime: apt.hora_fin,
+            patient_name: apt.paciente_nombre,
+            patient_rut: apt.paciente_rut,
+            estado: apt.estado,
+            observaciones: apt.observaciones
         }));
-        */
         
-        // Datos de ejemplo - reemplazar con consulta real
-        const bookings = [
-            {
-                id: 'B1',
-                space_id: 'SS1',
-                occupant_id: 'OCCUPANT#001',
-                date: '2025-11-24',
-                startTime: '09:00',
-                endTime: '11:00'
-            }
-        ];
-        
-        const filtered = bookings.filter(b => 
-            b.space_id === space_id &&
-            b.date >= date_from &&
-            b.date <= date_to
-        );
-        
-        res.json(filtered);
+        console.log('[BOOKINGS API] Respondiendo con', bookings.length, 'bookings');
+        res.json(bookings);
     } catch (error) {
         console.error('Error obteniendo agendaciones:', error);
         res.status(500).json({ error: 'Error al obtener agendaciones' });
@@ -226,8 +306,17 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
  */
 router.post('/api/groups/:groupId/bookings', async (req, res) => {
     try {
-        const { groupId } = req.params;
-        const { space_id, occupant_id, date, startTime, endTime } = req.body;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
+        
+        const { space_id, space_name, occupant_id, date, startTime, endTime, occupant_name, occupant_especialidad_id, occupant_especialidad_nombre } = req.body;
+        
+        console.log('[CREATE BOOKING] Request body:', req.body);
         
         // Validaciones
         if (!space_id || !occupant_id || !date || !startTime || !endTime) {
@@ -238,48 +327,51 @@ router.post('/api/groups/:groupId/bookings', async (req, res) => {
             return res.status(400).json({ error: 'La hora de fin debe ser posterior a la hora de inicio' });
         }
         
-        // Verificar conflictos
-        // ... implementar lógica de verificación de conflictos
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
-        const bookingId = `BOOKING#${Date.now()}`;
-        const now = new Date().toISOString();
+        // Usar el nombre del espacio enviado desde el frontend
+        const espacioNombre = space_name || 'Espacio desconocido';
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            Item: {
-                PK: `grp_${groupId}`,
-                SK: bookingId,
-                booking_id: bookingId,
-                space_id: space_id,
-                occupant_id: occupant_id,
-                date: date,
-                start_time: startTime,
-                end_time: endTime,
-                created_at: now,
-                created_by: req.user?.email || 'system',
-                tipo: 'Agendacion'
-            }
+        // Preparar datos en el formato que espera el Lambda
+        const appointmentData = {
+            fecha: date,
+            hora_inicio: startTime,
+            hora_fin: endTime,
+            espacio_especifico: {
+                id: space_id,
+                nombre: espacioNombre
+            },
+            ocupante: {
+                id: occupant_id,
+                nombre: occupant_name || 'Ocupante desconocido'
+            },
+            estado: 'CONFIRMADA'
         };
         
-        await dynamoDB.put(params).promise();
-        */
+        // Agregar especialidad si existe
+        if (occupant_especialidad_id) {
+            const espId = occupant_especialidad_id.toString().startsWith('ESP#') 
+                ? occupant_especialidad_id 
+                : `ESP#${occupant_especialidad_id}`;
+            
+            appointmentData.especialidad = {
+                id: espId,
+                nombre: occupant_especialidad_nombre || 'Especialidad desconocida'
+            };
+        }
         
-        const newBooking = {
-            id: bookingId,
-            space_id,
-            occupant_id,
-            date,
-            startTime,
-            endTime,
-            created_at: now
-        };
+        console.log('[CREATE BOOKING] Datos a enviar al Lambda:', appointmentData);
         
-        res.status(201).json(newBooking);
+        const response = await apiClient.client.post(`/groups/${groupId}/appointments`, appointmentData);
+        
+        res.status(201).json(response.data);
     } catch (error) {
         console.error('Error creando agendación:', error);
-        res.status(500).json({ error: 'Error al crear agendación' });
+        if (error.response) {
+            console.log('❌ Error API [' + error.response.status + ']:', error.response.data);
+        }
+        res.status(500).json({ error: error.response?.data?.error || error.response?.data?.message || 'Error al crear agendación' });
     }
 });
 
@@ -289,11 +381,38 @@ router.post('/api/groups/:groupId/bookings', async (req, res) => {
  */
 router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
     try {
-        const { groupId, bookingId } = req.params;
-        const { space_id, occupant_id, date, startTime, endTime } = req.body;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
+        
+        let { bookingId } = req.params;
+        console.log('BookingId recibido en Express:', bookingId);
+        console.log('Params completos:', req.params);
+        
+        const { 
+            space_id, 
+            occupant_id, 
+            date, 
+            startTime, 
+            endTime, 
+            current_date,
+            occupant_name,
+            occupant_especialidad_id,
+            occupant_especialidad_nombre
+        } = req.body;
+        
+        console.log('[UPDATE BOOKING] Datos recibidos del frontend:');
+        console.log('  - occupant_id:', occupant_id);
+        console.log('  - occupant_name:', occupant_name);
+        console.log('  - occupant_especialidad_id:', occupant_especialidad_id);
+        console.log('  - occupant_especialidad_nombre:', occupant_especialidad_nombre);
         
         // Validaciones
-        if (!space_id || !occupant_id || !date || !startTime || !endTime) {
+        if (!occupant_id || !date || !startTime || !endTime) {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
         }
         
@@ -301,52 +420,56 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
             return res.status(400).json({ error: 'La hora de fin debe ser posterior a la hora de inicio' });
         }
         
-        // Verificar conflictos (excluyendo la agendación actual)
-        // ... implementar lógica de verificación de conflictos
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
-        const now = new Date().toISOString();
+        // Asegurar que el ocupante_id tiene el prefijo OCCUPANT#
+        const fullOccupantId = occupant_id.startsWith('OCCUPANT#') ? occupant_id : `OCCUPANT#${occupant_id}`;
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            Key: {
-                PK: `grp_${groupId}`,
-                SK: bookingId
-            },
-            UpdateExpression: 'SET space_id = :spaceId, occupant_id = :occupantId, #date = :date, start_time = :startTime, end_time = :endTime, updated_at = :updatedAt, updated_by = :updatedBy',
-            ExpressionAttributeNames: {
-                '#date': 'date'
-            },
-            ExpressionAttributeValues: {
-                ':spaceId': space_id,
-                ':occupantId': occupant_id,
-                ':date': date,
-                ':startTime': startTime,
-                ':endTime': endTime,
-                ':updatedAt': now,
-                ':updatedBy': req.user?.email || 'system'
-            },
-            ReturnValues: 'ALL_NEW'
+        const updateData = {
+            ocupante_id: fullOccupantId,
+            fecha: date,
+            hora_inicio: startTime,
+            hora_fin: endTime,
+            fecha_actual: current_date || date
         };
         
-        const result = await dynamoDB.update(params).promise();
-        */
+        // Agregar campos adicionales del ocupante si están disponibles
+        if (occupant_name) {
+            updateData.ocupante_nombre = occupant_name;
+        }
+        if (occupant_especialidad_id) {
+            // Asegurar que el especialidad_id tiene el prefijo ESP#
+            const fullEspecialidadId = occupant_especialidad_id.toString().startsWith('ESP#') 
+                ? occupant_especialidad_id 
+                : `ESP#${occupant_especialidad_id}`;
+            
+            updateData.especialidad_id = fullEspecialidadId;
+        }
+        if (occupant_especialidad_nombre) {
+            updateData.especialidad_nombre = occupant_especialidad_nombre;
+        }
         
-        const updatedBooking = {
-            id: bookingId,
-            space_id,
-            occupant_id,
-            date,
-            startTime,
-            endTime,
-            updated_at: now
-        };
+        if (space_id) {
+            updateData.espacio_id = space_id;
+        }
         
-        res.json(updatedBooking);
+        console.log('[UPDATE BOOKING] Datos a enviar al Lambda:');
+        console.log(JSON.stringify(updateData, null, 2));
+        
+        console.log('Enviando a Lambda - bookingId:', bookingId);
+        
+        // Codificar el bookingId para la URL de Lambda
+        const encodedBookingId = encodeURIComponent(bookingId);
+        console.log('BookingId codificado para Lambda:', encodedBookingId);
+        console.log('URL completa:', `/groups/${groupId}/appointments/${encodedBookingId}`);
+        
+        const response = await apiClient.client.put(`/groups/${groupId}/appointments/${encodedBookingId}`, updateData);
+        
+        res.json(response.data);
     } catch (error) {
         console.error('Error actualizando agendación:', error);
-        res.status(500).json({ error: 'Error al actualizar agendación' });
+        res.status(500).json({ error: error.response?.data?.message || 'Error al actualizar agendación' });
     }
 });
 
@@ -356,25 +479,35 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
  */
 router.delete('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
     try {
-        const { groupId, bookingId } = req.params;
+        let groupId = req.params.groupId;
+        if (!groupId || groupId === 'null') {
+            groupId = req.session?.grupoActivo?.grupo_id;
+        }
+        if (!groupId) {
+            return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
+        }
         
-        // Ejemplo con DynamoDB
-        /*
-        const params = {
-            TableName: 'YourTableName',
-            Key: {
-                PK: `grp_${groupId}`,
-                SK: bookingId
-            }
-        };
+        const { bookingId } = req.params;
+        const { fecha, hora_inicio } = req.query;
         
-        await dynamoDB.delete(params).promise();
-        */
+        console.log('[DELETE BOOKING] bookingId:', bookingId, 'fecha:', fecha, 'hora_inicio:', hora_inicio);
         
-        res.json({ success: true, message: 'Agendación eliminada exitosamente' });
+        if (!fecha || !hora_inicio) {
+            return res.status(400).json({ error: 'Se requieren los parámetros fecha y hora_inicio' });
+        }
+        
+        const ApiClient = require('../apiClient');
+        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        
+        // Codificar el bookingId para la URL de Lambda
+        const encodedBookingId = encodeURIComponent(bookingId);
+        
+        await apiClient.client.delete(`/groups/${groupId}/appointments/${encodedBookingId}?fecha=${fecha}&hora_inicio=${hora_inicio}`);
+        
+        res.json({ message: 'Agendación eliminada exitosamente' });
     } catch (error) {
         console.error('Error eliminando agendación:', error);
-        res.status(500).json({ error: 'Error al eliminar agendación' });
+        res.status(500).json({ error: error.response?.data?.message || 'Error al eliminar agendación' });
     }
 });
 

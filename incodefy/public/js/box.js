@@ -1,7 +1,13 @@
 // public/js/box.js
-const valorGuardado = localStorage.getItem('detallesVisibles');
-let detallesVisibles = valorGuardado === 'true';
+// Obtener estado inicial desde el servidor (renderizado en la vista)
+let detallesVisibles = window.detallesVisiblesInicial !== undefined ? window.detallesVisiblesInicial : false;
 let filtroTimeout;
+
+// Función helper para establecer cookies
+function setCookie(name, value, days = 365) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/';
+}
 
 function parseRangos(texto) {
     const valores = new Set();
@@ -28,6 +34,7 @@ function parseRangos(texto) {
 }
 
 function actualizarEspecificos() {
+    console.log('🔄 Actualizando estados de espacios...');
     fetch('/estado-boxes')
         .then(response => {
             if (!response.ok) {
@@ -36,6 +43,8 @@ function actualizarEspecificos() {
             return response.json();
         })
         .then(data => {
+            console.log('📦 Datos recibidos:', data);
+            let actualizados = 0;
             for (const [id, info] of Object.entries(data)) {
                 const contenedor = document.getElementById(`info-especifico-${id}`);
                 if (contenedor) {
@@ -50,17 +59,19 @@ function actualizarEspecificos() {
                                     ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` 
                                     : '')}
                             ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
-                            ${info.medico ? `<p>${window.translations.doctor}: ${info.medico}</p>` : ''}
-                            ${info.especialidad ? `<p>${window.translations.specialty}: ${info.especialidad}</p>` : ''}
+                            ${info.medico ? `<p>${window.nomenclatura.ocupante}: ${info.medico}</p>` : ''}
+                            ${info.especialidad ? `<p>${window.nomenclatura.especialidad}: ${info.especialidad}</p>` : ''}
                         </div>
                         <div class="estado-bar ${estadoClassName}">${info.estado}</div>
                     `;
+                    actualizados++;
                 }
             }
+            console.log(`✅ ${actualizados} espacios actualizados`);
             aplicarFiltrosLocales();
         })
         .catch(error => {
-            console.error('Error al obtener estados:', error);
+            console.error('❌ Error al obtener estados:', error);
         });
 }
 
@@ -127,8 +138,8 @@ function actualizarBoxesBatch(boxIds) {
                     <div class="contenido-box ${claseOculto}" style="display: ${displayStyle};">
                         ${info.proxima_consulta ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` : ''}
                         ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
-                        ${info.medico ? `<p>${window.translations.doctor}: ${info.medico}</p>` : ''}
-                        ${info.especialidad ? `<p>${window.translations.specialty}: ${info.especialidad}</p>` : ''}
+                        ${info.medico ? `<p>${window.nomenclatura.ocupante}: ${info.medico}</p>` : ''}
+                        ${info.especialidad ? `<p>${window.nomenclatura.especialidad}: ${info.especialidad}</p>` : ''}
                     </div>
                     <div class="estado-bar ${estadoClassName}">${info.estado}</div>
                 `;
@@ -275,19 +286,24 @@ function contarEstadosVisibles() {
 document.addEventListener('DOMContentLoaded', function () {
     const botonToggle = document.getElementById('toggle-detalles');
 
-    // Inicializar el estado desde localStorage
-    const valorGuardado = localStorage.getItem('detallesVisibles');
-    detallesVisibles = valorGuardado === 'true';
-
-    // Actualizar el texto del botón
+    // Actualizar el texto del botón según estado inicial
     botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
 
     // Agregar el evento click
     botonToggle.addEventListener('click', function () {
         detallesVisibles = !detallesVisibles;
+        
+        // Guardar en localStorage y cookie
         localStorage.setItem('detallesVisibles', detallesVisibles);
+        setCookie('detallesVisibles', detallesVisibles);
+        
         botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
         aplicarEstadoVisual();
+        
+        // Recargar página con el parámetro para que el servidor renderice correctamente
+        const url = new URL(window.location);
+        url.searchParams.set('detallesVisibles', detallesVisibles);
+        window.location.href = url.toString();
     });
 
     document.getElementById('filtroPasillo').addEventListener('input', aplicarFiltrosConRetraso);
@@ -363,3 +379,150 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(step);
   });
 })();
+
+// ============ WEBSOCKET PARA ACTUALIZACIONES EN TIEMPO REAL ============
+
+let websocket = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+
+function connectWebSocket() {
+    if (!window.grupoId) {
+        console.warn('⚠️ No hay grupoId disponible, no se puede conectar WebSocket');
+        return;
+    }
+
+    try {
+        websocket = new WebSocket(`${WS_URL}?grupo_id=${window.grupoId}`);
+
+        websocket.onopen = () => {
+            console.log('✅ WebSocket conectado');
+            reconnectAttempts = 0;
+        };
+
+        websocket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (err) {
+                console.error('❌ Error parseando mensaje WebSocket:', err);
+            }
+        };
+
+        websocket.onerror = (error) => {
+            console.error('❌ Error en WebSocket:', error);
+        };
+
+        websocket.onclose = () => {
+            console.log('🔌 WebSocket desconectado');
+            websocket = null;
+
+            // Intentar reconectar con backoff exponencial
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                reconnectAttempts++;
+                console.log(`🔄 Reintentando conexión en ${delay/1000}s (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+                setTimeout(connectWebSocket, delay);
+            }
+        };
+    } catch (err) {
+        console.error('❌ Error creando WebSocket:', err);
+    }
+}
+
+function handleWebSocketMessage(message) {
+    console.log('📨 Mensaje WebSocket recibido:', message);
+
+    const { type, data } = message;
+
+    switch (type) {
+        // Espacios
+        case 'ESPACIO_CREADO':
+            console.log('🆕 Espacio creado:', data);
+            // Recargar la página para mostrar el nuevo espacio
+            setTimeout(() => location.reload(), 500);
+            break;
+
+        case 'ESPACIO_MODIFICADO':
+            console.log('✏️ Espacio modificado:', data);
+            // Actualizar estados y invalidar caché
+            invalidarCacheYActualizar();
+            break;
+
+        case 'ESPACIO_ELIMINADO':
+            console.log('🗑️ Espacio eliminado:', data);
+            // Recargar la página para eliminar el espacio
+            setTimeout(() => location.reload(), 500);
+            break;
+
+        // Agendas/Citas (tipos nuevos y legacy)
+        case 'CITA_CREADA':
+        case 'CITA_MODIFICADA':
+        case 'CITA_ELIMINADA':
+        case 'INSERT':  // Legacy type
+        case 'MODIFY':  // Legacy type
+        case 'REMOVE':  // Legacy type
+            console.log('📅 Cambio en agenda:', type, data);
+            // Actualizar estados sin recargar
+            invalidarCacheYActualizar();
+            break;
+
+        // Ocupantes
+        case 'OCUPANTE_CREADO':
+        case 'OCUPANTE_MODIFICADO':
+        case 'OCUPANTE_ELIMINADO':
+            console.log('👤 Cambio en ocupante:', type, data);
+            // Los ocupantes afectan las agendas
+            invalidarCacheYActualizar();
+            break;
+
+        default:
+            console.log('ℹ️ Tipo de mensaje no manejado:', type);
+    }
+}
+
+function invalidarCacheYActualizar() {
+    console.log('🔄 Iniciando invalidación de caché...');
+    // Invalidar ambos cachés: estados y agendas
+    Promise.all([
+        fetch('/invalidar-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'estados' })
+        }),
+        fetch('/invalidar-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'agendas' })
+        })
+    ])
+    .then(() => {
+        console.log('🗑️ Cachés invalidados en servidor (estados + agendas)');
+        // Esperar un momento antes de actualizar para asegurar que el caché se limpió
+        setTimeout(() => {
+            actualizarEspecificos();
+        }, 300);
+    })
+    .catch(err => {
+        console.error('❌ Error invalidando caché:', err);
+        // Actualizar de todas formas
+        actualizarEspecificos();
+    });
+}
+
+function disconnectWebSocket() {
+    if (websocket) {
+        reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Evitar reconexión automática
+        websocket.close();
+        websocket = null;
+    }
+}
+
+// Conectar al WebSocket cuando se carga la página
+if (window.grupoId) {
+    connectWebSocket();
+}
+
+// Desconectar al salir de la página
+window.addEventListener('beforeunload', disconnectWebSocket);

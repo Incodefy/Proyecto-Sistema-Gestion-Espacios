@@ -18,24 +18,217 @@
       <%- include("navbar") %>
 
       <div class="main">
-        <div class="header-section">
-          <h1>
-            <i class="fas fa-bell me-2 header-icon"></i>
-            <%= t('notifications.history_header') %>
-          </h1>
-          <p><%= t('notifications.history_subheader') %></p>
-          <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-secondary" id="btnRefresh">
-              <i class="fas fa-sync-alt me-1"></i> Actualizar
-            </button>
+        <div class="page-header">
+          <div class="header-content">
+            <div class="header-text">
+              <h1 class="page-title">
+                <i class="fas fa-bell me-2"></i>
+                <%= t('notifications.history_header') %>
+              </h1>
+              <p class="page-subtitle"><%= t('notifications.history_subheader') %></p>
+            </div>
+            
+            <!-- Tabs de navegación en el header -->
+            <div class="header-tabs">
+              <button class="tab-btn active" data-tab="historial">
+                <i class="fas fa-history me-2"></i>
+                <span>Historial</span>
+              </button>
+              <button class="tab-btn" data-tab="preferencias">
+                <i class="fas fa-sliders-h me-2"></i>
+                <span>Preferencias</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="notificaciones-container">
-          <div class="loading-spinner" id="loadingSpinner">
-            <div class="spinner"></div>
+        <!-- Contenido de las tabs -->
+        <div class="tabs-container">
+          <!-- Tab Historial -->
+          <div class="tab-panel active" id="tab-historial">
+            <div class="loading-spinner" id="loadingSpinner">
+              <div class="spinner"></div>
+              <p class="mt-3">Cargando notificaciones...</p>
+            </div>
+            <div class="notificaciones-lista" id="notificacionesLista" style="display: none;"></div>
           </div>
-          <div class="notificaciones-lista" id="notificacionesLista" style="display: none;"></div>
+
+          <!-- Tab Preferencias -->
+          <div class="tab-panel" id="tab-preferencias">
+            <div class="preferences-intro">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Configura qué tipos de notificaciones deseas recibir en tiempo real. Tus preferencias se guardarán automáticamente.
+              </div>
+            </div>
+
+            <div class="preferences-grid">
+              <!-- Citas/Appointments -->
+              <div class="preference-card">
+                <div class="preference-card-header">
+                  <div class="preference-icon appointments-icon">
+                    <i class="fas fa-calendar-check"></i>
+                  </div>
+                  <div class="preference-header-text">
+                    <h5>Citas y Agendamientos</h5>
+                    <small>Notificaciones sobre el sistema de agenda médica</small>
+                  </div>
+                </div>
+                <div class="preference-card-body">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-INSERT" data-category="appointments" data-type="INSERT" checked>
+                    <label class="form-check-label" for="pref-INSERT">
+                      <strong>Nueva cita agendada</strong>
+                      <small class="d-block">Cuando se crea una nueva cita en el sistema</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-MODIFY" data-category="appointments" data-type="MODIFY" checked>
+                    <label class="form-check-label" for="pref-MODIFY">
+                      <strong>Cita modificada</strong>
+                      <small class="d-block">Cuando se modifica una cita existente</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-REMOVE" data-category="appointments" data-type="REMOVE" checked>
+                    <label class="form-check-label" for="pref-REMOVE">
+                      <strong>Cita cancelada</strong>
+                      <small class="d-block">Cuando se cancela una cita</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Espacios -->
+              <div class="preference-card">
+                <div class="preference-card-header">
+                  <div class="preference-icon spaces-icon">
+                    <i class="fas fa-building"></i>
+                  </div>
+                  <div class="preference-header-text">
+                    <h5>Espacios</h5>
+                    <small>Gestión de espacios y ubicaciones</small>
+                  </div>
+                </div>
+                <div class="preference-card-body">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-SPACE_CREATED" data-category="spaces" data-type="SPACE_CREATED" checked>
+                    <label class="form-check-label" for="pref-SPACE_CREATED">
+                      <strong>Nuevo espacio creado</strong>
+                      <small class="d-block">Cuando se crea un espacio general o específico</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-SPACE_MODIFIED" data-category="spaces" data-type="SPACE_MODIFIED" checked>
+                    <label class="form-check-label" for="pref-SPACE_MODIFIED">
+                      <strong>Espacio modificado</strong>
+                      <small class="d-block">Cuando se modifica un espacio</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-SPACE_DELETED" data-category="spaces" data-type="SPACE_DELETED" checked>
+                    <label class="form-check-label" for="pref-SPACE_DELETED">
+                      <strong>Espacio eliminado</strong>
+                      <small class="d-block">Cuando se elimina un espacio</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ocupantes -->
+              <div class="preference-card">
+                <div class="preference-card-header">
+                  <div class="preference-icon occupants-icon">
+                    <i class="fas fa-user-injured"></i>
+                  </div>
+                  <div class="preference-header-text">
+                    <h5>Ocupantes/Pacientes</h5>
+                    <small>Información sobre ocupantes del sistema</small>
+                  </div>
+                </div>
+                <div class="preference-card-body">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-OCCUPANT_CREATED" data-category="occupants" data-type="OCCUPANT_CREATED" checked>
+                    <label class="form-check-label" for="pref-OCCUPANT_CREATED">
+                      <strong>Nuevo ocupante agregado</strong>
+                      <small class="d-block">Cuando se registra un nuevo ocupante</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-OCCUPANT_MODIFIED" data-category="occupants" data-type="OCCUPANT_MODIFIED" checked>
+                    <label class="form-check-label" for="pref-OCCUPANT_MODIFIED">
+                      <strong>Ocupante modificado</strong>
+                      <small class="d-block">Cuando se actualiza información del ocupante</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-OCCUPANT_DELETED" data-category="occupants" data-type="OCCUPANT_DELETED" checked>
+                    <label class="form-check-label" for="pref-OCCUPANT_DELETED">
+                      <strong>Ocupante eliminado</strong>
+                      <small class="d-block">Cuando se elimina un ocupante</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Miembros del Grupo -->
+              <div class="preference-card">
+                <div class="preference-card-header">
+                  <div class="preference-icon members-icon">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <div class="preference-header-text">
+                    <h5>Miembros del Grupo</h5>
+                    <small>Cambios en la composición del equipo</small>
+                  </div>
+                </div>
+                <div class="preference-card-body">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-MEMBER_ADDED" data-category="members" data-type="MEMBER_ADDED" checked>
+                    <label class="form-check-label" for="pref-MEMBER_ADDED">
+                      <strong>Nuevo miembro agregado</strong>
+                      <small class="d-block">Cuando se agrega un miembro al grupo</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-MEMBER_MODIFIED" data-category="members" data-type="MEMBER_MODIFIED" checked>
+                    <label class="form-check-label" for="pref-MEMBER_MODIFIED">
+                      <strong>Miembro modificado</strong>
+                      <small class="d-block">Cuando se actualiza información del miembro</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-ROLE_CHANGED" data-category="members" data-type="ROLE_CHANGED" checked>
+                    <label class="form-check-label" for="pref-ROLE_CHANGED">
+                      <strong>Cambio de rol</strong>
+                      <small class="d-block">Cuando se cambia el rol de un miembro</small>
+                    </label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="pref-MEMBER_REMOVED" data-category="members" data-type="MEMBER_REMOVED" checked>
+                    <label class="form-check-label" for="pref-MEMBER_REMOVED">
+                      <strong>Miembro removido</strong>
+                      <small class="d-block">Cuando se remueve un miembro del grupo</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="preferences-actions">
+              <button class="btn btn-primary" id="btnGuardarPreferencias">
+                <i class="fas fa-save me-2"></i>Guardar Preferencias
+              </button>
+              <button class="btn btn-outline-secondary-custom" id="btnRestaurarDefecto">
+                <i class="fas fa-undo me-2"></i>Restaurar a Predeterminado
+              </button>
+            </div>
+
+            <div class="alert alert-success mt-3" id="alertGuardado" style="display: none;">
+              <i class="fas fa-check-circle me-2"></i>
+              Preferencias guardadas correctamente
+            </div>
+          </div>
         </div>
       </div>
 
@@ -44,8 +237,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/notifications.js"></script>
+  <script src="/js/historial-notificaciones-websocket.js"></script>
   <script>
     const CURRENT_LOCALE = '<%= i18n.language %>';
+    const GRUPO_ID = '<%= grupoActivo?.grupo_id || "" %>';
+    const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
 
     function escapeHTML(str) {
       if (typeof str !== 'string') return str;
@@ -56,6 +253,21 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
+
+    // Manejo de tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        
+        // Actualizar botones
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Actualizar paneles
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+      });
+    });
 
     // Iconos según tipo de notificación
     const NOTIFICATION_ICONS = {
@@ -80,6 +292,12 @@
         .then(data => {
           loadingSpinner.style.display = 'none';
           contenedor.style.display = 'block';
+          
+          // Actualizar cache para WebSocket
+          if (typeof actualizarCacheNotificaciones === 'function') {
+            actualizarCacheNotificaciones(data.notificaciones || []);
+          }
+          
           mostrarNotificaciones(data.notificaciones || []);
         })
         .catch(err => {
@@ -151,12 +369,11 @@
                     <div>
                       <strong class="d-block">${escapeHTML(n.mensaje)}</strong>
                       <small class="text-muted">
-                        <i class="far fa-clock me-1"></i>${horaLabel}
+                        <i class="far fa-clock me-1"></i><span class="hora">${horaLabel}</span>
                         <span class="badge" data-categoria="${n.categoria}">${n.categoria}</span>
                         ${n.prioridad === 'ALTA' ? `<span class="badge" data-prioridad="ALTA">Alta prioridad</span>` : ''}
                       </small>
                     </div>
-                    <!-- Botón de marcar como leída eliminado -->
                   </div>
                   ${renderDetalles(n)}
                 </div>
@@ -167,8 +384,6 @@
         html += `</div>`;
       }
       contenedor.innerHTML = html;
-
-      // Botón de marcar como leída eliminado
     }
 
     function renderDetalles(notificacion) {
@@ -197,6 +412,24 @@
         html += '</ul>';
       }
 
+      // Espacio modificado
+      if (notificacion.tipo === 'ESPACIO_MODIFICADO' && detalles.cambios) {
+        html += '<ul class="mb-0 ps-3">';
+        const camposTexto = {
+          nombre: 'Nombre',
+          capacidad: 'Capacidad',
+          descripcion: 'Descripción',
+          estado: 'Estado'
+        };
+        
+        Object.keys(detalles.cambios).forEach(campo => {
+          const nombreCampo = camposTexto[campo] || campo;
+          const cambio = detalles.cambios[campo];
+          html += `<li><strong>${nombreCampo}:</strong> "${escapeHTML(cambio.old)}" → "${escapeHTML(cambio.new)}"</li>`;
+        });
+        html += '</ul>';
+      }
+
       // Entidad afectada (espacios, miembros)
       if (notificacion.entidad_afectada) {
         const entidad = notificacion.entidad_afectada;
@@ -219,15 +452,109 @@
       return html;
     }
 
+    // ========== PREFERENCIAS DE NOTIFICACIONES ==========
 
+    const PREFERENCIAS_INICIALES = <%- JSON.stringify(preferenciasNotificaciones || {}) %>;
 
+    function cargarPreferencias() {
+      console.log('Cargando preferencias:', PREFERENCIAS_INICIALES);
+      
+      // Aplicar preferencias a los checkboxes
+      document.querySelectorAll('.form-check-input[data-category]').forEach(checkbox => {
+        const category = checkbox.dataset.category;
+        const type = checkbox.dataset.type;
+        
+        if (PREFERENCIAS_INICIALES[category] && PREFERENCIAS_INICIALES[category][type] !== undefined) {
+          checkbox.checked = PREFERENCIAS_INICIALES[category][type];
+        }
+      });
+    }
 
+    function obtenerPreferenciasActuales() {
+      const preferencias = {
+        appointments: {},
+        spaces: {},
+        occupants: {},
+        members: {}
+      };
+
+      document.querySelectorAll('.form-check-input[data-category]').forEach(checkbox => {
+        const category = checkbox.dataset.category;
+        const type = checkbox.dataset.type;
+        preferencias[category][type] = checkbox.checked;
+      });
+
+      return preferencias;
+    }
+
+    function guardarPreferencias() {
+      const preferencias = obtenerPreferenciasActuales();
+      const btnGuardar = document.getElementById('btnGuardarPreferencias');
+      const alertGuardado = document.getElementById('alertGuardado');
+      
+      btnGuardar.disabled = true;
+      btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+
+      fetch('/preferencias-notificaciones', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferencias)
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          alertGuardado.style.display = 'block';
+          setTimeout(() => {
+            alertGuardado.style.display = 'none';
+          }, 3000);
+          
+          // Recargar preferencias en el NotificationManager
+          if (window.notificationManager && typeof window.notificationManager.reloadPreferences === 'function') {
+            window.notificationManager.reloadPreferences();
+            console.log('✅ Preferencias recargadas en NotificationManager');
+          }
+        } else {
+          alert('Error al guardar preferencias');
+        }
+      })
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Error al guardar preferencias');
+      })
+      .finally(() => {
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Preferencias';
+      });
+    }
+
+    function restaurarDefecto() {
+      if (!confirm('¿Deseas restaurar todas las preferencias a los valores predeterminados (todas activadas)?')) {
+        return;
+      }
+
+      document.querySelectorAll('.form-check-input[data-category]').forEach(checkbox => {
+        checkbox.checked = true;
+      });
+
+      guardarPreferencias();
+    }
+
+    // ========== INICIALIZACIÓN ==========
 
     document.addEventListener('DOMContentLoaded', () => {
       cargarHistorialNotificaciones();
+      cargarPreferencias();
+      
+      // Conectar WebSocket para actualizaciones en tiempo real
+      if (GRUPO_ID && typeof conectarWebSocketHistorial === 'function') {
+        conectarWebSocketHistorial(GRUPO_ID, WS_URL);
+      }
 
-      // Botón de marcar todas como leídas eliminado
       document.getElementById('btnRefresh')?.addEventListener('click', cargarHistorialNotificaciones);
+      
+      // Eventos de preferencias
+      document.getElementById('btnGuardarPreferencias')?.addEventListener('click', guardarPreferencias);
+      document.getElementById('btnRestaurarDefecto')?.addEventListener('click', restaurarDefecto);
     });
   </script>
 </body>

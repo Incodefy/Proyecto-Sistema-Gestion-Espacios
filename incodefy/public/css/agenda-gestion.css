@@ -448,6 +448,17 @@ body {
     opacity: 0.5;
 }
 
+/* Celdas fuera del mes actual - más tenues */
+.month-cell-outside {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .month-cell-outside,
+body[data-theme="dark"] .month-cell-outside,
+html[data-theme="dark"] .month-cell-outside {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
 .month-cell-date {
     font-size: 0.875rem;
     font-weight: 500;
@@ -458,6 +469,12 @@ body {
 .month-cell-date.today {
     color: var(--primary-color);
     font-weight: 700;
+}
+
+/* Días fuera del mes actual - texto más tenue */
+.month-cell-date.outside-month {
+    color: var(--secondary-text-color);
+    opacity: 0.5;
 }
 
 .month-bookings {
@@ -508,7 +525,7 @@ body {
 }
 
 .modal-content {
-    background-color: var(--card-background)!important;
+    background: var(--card-background)!important;
     border-radius: 0.5rem;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
     max-width: 28rem;
@@ -752,4 +769,68 @@ html[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
     .btn-secondary {
         width: 100%;
     }
+}
+
+/* ===== SKELETON LOADER ===== */
+.calendar-container.loading {
+    pointer-events: none;
+    user-select: none;
+}
+
+.skeleton-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    animation: fadeIn 0.15s ease-in;
+}
+
+[data-theme="dark"] .skeleton-overlay,
+body[data-theme="dark"] .skeleton-overlay,
+html[data-theme="dark"] .skeleton-overlay {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.skeleton-spinner {
+    background: var(--card-background);
+    padding: 1.5rem;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Transición suave del calendario */
+.calendar-card {
+    transition: opacity 0.2s ease-in-out;
+}
+
+.calendar-container.loading .calendar-card {
+    opacity: 0.6;
 }

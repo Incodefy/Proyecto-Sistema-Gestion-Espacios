@@ -6,12 +6,28 @@ const checkPermission = require("../middleware/checkPermission");
 // NOTA: requireAuth y attachApiClient ya están aplicados en server.js
 // No duplicar middlewares aquí
 
+// ============================================
+// Cache de memoización para funciones puras
+// ============================================
+const memoCache = new Map();
+
 const toKey = (str) => {
   if (!str) return '';
-  return str.toLowerCase()
+  const cached = memoCache.get(`toKey:${str}`);
+  if (cached) return cached;
+  
+  const result = str.toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_');
+  
+  memoCache.set(`toKey:${str}`, result);
+  // Limpiar cache si crece mucho (>1000 entradas)
+  if (memoCache.size > 1000) {
+    const firstKey = memoCache.keys().next().value;
+    memoCache.delete(firstKey);
+  }
+  return result;
 };
 
 function obtenerSemanaActual() {
@@ -35,6 +51,11 @@ function obtenerSemanaActual() {
 
 function calcularPeriodoAnterior(fechaInicio, fechaFin) {
   try {
+    // Cache de memoización
+    const cacheKey = `periodo:${fechaInicio}:${fechaFin}`;
+    const cached = memoCache.get(cacheKey);
+    if (cached) return cached;
+    
     const fechaInicioDate = new Date(fechaInicio);
     const fechaFinDate = new Date(fechaFin);
     
@@ -46,10 +67,13 @@ function calcularPeriodoAnterior(fechaInicio, fechaFin) {
     const fechaFinAnterior = new Date(fechaInicioDate);
     fechaFinAnterior.setDate(fechaInicioDate.getDate() - 1);
     
-    return {
+    const result = {
       inicio: fechaInicioAnterior.toISOString().split('T')[0],
       fin: fechaFinAnterior.toISOString().split('T')[0]
     };
+    
+    memoCache.set(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error calculando período anterior:', error);
     return null;
@@ -77,7 +101,8 @@ router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => 
   res.render('dashboard', { 
     currentPath: req.path,
     personalization: res.locals.personalization || {},
-    user: req.session.user
+    user: req.session.user,
+    grupoActivo: req.session.grupoActivo
   });
   
   console.log('🎨 [DASHBOARD HANDLER] Vista renderizada exitosamente\n');
@@ -88,6 +113,7 @@ router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => 
 // ==========================
 router.get('/dashboard/filtros-iniciales', async (req, res) => {
   try {
+    const startTime = Date.now();
     console.log('📊 Obteniendo filtros iniciales del dashboard');
 
     // Obtener grupo_id de la sesión
@@ -101,9 +127,10 @@ router.get('/dashboard/filtros-iniciales', async (req, res) => {
       });
     }
 
+    // ✅ Llamadas paralelas optimizadas
     const [especialidades, espacios] = await Promise.all([
-      req.apiClient.client.get(`/groups/${grupoId}/especialidades`).then(r => r.data.especialidades || []),
-      req.apiClient.listarEspacios(grupoId).then(r => r.espacios || [])
+      req.apiClient.client.get(`/groups/${grupoId}/especialidades`).then(r => r.data.especialidades || []).catch(() => []),
+      req.apiClient.listarEspacios(grupoId).then(r => r.espacios || []).catch(() => [])
     ]);
 
     // Formatear especialidades
@@ -127,9 +154,17 @@ router.get('/dashboard/filtros-iniciales', async (req, res) => {
 
     const boxesFormatted = espaciosEspecificos.sort((a, b) => a.id - b.id);
 
-    console.log('✅ Filtros obtenidos:', {
+    const endTime = Date.now();
+    console.log(`✅ Filtros obtenidos en ${endTime - startTime}ms:`, {
       especialidades: especialidadesFormatted.length,
       boxes: boxesFormatted.length
+    });
+
+    // ✅ Headers de caching para optimizar requests subsecuentes
+    res.set({
+      'Cache-Control': 'private, max-age=300', // 5 minutos
+      'ETag': `"${grupoId}-${especialidadesFormatted.length}-${boxesFormatted.length}"`,
+      'X-Response-Time': `${endTime - startTime}ms`
     });
 
     res.json({
@@ -188,14 +223,43 @@ router.post('/dashboard/datos', async (req, res) => {
 
     const startTime = Date.now();
 
-    // Calcular KPIs y gráficos en paralelo (ahora comparten cache)
+    // ✅ OPTIMIZACIÓN CRÍTICA: Caché compartido de appointments a nivel de request
+    // Pre-cargar appointments una sola vez para evitar duplicación
+    const periodoAnterior = calcularPeriodoAnterior(fecha_inicio, fecha_fin);
+    
+    // Caché compartido entre KPIs y gráficos
+    const appointmentsCache = {
+      actual: null,
+      anterior: null
+    };
+    
+    // Pre-cargar appointments en paralelo (período actual + anterior)
+    const [appointmentsActual, appointmentsAnterior] = await Promise.all([
+      req.apiClient.obtenerAppointmentsRango(grupoId, fecha_inicio, fecha_fin),
+      periodoAnterior ? req.apiClient.obtenerAppointmentsRango(grupoId, periodoAnterior.inicio, periodoAnterior.fin) : Promise.resolve([])
+    ]);
+    
+    appointmentsCache.actual = appointmentsActual;
+    appointmentsCache.anterior = appointmentsAnterior;
+    
+    console.log(`📦 Appointments cargados: ${appointmentsActual.length} actual, ${appointmentsAnterior.length} anterior`);
+
+    // Calcular KPIs y gráficos en paralelo usando caché compartido
     const [kpis, graficos] = await Promise.all([
-      calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin, grupoId),
-      calcularGraficos(req, especialidades, boxes, fecha_inicio, fecha_fin, grupoId)
+      calcularKpis(req, especialidades, boxes, fecha_inicio, fecha_fin, grupoId, appointmentsCache),
+      calcularGraficos(req, especialidades, boxes, fecha_inicio, fecha_fin, grupoId, appointmentsCache)
     ]);
 
     const endTime = Date.now();
-    console.log(`✅ Dashboard calculado en ${endTime - startTime}ms`);
+    const responseTime = endTime - startTime;
+    console.log(`✅ Dashboard calculado en ${responseTime}ms`);
+
+    // ✅ Headers de performance y caching
+    res.set({
+      'Cache-Control': 'private, max-age=60', // 1 minuto de cache
+      'X-Response-Time': `${responseTime}ms`,
+      'X-Appointments-Count': appointmentsCache.actual.length.toString()
+    });
 
     res.json({ success: true, kpis, graficos });
   } catch (err) {
@@ -211,7 +275,7 @@ router.post('/dashboard/datos', async (req, res) => {
 // ==========================
 // 4. Función: calcular KPIs
 // ==========================
-async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin, grupoId) {
+async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin, grupoId, appointmentsCache) {
   const periodoAnterior = calcularPeriodoAnterior(fechaInicio, fechaFin);
   
   const fechaInicioDate = new Date(fechaInicio);
@@ -220,27 +284,15 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin, g
 
   console.log(`📅 Período actual: ${fechaInicio} a ${fechaFin} (${diasPeriodo} días)`);
 
-  // ✅ Construir filtros para Lambda (ahora incluye grupo_id)
-  const filtrosActuales = await construirFiltrosDynamoDB(fechaInicio, fechaFin, grupoId);
-
-  console.log("Filtros: ", filtrosActuales)
-
-  // Obtener total de consultas actual
-  const totalActual = await req.apiClient.obtenerTotalConsultas(filtrosActuales);
-
-  let variacionConsultas = 0;
-  let totalConsultasAnterior = 0;
+  // ✅ OPTIMIZACIÓN: Usar caché compartido en lugar de llamadas a Lambda
+  const appointmentsActual = appointmentsCache.actual;
+  const appointmentsAnterior = appointmentsCache.anterior;
+  
+  const totalActual = appointmentsActual.length;
+  const totalConsultasAnterior = appointmentsAnterior.length;
+  const variacionConsultas = totalActual - totalConsultasAnterior;
   
   if (periodoAnterior) {
-    const filtrosAnteriores = await construirFiltrosDynamoDB(
-      periodoAnterior.inicio, 
-      periodoAnterior.fin,
-      grupoId
-    );
-    
-    totalConsultasAnterior = await req.apiClient.obtenerTotalConsultas(filtrosAnteriores);
-    variacionConsultas = totalActual - totalConsultasAnterior;
-    
     console.log(`📈 Período anterior: ${periodoAnterior.inicio} a ${periodoAnterior.fin}`);
     console.log(`📊 Consultas actuales: ${totalActual}, anteriores: ${totalConsultasAnterior}`);
   }
@@ -288,26 +340,46 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin, g
     variacionPromedioDiario = parseFloat((promedioConsultasDiario - promedioAnterior).toFixed(1));
   }
 
-  // Especialidad más demandada
-  const especialidadTop = await req.apiClient.obtenerEspecialidadMasDemandada(filtrosActuales);
+  // ✅ OPTIMIZACIÓN: Calcular especialidad más demandada directamente desde caché
+  const porEspecialidadActual = {};
+  appointmentsActual.forEach(apt => {
+    const esp = apt.especialidad_nombre || 'Sin especialidad';
+    porEspecialidadActual[esp] = (porEspecialidadActual[esp] || 0) + 1;
+  });
+  
+  let especialidadTop = null;
+  let maxCount = 0;
+  for (const [nombre, consultas] of Object.entries(porEspecialidadActual)) {
+    if (consultas > maxCount) {
+      maxCount = consultas;
+      especialidadTop = { nombre, consultas };
+    }
+  }
 
-  console.log("especialidadTop: ", especialidadTop)
+  console.log("especialidadTop: ", especialidadTop);
 
+  // Calcular tendencia comparando con período anterior
   let tendenciaEspecialidad = 'igual';
-  if (especialidadTop && periodoAnterior) {
-    const filtrosAnteriores = await construirFiltrosDynamoDB(
-      periodoAnterior.inicio,
-      periodoAnterior.fin,
-      grupoId
-    );
+  if (especialidadTop && periodoAnterior && appointmentsAnterior.length > 0) {
+    const porEspecialidadAnterior = {};
+    appointmentsAnterior.forEach(apt => {
+      const esp = apt.especialidad_nombre || 'Sin especialidad';
+      porEspecialidadAnterior[esp] = (porEspecialidadAnterior[esp] || 0) + 1;
+    });
     
-    const especialidadAnt = await req.apiClient.obtenerEspecialidadMasDemandada(filtrosAnteriores);
+    let maxCountAnt = 0;
+    let especialidadAnt = null;
+    for (const [nombre, consultas] of Object.entries(porEspecialidadAnterior)) {
+      if (consultas > maxCountAnt) {
+        maxCountAnt = consultas;
+        especialidadAnt = { nombre, consultas };
+      }
+    }
     
     if (especialidadAnt) {
-      const consultasAnteriores = especialidadAnt.consultas;
-      if (especialidadTop.consultas > consultasAnteriores) {
+      if (especialidadTop.consultas > especialidadAnt.consultas) {
         tendenciaEspecialidad = 'sube';
-      } else if (especialidadTop.consultas < consultasAnteriores) {
+      } else if (especialidadTop.consultas < especialidadAnt.consultas) {
         tendenciaEspecialidad = 'baja';
       }
     }
@@ -349,29 +421,17 @@ async function calcularKpis(req, especialidades, boxes, fechaInicio, fechaFin, g
 // ==========================
 // 5. Función: calcular Gráficos
 // ==========================
-async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFin, grupoId) {
+async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFin, grupoId, appointmentsCache) {
   console.log('📊 Calculando gráficos del dashboard');
 
-  // ✅ Construir filtros (ahora incluye grupo_id)
-  const filtros = await construirFiltrosDynamoDB(fechaInicio, fechaFin, grupoId);
+  // ✅ OPTIMIZACIÓN: Usar caché compartido
+  const appointments = appointmentsCache.actual;
+  
+  console.log('📊 [DEBUG] Total appointments desde caché:', appointments.length);
 
-  // ✅ Obtener datos en paralelo
-  const [consultasPorEspecialidad, consultasPorDia, rendimientoMedicos] = await Promise.all([
-    req.apiClient.obtenerConsultasPorEspecialidad(filtros),
-    req.apiClient.obtenerConsultasPorDia(filtros),
-    req.apiClient.obtenerRendimientoMedicos(filtros)
-  ]);
-
-  // Formatear consultas por especialidad
-  const consultasPorEspecialidadFormatted = consultasPorEspecialidad && consultasPorEspecialidad.length > 0 ? {
-    labels: consultasPorEspecialidad.map((e) => 
-      req.t(`specialties.${toKey(e.nombre)}`, e.nombre)
-    ),
-    data: consultasPorEspecialidad.map((e) => e.consultas),
-    total: consultasPorEspecialidad.reduce((sum, e) => sum + e.consultas, 0)
-  } : { labels: [], data: [], total: 0 };
-
-  // Formatear consultas por día
+  // ============================================
+  // 1. Calcular consultas por día de la semana
+  // ============================================
   const dias = [
     req.t('days.monday'), 
     req.t('days.tuesday'), 
@@ -382,24 +442,86 @@ async function calcularGraficos(req, especialidades, boxes, fechaInicio, fechaFi
     req.t('days.sunday')
   ];
 
-  const consultasPorDiaData = Array.isArray(consultasPorDia) 
-    ? consultasPorDia 
-    : [0, 0, 0, 0, 0, 0, 0];
+  // Array ordenado: [Lun, Mar, Mie, Jue, Vie, Sab, Dom]
+  const consultasPorDiaData = [0, 0, 0, 0, 0, 0, 0];
+  
+  appointments.forEach(apt => {
+    if (!apt.fecha) return;
+    
+    // Parsear fecha en UTC para evitar problemas de timezone
+    const [year, month, day] = apt.fecha.split('-').map(Number);
+    const diaJS = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    
+    // Convertir a índice Lunes-Domingo
+    let diaOrdenado;
+    if (diaJS === 0) {
+      diaOrdenado = 6; // Domingo va al final
+    } else {
+      diaOrdenado = diaJS - 1; // Lunes(1)->0, Martes(2)->1, etc.
+    }
+    
+    consultasPorDiaData[diaOrdenado]++;
+  });
+  
+  console.log('📊 [DEBUG] consultasPorDiaData calculado:', consultasPorDiaData);
+  console.log('📊 [DEBUG] Labels (días):', dias);
   
   const totalDias = consultasPorDiaData.reduce((sum, count) => sum + count, 0);
   const diaMasActivo = totalDias > 0 
     ? dias[consultasPorDiaData.indexOf(Math.max(...consultasPorDiaData))] 
     : null;
 
+  // ============================================
+  // 2. Calcular consultas por especialidad
+  // ============================================
+  const porEspecialidad = {};
+  appointments.forEach(apt => {
+    const esp = apt.especialidad_nombre || 'Sin especialidad';
+    porEspecialidad[esp] = (porEspecialidad[esp] || 0) + 1;
+  });
+
+  const consultasPorEspecialidadArray = Object.entries(porEspecialidad)
+    .map(([nombre, consultas]) => ({ nombre, consultas }))
+    .sort((a, b) => b.consultas - a.consultas);
+
+  const consultasPorEspecialidadFormatted = consultasPorEspecialidadArray.length > 0 ? {
+    labels: consultasPorEspecialidadArray.map((e) => 
+      req.t(`specialties.${toKey(e.nombre)}`, e.nombre)
+    ),
+    data: consultasPorEspecialidadArray.map((e) => e.consultas),
+    total: consultasPorEspecialidadArray.reduce((sum, e) => sum + e.consultas, 0)
+  } : { labels: [], data: [], total: 0 };
+
+  // ============================================
+  // 3. Calcular rendimiento de médicos/ocupantes
+  // ============================================
+  const porOcupante = {};
+  appointments.forEach(apt => {
+    const nombre = apt.ocupante_nombre || 'Sin ocupante';
+    const especialidad = apt.especialidad_nombre || 'Sin especialidad';
+    
+    if (!porOcupante[nombre]) {
+      porOcupante[nombre] = {
+        nombre,
+        especialidad,
+        consultas: 0
+      };
+    }
+    porOcupante[nombre].consultas++;
+  });
+
+  const rendimientoMedicosArray = Object.values(porOcupante)
+    .sort((a, b) => b.consultas - a.consultas);
+
   // Formatear rendimiento de médicos/ocupantes
-  const rendimientoMedicosFormatted = rendimientoMedicos && rendimientoMedicos.length > 0 ? {
-    labels: rendimientoMedicos.map((m) => m.nombre),
-    data: rendimientoMedicos.map((m) => m.consultas),
-    especialidades: rendimientoMedicos.map((m) => 
+  const rendimientoMedicosFormatted = rendimientoMedicosArray.length > 0 ? {
+    labels: rendimientoMedicosArray.map((m) => m.nombre),
+    data: rendimientoMedicosArray.map((m) => m.consultas),
+    especialidades: rendimientoMedicosArray.map((m) => 
       req.t(`specialties.${toKey(m.especialidad)}`, m.especialidad)
     ),
     promedio: parseFloat(
-      (rendimientoMedicos.reduce((sum, m) => sum + m.consultas, 0) / rendimientoMedicos.length).toFixed(1)
+      (rendimientoMedicosArray.reduce((sum, m) => sum + m.consultas, 0) / rendimientoMedicosArray.length).toFixed(1)
     )
   } : { labels: [], data: [], especialidades: [], promedio: 0 };
 

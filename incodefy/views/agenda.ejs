@@ -38,75 +38,67 @@
           <p class="page-subtitle"><%= t('agenda.main_subtitle') %></p>
         </div>
 
-        <div class="row g-4 gap-5 justify-content-center" style="max-width: 1400px; margin: 0 auto;">
+        <div class="options-grid">
           
-          <!-- Sección de Gestión de Agenda - Requiere agenda.read -->
+          <!-- Opción: Agendar - Requiere agenda.read -->
           <% if (canViewAgenda) { %>
-            <div class="section data-section col-12 col-md-5">
-              <div class="section-header">
-                <div class="section-icon">
-                  <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+            <div class="option-item">
+              <a href="/agenda/gestion" class="option-card-new">
+                <div class="option-icon calendar-icon">
+                  <i class="fas fa-calendar-plus"></i>
                 </div>
-                <h2 class="section-title"><%= t('agenda.management.title') %></h2>
-                <p class="section-description"><%= t('agenda.management.description') %></p>
-              </div>
-
-              <div class="row gy-4 justify-content-center">
-                <div class="col-12 col-sm-11 col-md-11 col-lg-6">
-                  <a href="#" class="option-card" onclick="showDevToast(event)">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                    <span>Por <%= nomenclatura.especifico %></span>
-                  </a>
+                <div class="option-content">
+                  <h3 class="option-title"><%= t('agenda.data.agendar') %></h3>
+                  <p class="option-description">Crea y gestiona citas médicas de forma rápida</p>
                 </div>
-                <div class="col-12 col-sm-11 col-md-11 col-lg-6">
-                  <a href="#" class="option-card" onclick="showDevToast(event)">
-                    <i class="fa-solid fa-user-doctor" aria-hidden="true"></i>
-                    <span>Por <%= nomenclatura.ocupante %></span>
-                  </a>
+                <div class="option-arrow">
+                  <i class="fas fa-chevron-right"></i>
                 </div>
-              </div>
+              </a>
             </div>
           <% } %>
 
-          <!-- Sección de Gestión de Datos - Requiere data.import O data.export -->
-          <% if (canImport || canExport) { %>
-            <div class="section data-section col-12 col-md-5">
-              <div class="section-header">
-                <div class="section-icon">
-                  <i class="fas fa-exchange-alt" aria-hidden="true"></i>
+          <!-- Opción: Importar - Requiere data.import -->
+          <% if (canImport) { %>
+            <div class="option-item">
+              <a href="#" class="option-card-new" onclick="showDevToast(event)">
+                <div class="option-icon import-icon">
+                  <i class="fas fa-file-import"></i>
                 </div>
-                <h2 class="section-title"><%= t('agenda.data.title') %></h2>
-                <p class="section-description"><%= t('agenda.data.description') %></p>
-              </div>
-
-              <div class="row gy-4 justify-content-center">
-                <!-- Solo mostrar Importar si tiene permiso -->
-                <% if (canImport) { %>
-                  <div class="col-12 col-sm-11 col-md-11 col-lg-6">
-                    <a href="#" class="option-card" onclick="showDevToast(event)">
-                      <i class="fas fa-download" aria-hidden="true"></i>
-                      <span><%= t('agenda.data.import') %></span>
-                    </a>
-                  </div>
-                <% } %>
-                
-                <!-- Solo mostrar Exportar si tiene permiso -->
-                <% if (canExport) { %>
-                  <div class="col-12 col-sm-11 col-md-11 col-lg-6">
-                    <a href="#" class="option-card" onclick="showDevToast(event)">
-                      <i class="fas fa-upload" aria-hidden="true"></i>
-                      <span><%= t('agenda.data.export') %></span>
-                    </a>
-                  </div>
-                <% } %>
-              </div>
+                <div class="option-content">
+                  <h3 class="option-title"><%= t('agenda.data.import') %></h3>
+                  <p class="option-description">Importa datos desde archivos externos</p>
+                </div>
+                <div class="option-arrow">
+                  <i class="fas fa-chevron-right"></i>
+                </div>
+              </a>
+            </div>
+          <% } %>
+          
+          <!-- Opción: Exportar - Requiere data.export -->
+          <% if (canExport) { %>
+            <div class="option-item">
+              <a href="#" class="option-card-new" onclick="showDevToast(event)">
+                <div class="option-icon export-icon">
+                  <i class="fas fa-file-export"></i>
+                </div>
+                <div class="option-content">
+                  <h3 class="option-title"><%= t('agenda.data.export') %></h3>
+                  <p class="option-description">Exporta información de consultas y citas</p>
+                </div>
+                <div class="option-arrow">
+                  <i class="fas fa-chevron-right"></i>
+                </div>
+              </a>
             </div>
           <% } %>
 
-          <!-- Mensaje si no tiene permisos para ninguna sección -->
+          <!-- Mensaje si no tiene permisos para ninguna opción -->
           <% if (!canViewAgenda && !canImport && !canExport) { %>
-            <div class="col-12 text-center">
+            <div class="col-12 text-center no-permissions-container">
               <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle mb-3"></i>
                 <h4><%= t('agenda.no_permissions.title') %></h4>
                 <p><%= t('agenda.no_permissions.description') %></p>
               </div>

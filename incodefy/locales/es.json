@@ -192,7 +192,8 @@
       "title": "Gestión de Datos",
       "description": "Exporta e importa información de consultas",
       "import": "Importar",
-      "export": "Exportar"
+      "export": "Exportar",
+      "agendar": "Agendar"
     },
     "no_permissions": {
       "title": "Sin permisos disponibles",

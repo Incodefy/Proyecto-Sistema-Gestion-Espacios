@@ -319,26 +319,8 @@ class ApiClient {
    */
   async obtenerConsultasPorEspecialidad(filtros) {
     try {
-      const { fechaInicio, fechaFin, grupo_id } = filtros;
-      
-      if (!grupo_id) {
-        console.warn('⚠️ obtenerConsultasPorEspecialidad: grupo_id es requerido');
-        return [];
-      }
-
-      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
-      
-      // Agrupar por especialidad
-      const porEspecialidad = {};
-      appointments.forEach(apt => {
-        const esp = apt.especialidad_nombre || 'Sin especialidad';
-        porEspecialidad[esp] = (porEspecialidad[esp] || 0) + 1;
-      });
-
-      // Convertir a array y ordenar
-      return Object.entries(porEspecialidad)
-        .map(([nombre, consultas]) => ({ nombre, consultas }))
-        .sort((a, b) => b.consultas - a.consultas);
+      const response = await this.client.post('/db/obtener-consultas-por-especialidad', filtros);
+      return response.data;
     } catch (error) {
       console.error('❌ Error en obtenerConsultasPorEspecialidad:', error.message);
       return [];
@@ -352,25 +334,8 @@ class ApiClient {
    */
   async obtenerConsultasPorDia(filtros) {
     try {
-      const { fechaInicio, fechaFin, grupo_id } = filtros;
-      
-      if (!grupo_id) {
-        console.warn('⚠️ obtenerConsultasPorDia: grupo_id es requerido');
-        return [0, 0, 0, 0, 0, 0, 0];
-      }
-
-      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
-      
-      // Contar por día de semana (0=domingo, 1=lunes, ...)
-      const porDia = [0, 0, 0, 0, 0, 0, 0];
-      appointments.forEach(apt => {
-        const fecha = new Date(apt.fecha);
-        const dia = fecha.getDay(); // 0=domingo
-        porDia[dia]++;
-      });
-
-      // Reordenar: [lunes, martes, ..., domingo]
-      return [porDia[1], porDia[2], porDia[3], porDia[4], porDia[5], porDia[6], porDia[0]];
+      const response = await this.client.post('/db/obtener-consultas-por-dia', filtros);
+      return response.data;
     } catch (error) {
       console.error('❌ Error en obtenerConsultasPorDia:', error.message);
       return [0, 0, 0, 0, 0, 0, 0];
@@ -384,34 +349,8 @@ class ApiClient {
    */
   async obtenerRendimientoMedicos(filtros) {
     try {
-      const { fechaInicio, fechaFin, grupo_id } = filtros;
-      
-      if (!grupo_id) {
-        console.warn('⚠️ obtenerRendimientoMedicos: grupo_id es requerido');
-        return [];
-      }
-
-      const appointments = await this.obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin);
-      
-      // Agrupar por ocupante
-      const porOcupante = {};
-      appointments.forEach(apt => {
-        const nombre = apt.ocupante_nombre || 'Sin ocupante';
-        const especialidad = apt.especialidad_nombre || 'Sin especialidad';
-        
-        if (!porOcupante[nombre]) {
-          porOcupante[nombre] = {
-            nombre,
-            especialidad,
-            consultas: 0
-          };
-        }
-        porOcupante[nombre].consultas++;
-      });
-
-      // Convertir a array y ordenar
-      return Object.values(porOcupante)
-        .sort((a, b) => b.consultas - a.consultas);
+      const response = await this.client.post('/db/obtener-rendimiento-medicos', filtros);
+      return response.data;
     } catch (error) {
       console.error('❌ Error en obtenerRendimientoMedicos:', error.message);
       return [];
@@ -428,20 +367,26 @@ class ApiClient {
    */
   async obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin) {
     try {
-      // Cache simple en memoria (válido por 30 segundos)
+      // ✅ Cache optimizado con TTL configurable
+      const CACHE_TTL = 30000; // 30 segundos
       const cacheKey = `${grupo_id}:${fechaInicio}:${fechaFin}`;
       const now = Date.now();
       
       if (!this._appointmentsCache) {
         this._appointmentsCache = {};
+        this._cacheStats = { hits: 0, misses: 0 };
       }
       
-      // Verificar si tenemos datos en cache y no han expirado
+      // Verificar cache y expiración
       const cached = this._appointmentsCache[cacheKey];
-      if (cached && (now - cached.timestamp < 30000)) {
-        console.log(`📦 Cache hit para appointments ${fechaInicio} - ${fechaFin}`);
+      if (cached && (now - cached.timestamp < CACHE_TTL)) {
+        this._cacheStats.hits++;
+        console.log(`📦 Cache HIT para appointments ${fechaInicio} - ${fechaFin} (hits: ${this._cacheStats.hits}, misses: ${this._cacheStats.misses})`);
         return cached.data;
       }
+      
+      this._cacheStats.misses++;
+      console.log(`🔍 Cache MISS para appointments ${fechaInicio} - ${fechaFin}`);
       
       const allAppointments = [];
       
@@ -451,8 +396,8 @@ class ApiClient {
       console.log(`🔄 Obteniendo appointments para ${fechas.length} fechas...`);
       const startTime = Date.now();
       
-      // Limitar concurrencia a 3 requests a la vez para evitar saturar el lambda
-      const batchSize = 3;
+      // ✅ Aumentar concurrencia de 3 a 5 para mayor throughput
+      const batchSize = 5;
       for (let i = 0; i < fechas.length; i += batchSize) {
         const batch = fechas.slice(i, i + batchSize);
         
@@ -470,9 +415,9 @@ class ApiClient {
         const results = await Promise.all(promises);
         results.forEach(appointments => allAppointments.push(...appointments));
         
-        // Pequeña pausa entre batches para no saturar
+        // ✅ Reducir pausa de 50ms a 20ms para mejorar velocidad
         if (i + batchSize < fechas.length) {
-          await new Promise(resolve => setTimeout(resolve, 50)); // Reducido de 100ms a 50ms
+          await new Promise(resolve => setTimeout(resolve, 20));
         }
       }
 
@@ -485,12 +430,19 @@ class ApiClient {
         timestamp: now
       };
       
-      // Limpiar cache viejo (más de 5 minutos)
+      // ✅ Limpieza inteligente de cache: eliminar entradas expiradas
+      const CACHE_MAX_AGE = 300000; // 5 minutos
+      let cleaned = 0;
       Object.keys(this._appointmentsCache).forEach(key => {
-        if (now - this._appointmentsCache[key].timestamp > 300000) {
+        if (now - this._appointmentsCache[key].timestamp > CACHE_MAX_AGE) {
           delete this._appointmentsCache[key];
+          cleaned++;
         }
       });
+      
+      if (cleaned > 0) {
+        console.log(`🧹 Cache limpiado: ${cleaned} entradas expiradas eliminadas`);
+      }
       
       return allAppointments;
     } catch (error) {

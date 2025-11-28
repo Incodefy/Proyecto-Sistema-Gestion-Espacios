@@ -32,20 +32,33 @@ module.exports.handler = async (event) => {
     TableName: tableName
   };
 
-  // Solo filtro de fecha
+  // Filtros de fecha y grupo
+  const filterExpressions = [];
+  const expressionAttributeValues = {};
+  const expressionAttributeNames = {};
+
+  if (filtros?.grupo_id) {
+    filterExpressions.push('#grupo_id = :grupo_id');
+    expressionAttributeValues[':grupo_id'] = filtros.grupo_id;
+    expressionAttributeNames['#grupo_id'] = 'grupo_id';
+  }
+
   if (filtros?.fechaInicio && filtros?.fechaFin) {
-    params.FilterExpression = '#fecha BETWEEN :fechaInicio AND :fechaFin';
-    params.ExpressionAttributeValues = {
-      ':fechaInicio': filtros.fechaInicio,
-      ':fechaFin': filtros.fechaFin
-    };
-    params.ExpressionAttributeNames = {
-      '#fecha': 'fecha'
-    };
+    filterExpressions.push('#fecha BETWEEN :fechaInicio AND :fechaFin');
+    expressionAttributeValues[':fechaInicio'] = filtros.fechaInicio;
+    expressionAttributeValues[':fechaFin'] = filtros.fechaFin;
+    expressionAttributeNames['#fecha'] = 'fecha';
+  }
+
+  if (filterExpressions.length > 0) {
+    params.FilterExpression = filterExpressions.join(' AND ');
+    params.ExpressionAttributeValues = expressionAttributeValues;
+    params.ExpressionAttributeNames = expressionAttributeNames;
     
-    logger.info('Date filter applied', {
-      fecha_inicio: filtros.fechaInicio,
-      fecha_fin: filtros.fechaFin
+    logger.info('Filters applied', {
+      grupo_id: filtros?.grupo_id,
+      fecha_inicio: filtros?.fechaInicio,
+      fecha_fin: filtros?.fechaFin
     });
   }
 
@@ -67,28 +80,55 @@ module.exports.handler = async (event) => {
 
     } while (lastEvaluatedKey);
 
-    // Inicializar array de 7 días (Domingo=0, Lunes=1, ..., Sábado=6)
+    // Inicializar array de 7 días ordenado (Lunes=0, Martes=1, ..., Domingo=6)
     const consultasPorDia = Array(7).fill(0);
+    const debug = [];
 
     allItems.forEach(item => {
       if (!item.fecha) {
         return;
       }
 
-      const dia = new Date(item.fecha).getDay();
-      if (!isNaN(dia)) {
-        consultasPorDia[dia] += 1;
+      // Usar UTC para evitar problemas de timezone
+      const [year, month, day] = item.fecha.split('-').map(Number);
+      const diaJS = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+      
+      // Convertir de formato JavaScript (0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab)
+      // a formato Lunes-Domingo (0=Lun, 1=Mar, 2=Mie, 3=Jue, 4=Vie, 5=Sab, 6=Dom)
+      let diaOrdenado;
+      if (diaJS === 0) {
+        diaOrdenado = 6; // Domingo va al final
+      } else {
+        diaOrdenado = diaJS - 1; // Lunes(1)->0, Martes(2)->1, etc.
+      }
+      
+      debug.push({
+        fecha: item.fecha,
+        diaJS: diaJS,
+        diaJSNombre: ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'][diaJS],
+        diaOrdenado: diaOrdenado,
+        diaOrdenadoNombre: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'][diaOrdenado]
+      });
+      
+      if (!isNaN(diaOrdenado)) {
+        consultasPorDia[diaOrdenado] += 1;
       }
     });
 
     logger.info('Consultas por día calculated', {
       total_items: allItems.length,
       scan_iterations: scanCount,
-      results: consultasPorDia
+      results: consultasPorDia,
+      debug_sample: debug.slice(0, 10),
+      labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom']
     });
 
     endTrace();
-    return successResponse(consultasPorDia, 200, { total: allItems.length });
+    return successResponse(consultasPorDia, 200, { 
+      total: allItems.length,
+      debug: debug,
+      labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom']
+    });
 
   } catch (err) {
     logger.error('Error getting consultas por día', err);

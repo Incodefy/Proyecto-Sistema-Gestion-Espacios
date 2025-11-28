@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('./db');
 const fetch = require('node-fetch');
 const cors = require('cors');
+const compression = require('compression');
 
 // === i18next configuración para internacionalización ===
 const i18next = require('./i18n');
@@ -36,6 +37,19 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// ✅ Compresión gzip para optimizar respuestas (dashboard, APIs, etc)
+app.use(compression({
+  filter: (req, res) => {
+    // Comprimir solo respuestas JSON y HTML
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6, // Nivel de compresión (0-9, 6 es el default balanceado)
+  threshold: 1024 // Solo comprimir respuestas > 1KB
 }));
 
 // === Middlewares de base ===

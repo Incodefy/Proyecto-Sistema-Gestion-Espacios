@@ -435,6 +435,11 @@ function mostrarTab(tab) {
     document.querySelector(`.tab-btn[onclick*="${tab}"]`).classList.add('active');
     document.getElementById(`tab-${tab}`).classList.add('active');
 
+    // Si se muestra el tab de agendamientos, inicializar calendario
+    if (tab === 'agendamientos' && typeof inicializarCalendario === 'function') {
+        setTimeout(() => inicializarCalendario(), 100);
+    }
+
     // Mantener el tab en la URL sin recargar
     const url = new URL(window.location);
     url.searchParams.set('tab', tab);
@@ -446,9 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar nomenclatura
     inicializarNomenclatura();
     
-    // Actualizar vista de appointments
+    // Actualizar vista de appointments (solo para estadísticas ahora)
     actualizarVista();
 
     const urlParams = new URLSearchParams(window.location.search);
-    mostrarTab(urlParams.get('tab') || 'consultas');
+    const tabInicial = urlParams.get('tab') || 'agendamientos'; // Por defecto agendamientos
+    mostrarTab(tabInicial);
 });

@@ -72,25 +72,25 @@
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card libre">
                         <h4><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h4>
-                        <p id="count-libre">0</p>
+                        <p id="count-libre"><%= contadoresEstados.libre %></p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-espera">
                         <h4><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h4>
-                        <p id="count-en-espera">0</p>
+                        <p id="count-en-espera"><%= contadoresEstados['en-espera'] %></p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-uso">
                         <h4><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h4>
-                        <p id="count-en-uso">0</p>
+                        <p id="count-en-uso"><%= contadoresEstados['en-uso'] %></p>
                     </div>
                     </div>
                     <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card inhabilitado">
                         <h4><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h4>
-                        <p id="count-inhabilitado">0</p>
+                        <p id="count-inhabilitado"><%= contadoresEstados.inhabilitado %></p>
                     </div>
                     </div>
                 </div>
@@ -127,8 +127,24 @@
                             <% } %>
                                 <h3><%= especifico.nombre %></h3>
                                 <div id="info-especifico-<%= especifico.id %>" class="info-especifico">
-                                    <div class="contenido-especifico oculto">
-                                        <p></p>
+                                    <div class="contenido-especifico <%= detallesVisibles ? '' : 'oculto' %>" style="display: <%= detallesVisibles ? 'flex' : 'none' %>;">
+                                        <% if (especifico.estado === "Libre" && (!especifico.proxima_consulta || especifico.proxima_consulta.trim() === '')) { %>
+                                            <p><%= t('box.no_next_consultations') %></p>
+                                        <% } else if (especifico.proxima_consulta) { %>
+                                            <p><%= t('box.next_appointment') %>: <%= especifico.proxima_consulta %></p>
+                                        <% } %>
+                                        
+                                        <% if (especifico.medico) { %>
+                                            <p><strong><%= nomenclatura.ocupante %>:</strong> <%= especifico.medico %></p>
+                                        <% } %>
+                                        
+                                        <% if (especifico.especialidad) { %>
+                                            <p><strong><%= nomenclatura.especialidad %>:</strong> <%= especifico.especialidad %></p>
+                                        <% } %>
+                                        
+                                        <% if (especifico.consulta_actual) { %>
+                                            <p><strong><%= t('common.hour') || t('common.start_time') %>:</strong> <%= especifico.consulta_actual %></p>
+                                        <% } %>
                                     </div>
                                     <div class="estado-bar <%= especifico.estado.replace(/\s+/g, '-').toLowerCase() %>">
                                         <%= especifico.estado %>
@@ -161,6 +177,12 @@
             hideDetails: "<%= t('box.hide_details') %>",
             showDetails: "<%= t('common.show_details') %>"
         };
+        window.nomenclatura = {
+            ocupante: "<%= nomenclatura.ocupante %>",
+            especialidad: "<%= nomenclatura.especialidad %>"
+        };
+        window.detallesVisiblesInicial = <%= detallesVisibles %>;
+        window.grupoId = "<%= typeof grupoActivo === 'string' ? grupoActivo : grupoActivo.grupo_id %>";
     </script>
     <script src="/js/box.js?v=<%= Date.now() %>"></script>
 </body>

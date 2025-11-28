@@ -8,12 +8,28 @@ const checkPermission = require("../middleware/checkPermission");
 router.use(requireAuth);
 router.use(attachApiClient);
 
-router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), (req, res) => {
-  res.render('historial_notificaciones', {
-    currentPath: req.path,
-    personalization: res.locals.personalization || {},
-    user: req.session.user
-  });
+router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), async (req, res) => {
+  try {
+    // Obtener preferencias de notificaciones del usuario
+    const preferencias = await obtenerPreferenciasNotificaciones(req.session.user.sub);
+    
+    res.render('historial_notificaciones', {
+      currentPath: req.path,
+      personalization: res.locals.personalization || {},
+      user: req.session.user,
+      grupoActivo: req.session.grupoActivo,
+      preferenciasNotificaciones: preferencias
+    });
+  } catch (error) {
+    console.error('Error al cargar preferencias:', error);
+    res.render('historial_notificaciones', {
+      currentPath: req.path,
+      personalization: res.locals.personalization || {},
+      user: req.session.user,
+      grupoActivo: req.session.grupoActivo,
+      preferenciasNotificaciones: getDefaultPreferencias()
+    });
+  }
 });
 
 router.get('/notificaciones-usuario', async (req, res) => {
@@ -152,5 +168,108 @@ router.put('/notificaciones/marcar-todas-leidas', async (req, res) => {
     });
   }
 });
+
+/**
+ * GET /preferencias-notificaciones
+ * Obtiene las preferencias de notificaciones del usuario
+ */
+router.get('/preferencias-notificaciones', async (req, res) => {
+  try {
+    const userSub = req.session.user.sub;
+    const preferencias = await obtenerPreferenciasNotificaciones(userSub);
+    res.json({ ok: true, preferencias });
+  } catch (error) {
+    console.error('Error al obtener preferencias:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Error al obtener preferencias',
+      preferencias: getDefaultPreferencias()
+    });
+  }
+});
+
+/**
+ * PUT /preferencias-notificaciones
+ * Actualiza las preferencias de notificaciones del usuario
+ */
+router.put('/preferencias-notificaciones', async (req, res) => {
+  try {
+    const userSub = req.session.user.sub;
+    const preferencias = req.body;
+    
+    await guardarPreferenciasNotificaciones(userSub, preferencias);
+    
+    console.log('✅ Preferencias de notificaciones actualizadas para:', req.session.user.email);
+    res.json({ ok: true, message: 'Preferencias actualizadas correctamente' });
+  } catch (error) {
+    console.error('Error al guardar preferencias:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Error al guardar preferencias' 
+    });
+  }
+});
+
+// ============= FUNCIONES AUXILIARES =============
+
+function getDefaultPreferencias() {
+  return {
+    appointments: {
+      INSERT: true,
+      MODIFY: true,
+      REMOVE: true
+    },
+    spaces: {
+      SPACE_CREATED: true,
+      SPACE_MODIFIED: true,
+      SPACE_DELETED: true
+    },
+    occupants: {
+      OCCUPANT_CREATED: true,
+      OCCUPANT_MODIFIED: true,
+      OCCUPANT_DELETED: true
+    },
+    members: {
+      MEMBER_ADDED: true,
+      MEMBER_MODIFIED: true,
+      MEMBER_REMOVED: true,
+      ROLE_CHANGED: true
+    }
+  };
+}
+
+async function obtenerPreferenciasNotificaciones(userSub) {
+  const fs = require('fs').promises;
+  const path = require('path');
+  
+  const prefsDir = path.join(__dirname, '..', 'data', 'notification-preferences');
+  const prefsFile = path.join(prefsDir, `${userSub}.json`);
+  
+  try {
+    const data = await fs.readFile(prefsFile, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    // Si no existe el archivo, retornar preferencias por defecto
+    return getDefaultPreferencias();
+  }
+}
+
+async function guardarPreferenciasNotificaciones(userSub, preferencias) {
+  const fs = require('fs').promises;
+  const path = require('path');
+  
+  const prefsDir = path.join(__dirname, '..', 'data', 'notification-preferences');
+  const prefsFile = path.join(prefsDir, `${userSub}.json`);
+  
+  // Crear directorio si no existe
+  try {
+    await fs.mkdir(prefsDir, { recursive: true });
+  } catch (error) {
+    // Ignorar si ya existe
+  }
+  
+  // Guardar preferencias
+  await fs.writeFile(prefsFile, JSON.stringify(preferencias, null, 2), 'utf8');
+}
 
 module.exports = router;

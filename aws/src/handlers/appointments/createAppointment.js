@@ -48,37 +48,39 @@ exports.handler = async (event) => {
       }
     }
 
-    const appointmentId = uuidv4();
+    // Generar ID incremental (por ahora usamos timestamp para hacerlo único)
+    const appointmentId = `APPOINTMENT#${Date.now()}`;
     const timestamp = new Date().toISOString();
 
     const appointment = {
-      // PK: GRUPO#grupo_id#FECHA#fecha
-      PK: `GRUPO#${grupoId}#FECHA#${body.fecha}`,
-      // SK: APPOINTMENT#id#hora_inicio
-      SK: `APPOINTMENT#${appointmentId}#${body.hora_inicio}`,
+      // PK/SK igual que los appointments existentes
+      PK: grupoId,
+      SK: appointmentId,
       
-      // GSI1: Por Ocupante
-      GSI1PK: `OCUPANTE#${body.ocupante.id}`,
+      // appointment_id para compatibilidad
+      appointment_id: appointmentId,
+      
+      // GSI1: Por Ocupante (sin duplicar prefijo)
+      GSI1PK: body.ocupante.id,
       GSI1SK: `${body.fecha}#${body.hora_inicio}`,
       
-      // GSI2: Por Espacio
-      GSI2PK: `ESPACIO#${body.espacio_especifico.id}`,
+      // GSI2: Por Espacio (sin duplicar prefijo)
+      GSI2PK: body.espacio_especifico.id,
       GSI2SK: `${body.fecha}#${body.hora_inicio}`,
+      
+      // GSI3: Por Grupo
+      GSI3PK: grupoId,
+      GSI3SK: `${body.fecha}#${body.hora_inicio}`,
 
       // Datos del appointment
-      id: appointmentId,
       grupo_id: grupoId,
       fecha: body.fecha,
       hora_inicio: body.hora_inicio,
       hora_fin: body.hora_fin,
 
-      // Espacio general
-      espacio_general_id: body.espacio_general?.id || null,
-      espacio_general_nombre: body.espacio_general?.nombre || null,
-
-      // Espacio específico
-      espacio_especifico_id: body.espacio_especifico.id,
-      espacio_especifico_nombre: body.espacio_especifico.nombre,
+      // Espacio (usar nombres compatibles con appointments existentes)
+      espacio_id: body.espacio_especifico.id,
+      espacio_nombre: body.espacio_especifico.nombre,
 
       // Ocupante
       ocupante_id: body.ocupante.id,
@@ -89,9 +91,9 @@ exports.handler = async (event) => {
       especialidad_nombre: body.especialidad?.nombre || null,
 
       // Metadata
-      estado: body.estado || 'Programado',
+      estado: body.estado || 'CONFIRMADA',
       tipo_consulta: body.tipo_consulta || null,
-      notas: body.notas || null,
+      observaciones: body.notas || null,
       
       created_at: timestamp,
       updated_at: timestamp

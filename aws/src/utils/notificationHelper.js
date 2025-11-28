@@ -14,6 +14,7 @@ const NOTIFICATION_TYPES = {
   
   // Espacios
   ESPACIO_CREADO: 'ESPACIO_CREADO',
+  ESPACIO_MODIFICADO: 'ESPACIO_MODIFICADO',
   ESPACIO_ELIMINADO: 'ESPACIO_ELIMINADO',
   
   // Miembros
@@ -294,6 +295,52 @@ async function notifyEspacioCreado({
 }
 
 /**
+ * Crea notificación para espacio modificado
+ */
+async function notifyEspacioModificado({
+  userSubs,
+  grupoId,
+  createdBy,
+  espacioId,
+  espacioNombre,
+  espacioTipo,
+  cambios
+}) {
+  // Generar mensaje descriptivo de los cambios
+  let mensajeCambios = '';
+  if (cambios && Object.keys(cambios).length > 0) {
+    const cambiosTexto = Object.keys(cambios).map(campo => {
+      const camposTexto = {
+        nombre: 'Nombre',
+        capacidad: 'Capacidad',
+        descripcion: 'Descripción',
+        estado: 'Estado'
+      };
+      const nombreCampo = camposTexto[campo] || campo;
+      return `${nombreCampo}: "${cambios[campo].old}" → "${cambios[campo].new}"`;
+    }).join(', ');
+    mensajeCambios = ` - Cambios: ${cambiosTexto}`;
+  }
+
+  await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    tipo: NOTIFICATION_TYPES.ESPACIO_MODIFICADO,
+    categoria: NOTIFICATION_CATEGORIES.ESPACIOS,
+    titulo: 'Espacio modificado',
+    mensaje: `Se ha modificado el espacio "${espacioNombre}"${mensajeCambios}`,
+    createdBy,
+    entidadAfectada: {
+      tipo: 'ESPACIO',
+      id: espacioId,
+      nombre: espacioNombre
+    },
+    detalles: { tipo_espacio: espacioTipo, cambios },
+    prioridad: NOTIFICATION_PRIORITIES.NORMAL
+  });
+}
+
+/**
  * Crea notificación para espacio eliminado
  */
 async function notifyEspacioEliminado({
@@ -495,6 +542,7 @@ module.exports = {
   // Helpers específicos
   notifyNomenclaturaActualizada,
   notifyEspacioCreado,
+  notifyEspacioModificado,
   notifyEspacioEliminado,
   notifyMiembroInvitado,
   notifyInvitacionAceptada,

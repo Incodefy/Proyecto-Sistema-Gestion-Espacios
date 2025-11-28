@@ -9,7 +9,7 @@ const APPOINTMENTS_TABLE = process.env.APPOINTMENTS_TABLE;
 /**
  * Elimina un appointment
  * Path: /groups/{grupo_id}/appointments/{id}
- * Query params: fecha, hora_inicio (necesarios para construir PK y SK)
+ * Query params: fecha, hora_inicio (necesarios para identificar el appointment)
  */
 exports.handler = async (event) => {
   console.log('🗑️ [DELETE APPOINTMENT] Event:', JSON.stringify(event, null, 2));
@@ -35,8 +35,11 @@ exports.handler = async (event) => {
       };
     }
 
-    const PK = `GRUPO#${grupoId}#FECHA#${fecha}`;
-    const SK = `APPOINTMENT#${appointmentId}#${hora_inicio}`;
+    // Usar el formato correcto: PK = grp_xxx, SK = APPOINTMENT#id o appointment_id completo
+    const PK = grupoId;
+    const SK = appointmentId.startsWith('APPOINTMENT#') ? appointmentId : `APPOINTMENT#${appointmentId}`;
+
+    console.log(`[DELETE] Intentando eliminar: PK=${PK}, SK=${SK}`);
 
     await docClient.send(new DeleteCommand({
       TableName: APPOINTMENTS_TABLE,

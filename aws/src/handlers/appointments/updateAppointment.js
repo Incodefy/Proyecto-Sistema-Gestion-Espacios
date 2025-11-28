@@ -26,17 +26,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Primero necesitamos obtener el appointment para conocer su PK y SK
-    // Esto requiere una búsqueda por GSI o scan, por ahora asumimos que se pasa fecha en body
-    if (!body.fecha_actual) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ 
-          error: 'Se requiere fecha_actual para localizar el appointment' 
-        })
-      };
-    }
-
     // Construir la lista de campos a actualizar
     const updateFields = [];
     const expressionAttributeNames = {};
@@ -46,7 +35,17 @@ exports.handler = async (event) => {
     const updatableFields = {
       estado: 'estado',
       notas: 'notas',
-      tipo_consulta: 'tipo_consulta'
+      tipo_consulta: 'tipo_consulta',
+      ocupante_id: 'ocupante_id',
+      ocupante_nombre: 'ocupante_nombre',
+      especialidad_id: 'especialidad_id',
+      especialidad_nombre: 'especialidad_nombre',
+      espacio_id: 'espacio_id',
+      hora_inicio: 'hora_inicio',
+      hora_fin: 'hora_fin',
+      paciente_nombre: 'paciente_nombre',
+      paciente_rut: 'paciente_rut',
+      observaciones: 'observaciones'
     };
 
     Object.keys(updatableFields).forEach(field => {
@@ -64,6 +63,44 @@ exports.handler = async (event) => {
     expressionAttributeNames['#updated_at'] = 'updated_at';
     expressionAttributeValues[':updated_at'] = new Date().toISOString();
 
+    // Si se actualiza ocupante_id, actualizar GSI1PK
+    if (body.ocupante_id) {
+      updateFields.push('#GSI1PK = :GSI1PK');
+      expressionAttributeNames['#GSI1PK'] = 'GSI1PK';
+      expressionAttributeValues[':GSI1PK'] = body.ocupante_id;
+    }
+
+    // Si se actualiza espacio_id, actualizar GSI2PK
+    if (body.espacio_id) {
+      updateFields.push('#GSI2PK = :GSI2PK');
+      expressionAttributeNames['#GSI2PK'] = 'GSI2PK';
+      expressionAttributeValues[':GSI2PK'] = body.espacio_id;
+    }
+
+    // Si se actualiza fecha u hora_inicio, actualizar los SK de los GSI
+    if (body.fecha || body.hora_inicio) {
+      const fecha = body.fecha;
+      const horaInicio = body.hora_inicio;
+      
+      if (fecha && horaInicio) {
+        const gsiSK = `${fecha}#${horaInicio}`;
+        updateFields.push('#GSI1SK = :GSI1SK', '#GSI2SK = :GSI2SK', '#GSI3SK = :GSI3SK');
+        expressionAttributeNames['#GSI1SK'] = 'GSI1SK';
+        expressionAttributeNames['#GSI2SK'] = 'GSI2SK';
+        expressionAttributeNames['#GSI3SK'] = 'GSI3SK';
+        expressionAttributeValues[':GSI1SK'] = gsiSK;
+        expressionAttributeValues[':GSI2SK'] = gsiSK;
+        expressionAttributeValues[':GSI3SK'] = gsiSK;
+        
+        // También actualizar el campo fecha si se cambió
+        if (body.fecha) {
+          updateFields.push('#fecha = :fecha');
+          expressionAttributeNames['#fecha'] = 'fecha';
+          expressionAttributeValues[':fecha'] = body.fecha;
+        }
+      }
+    }
+
     if (updateFields.length === 1) { // Solo updated_at
       return {
         statusCode: 400,
@@ -73,10 +110,11 @@ exports.handler = async (event) => {
 
     const updateExpression = `SET ${updateFields.join(', ')}`;
 
-    // Para simplificar, buscaremos primero el appointment
-    // En producción, considera pasar PK y SK desde el frontend
-    const PK = `GRUPO#${grupoId}#FECHA#${body.fecha_actual}`;
-    const SK = `APPOINTMENT#${appointmentId}#${body.hora_inicio_actual || '00:00'}`;
+    // Usar la estructura correcta de PK y SK
+    const PK = grupoId;  // Solo el grupo_id
+    const SK = appointmentId;  // Ya viene como APPOINTMENT#n
+
+    console.log(`Actualizando appointment con PK: ${PK}, SK: ${SK}`);
 
     const result = await docClient.send(new UpdateCommand({
       TableName: APPOINTMENTS_TABLE,

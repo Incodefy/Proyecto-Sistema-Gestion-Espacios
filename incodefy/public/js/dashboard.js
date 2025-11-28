@@ -44,61 +44,52 @@ async function cargarFiltrosIniciales() {
             return;
         }
         
-        // Cargar especialidades
+        // Cargar especialidades (si el elemento existe)
         const especialidadesList = document.getElementById('especialidades-list');
-        if (!especialidadesList) {
-            console.error('❌ Elemento #especialidades-list no encontrado en el DOM');
-            return;
+        if (especialidadesList) {
+            especialidadesList.innerHTML = '';
+            const especialidades = data.especialidades || [];
+            especialidades.forEach((especialidad, index) => {
+                especialidadesList.innerHTML += `
+                    <li>
+                        <div class="form-check dropdown-item">
+                            <input class="form-check-input especialidad-check"
+                                type="checkbox"
+                                value="${especialidad.id}"
+                                id="filtro-especialidad-${especialidad.id}-${index + 1}">
+                            <span class="form-check-label" style="cursor:default; user-select: none;">${especialidad.nombre}</span>
+                        </div>
+                    </li>
+                `;
+            });
         }
         
-        especialidadesList.innerHTML = '';
-        const especialidades = data.especialidades || [];
-        especialidades.forEach((especialidad, index) => {
-            especialidadesList.innerHTML += `
-                <li>
-                    <div class="form-check dropdown-item">
-                        <input class="form-check-input especialidad-check"
-                            type="checkbox"
-                            value="${especialidad.id}"
-                            id="filtro-especialidad-${especialidad.id}-${index + 1}">
-                        <span class="form-check-label" style="cursor:default; user-select: none;">${especialidad.nombre}</span>
-                    </div>
-                </li>
-            `;
-        });
-        
-        // Cargar boxes
+        // Cargar boxes (si el elemento existe)
         const boxesList = document.getElementById('boxes-list');
-        if (!boxesList) {
-            console.error('❌ Elemento #boxes-list no encontrado en el DOM');
-            return;
+        if (boxesList) {
+            boxesList.innerHTML = '';
+            const boxes = data.boxes || [];
+            boxes.forEach((box, index) => {
+                const listItem = document.createElement('div');
+                listItem.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input box-check"
+                            type="checkbox"
+                            value="${box.id}"
+                            id="filtro-box-${box.id}-${index + 1}">
+                        <label class="form-check-label" 
+                            for="filtro-box-${box.id}-${index + 1}"
+                            style="cursor:pointer; user-select: none;"
+                            title="${box.nombre}">
+                            ${box.nombre}
+                        </label>
+                    </div>
+                `;
+                boxesList.appendChild(listItem);
+            });
         }
         
-        boxesList.innerHTML = '';
-        const boxes = data.boxes || [];
-        boxes.forEach((box, index) => {
-            const listItem = document.createElement('div');
-            listItem.innerHTML = `
-                <div class="form-check">
-                    <input class="form-check-input box-check"
-                        type="checkbox"
-                        value="${box.id}"
-                        id="filtro-box-${box.id}-${index + 1}">
-                    <label class="form-check-label" 
-                        for="filtro-box-${box.id}-${index + 1}"
-                        style="cursor:pointer; user-select: none;"
-                        title="${box.nombre}">
-                        ${box.nombre}
-                    </label>
-                </div>
-            `;
-            boxesList.appendChild(listItem);
-        });
-        
-        console.log('✅ Filtros iniciales cargados:', {
-            especialidades: especialidades.length,
-            boxes: boxes.length
-        });
+        console.log('✅ Filtros iniciales cargados');
         
     } catch (error) {
         console.error('Error al cargar filtros iniciales:', error);
@@ -190,10 +181,12 @@ function obtenerFiltrosActuales() {
 }
 
 // Función para actualizar datos
-async function actualizarDatos() {
+async function actualizarDatos(showLoading = true) {
     try {
-        // Mostrar indicadores de carga
-        mostrarCargando();
+        // Mostrar indicadores de carga solo si showLoading es true
+        if (showLoading) {
+            mostrarCargando();
+        }
         
         const filtros = obtenerFiltrosActuales();
         console.log('📊 Solicitando datos del dashboard...', filtros);
@@ -212,8 +205,10 @@ async function actualizarDatos() {
         actualizarKPIs(data.kpis);
         actualizarGraficos(data.graficos);
         
-        // Ocultar indicadores de carga
-        ocultarCargando();
+        // Ocultar indicadores de carga solo si showLoading es true
+        if (showLoading) {
+            ocultarCargando();
+        }
 
     } catch (error) {
         console.error('Error al actualizar datos:', error);
@@ -942,4 +937,187 @@ async function inicializarDashboard() {
     
     // Cargar datos iniciales
     actualizarDatos();
+    
+    // Conectar WebSocket para actualizaciones en tiempo real
+    connectWebSocket();
 }
+
+// ========================================
+// WebSocket - Actualizaciones en Tiempo Real
+// ========================================
+
+const wsState = {
+    websocket: null,
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 5,
+    grupoId: null
+};
+
+function connectWebSocket() {
+    // Obtener grupo_id del elemento en el HTML
+    const grupoElement = document.querySelector('[data-grupo-id]');
+    if (!grupoElement) {
+        console.warn('No se encontró grupo_id, WebSocket no se conectará');
+        return;
+    }
+    
+    wsState.grupoId = grupoElement.dataset.grupoId;
+    const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+    
+    try {
+        wsState.websocket = new WebSocket(`${WS_URL}?grupo_id=${wsState.grupoId}`);
+        
+        wsState.websocket.onopen = () => {
+            console.log('✅ WebSocket conectado al dashboard');
+            wsState.reconnectAttempts = 0;
+        };
+        
+        wsState.websocket.onmessage = (event) => {
+            handleWebSocketMessage(event.data);
+        };
+        
+        wsState.websocket.onerror = (error) => {
+            console.error('❌ Error en WebSocket del dashboard:', error);
+        };
+        
+        wsState.websocket.onclose = () => {
+            console.log('🔌 WebSocket del dashboard desconectado');
+            attemptReconnect();
+        };
+    } catch (error) {
+        console.error('Error al conectar WebSocket del dashboard:', error);
+        attemptReconnect();
+    }
+}
+
+function handleWebSocketMessage(data) {
+    try {
+        const message = JSON.parse(data);
+        console.log('📨 Mensaje WebSocket recibido en dashboard:', message);
+        
+        // Eventos de Appointments
+        if (message.type === 'INSERT' || message.type === 'MODIFY' || message.type === 'REMOVE') {
+            console.log(`🔄 Actualizando dashboard por evento: ${message.type}`);
+            
+            // Mostrar notificación toast
+            if (window.notificationManager) {
+                const eventData = message.data || {};
+                if (message.type === 'INSERT') {
+                    window.notificationManager.showAppointmentCreated(eventData);
+                } else if (message.type === 'MODIFY') {
+                    window.notificationManager.showAppointmentModified(eventData);
+                } else if (message.type === 'REMOVE') {
+                    window.notificationManager.showAppointmentCancelled(eventData);
+                }
+            }
+            
+            // Actualizar datos sin mostrar loading (actualización silenciosa)
+            actualizarDatos(false);
+        }
+        
+        // Eventos de Spaces
+        else if (message.type === 'SPACE_CREATED') {
+            console.log('🏥 Espacio creado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceCreated(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'SPACE_MODIFIED') {
+            console.log('🏥 Espacio modificado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceModified(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'SPACE_DELETED') {
+            console.log('🏥 Espacio eliminado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceDeleted(message.data);
+            }
+            actualizarDatos(false);
+        }
+        
+        // Eventos de Occupants
+        else if (message.type === 'OCCUPANT_CREATED') {
+            console.log('👤 Ocupante creado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantCreated(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'OCCUPANT_MODIFIED') {
+            console.log('👤 Ocupante modificado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantModified(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'OCCUPANT_DELETED') {
+            console.log('👤 Ocupante eliminado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantDeleted(message.data);
+            }
+            actualizarDatos(false);
+        }
+        
+        // Eventos de GroupMembers
+        else if (message.type === 'MEMBER_ADDED') {
+            console.log('👥 Miembro agregado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showMemberAdded(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'ROLE_CHANGED') {
+            console.log('🔐 Rol cambiado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showRoleChanged(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'MEMBER_REMOVED') {
+            console.log('👥 Miembro removido:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showMemberRemoved(message.data);
+            }
+            actualizarDatos(false);
+        }
+        else if (message.type === 'MEMBER_MODIFIED') {
+            console.log('👥 Miembro modificado:', message.data);
+            if (window.notificationManager) {
+                window.notificationManager.showMemberModified(message.data);
+            }
+            actualizarDatos(false);
+        }
+        
+    } catch (error) {
+        console.error('Error al procesar mensaje WebSocket:', error);
+    }
+}
+
+function attemptReconnect() {
+    if (wsState.reconnectAttempts < wsState.maxReconnectAttempts) {
+        wsState.reconnectAttempts++;
+        const delay = Math.min(1000 * Math.pow(2, wsState.reconnectAttempts), 30000);
+        console.log(`🔄 Reintentando conexión WebSocket en ${delay}ms (intento ${wsState.reconnectAttempts}/${wsState.maxReconnectAttempts})`);
+        
+        setTimeout(() => {
+            connectWebSocket();
+        }, delay);
+    } else {
+        console.error('❌ Máximo de reintentos alcanzado. WebSocket no se reconectará automáticamente.');
+    }
+}
+
+function disconnectWebSocket() {
+    if (wsState.websocket) {
+        wsState.websocket.close();
+        wsState.websocket = null;
+    }
+}
+
+// Desconectar cuando el usuario cierre la página
+window.addEventListener('beforeunload', () => {
+    disconnectWebSocket();
+});
