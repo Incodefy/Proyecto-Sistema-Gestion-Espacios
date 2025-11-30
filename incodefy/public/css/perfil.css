@@ -199,92 +199,304 @@ body {
   background: var(--primary-color);
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary-color) 40%, transparent);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--primary-color) 40%, transparent);
 }
 
 .radio-group input[type="radio"]:checked + .radio-option i {
   color: white;
 }
 
-/* ESTILOS MEJORADOS PARA COLORES SIN CÍRCULOS */
-.color-group {
+/* ============================================ */
+/* NUEVO SISTEMA DE SELECTOR DE COLORES */
+/* ============================================ */
+
+/* Vista previa del color actual */
+.color-preview-current {
   display: flex;
+  align-items: center;
   gap: 1rem;
-  flex-wrap: wrap;
+  padding: 1rem;
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
   margin-top: 1rem;
+  transition: all 0.3s ease;
 }
 
-/* Ocultar los radio buttons de colores */
-.color-group input[type="radio"] {
-  display: none;
+.color-preview-current:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.color-option-wrapper {
-  position: relative;
+.preview-box {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  /* El color se aplica dinámicamente mediante style tag con nonce */
+  background-color: #1a3c7c;
 }
 
-.color-option {
+.preview-box:hover {
+  transform: scale(1.05);
+}
+
+.preview-info {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preview-label {
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.preview-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.preview-hex {
+  font-size: 0.85rem;
+  color: var(--secondary-text-color);
+  font-family: 'Courier New', monospace;
+}
+
+/* Botón para abrir el selector */
+.btn-open-color-picker {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+}
+
+.btn-open-color-picker:hover {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 5%, var(--background-color));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-open-color-picker i:first-child {
+  color: var(--primary-color);
+}
+
+.btn-open-color-picker i:last-child {
+  font-size: 0.85rem;
+  color: var(--secondary-text-color);
+}
+
+/* Modal de colores */
+#colorPickerModal .modal-dialog {
+  max-width: 650px;
+}
+
+#colorPickerModal .modal-body {
+  padding: 1.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Búsqueda de colores */
+.color-search-container {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.color-search-input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 2.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--background-color);
+  color: var(--text-color);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.color-search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+
+.color-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--secondary-text-color);
+  pointer-events: none;
+}
+
+/* Categorías de colores */
+.color-category {
+  margin-bottom: 2rem;
+}
+
+.category-title {
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
-  padding: 1rem;
-  border: 3px solid var(--border-color);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  min-width: 80px;
-  transform: translateY(0);
-  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Colores específicos para cada opción */
-.color-option[for="color-1a3c7c"] {
-  background: #1a3c7c;
-  color: white;
-}
-
-.color-option[for="color-d53232ff"] {
-  background: #d53232ff;
-  color: white;
-}
-
-.color-option[for="color-059669"] {
-  background: #059669;
-  color: white;
-}
-
-.color-option[for="color-7c3aed"] {
-  background: #7c3aed;
-  color: white;
-}
-
-.color-option[for="color-ea580c"] {
-  background: #ea580c;
-  color: white;
-}
-
-.color-option:hover {
-  box-shadow: 0 6px 10px rgba(0,0,0,0.2);
-  border-color: var(--text-color);
-}
-
-/* Estado seleccionado para colores */
-.color-group input[type="radio"]:checked + .color-option {
-  border-color: var(--primary-color);
-  box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-}
-
-/* Eliminar el color-preview ya que el fondo del botón es el color */
-.color-preview {
-  display: none;
-}
-
-.color-name {
+.category-title i {
+  color: var(--primary-color);
   font-size: 0.85rem;
-  font-weight: 600;
-  color: inherit;
 }
+
+/* Grid de colores */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Ítem de color individual */
+.color-item {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  border: 3px solid transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  /* El color se aplica dinámicamente mediante style tag con nonce */
+  background-color: #ccc;
+}
+
+.color-item:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  border-color: rgba(255,255,255,0.5);
+}
+
+.color-item.selected {
+  border-color: var(--text-color);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.color-item.selected::after {
+  content: '\f00c';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 1.5rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Tooltip del nombre del color */
+.color-item::before {
+  content: attr(data-name);
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-5px);
+  background: rgba(0,0,0,0.9);
+  color: white;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.color-item:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Vista previa grande en el modal */
+.color-preview-large {
+  padding: 1.5rem;
+  margin-bottom: 1rem!important;
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.preview-large-box {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+  /* El color se aplica dinámicamente mediante style tag con nonce */
+  background-color: #1a3c7c;
+}
+
+.preview-large-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preview-large-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.preview-large-hex {
+  font-size: 1rem;
+  color: var(--secondary-text-color);
+  font-family: 'Courier New', monospace;
+}
+
+.modal-footer {
+  padding: 0.8rem 0.4rem 0.6rem 0.6rem!important;
+}
+
+/* Botones del modal */
+#colorPickerModal .modal-footer .btn-secondary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  padding: 0.625rem 1.5rem;
+}
+
+#colorPickerModal .modal-footer .btn-secondary:hover {
+  background: var(--primary-color-dark);
+  border-color: var(--primary-color-dark);
+}
+
+/* ============================================ */
+/* FIN DEL NUEVO SISTEMA DE SELECTOR DE COLORES */
+/* ============================================ */
 
 .form-actions {
   display: flex;
@@ -357,7 +569,7 @@ body {
   display: none;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease, opacity 0.3s ease;
 }
 
 .message.success {
@@ -409,8 +621,88 @@ body[data-theme="dark"] .radio-option {
   background: var(--card-background);
 }
 
-/* En tema oscuro, el hover de colores usa el borde claro */
-body[data-theme="dark"] .color-option:hover {
+/* Utility Classes for CSP Compliance */
+.d-none {
+  display: none !important;
+}
+
+.d-block {
+  display: block !important;
+}
+
+/* Modal manual (sin Bootstrap JS) */
+.modal.show {
+  display: block !important;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1040;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+}
+
+.modal-backdrop.fade {
+  opacity: 0;
+}
+
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Font Scale Classes */
+.font-scale-pequeno {
+  font-size: 0.8em !important;
+}
+
+.font-scale-mediano {
+  font-size: 1em !important;
+}
+
+.font-scale-grande {
+  font-size: 1.2em !important;
+}
+
+/* Cursor Classes */
+.cursor-default {
+  cursor: default !important;
+}
+
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Visibility utilities */
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
+
+/* Opacity utilities */
+.opacity-0 {
+  opacity: 0 !important;
+}
+
+.opacity-100 {
+  opacity: 1 !important;
+}
+
+/* Flex display */
+.d-flex {
+  display: flex !important;
+}
+
+body[data-theme="dark"] .color-item.selected {
   border-color: rgba(241, 241, 241, 0.8);
 }
 
@@ -438,36 +730,6 @@ body[data-theme="dark"] .message.error {
   color: #ea868f;
   border-color: rgba(220, 53, 69, 0.3);
 }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .radio-group, .color-group {
-    flex-direction: column;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-  }
-  
-  .btn {
-    justify-content: center;
-  }
-  
-  .profile-card {
-    padding: 1.5rem;
-  }
-  
-  .main {
-    padding: 3rem 1rem 2rem 1rem !important;
-  }
-}
-
-
-
-
-
-
-
 
 /* Sección de workspace/grupo */
 .current-group-info {
@@ -552,6 +814,14 @@ body[data-theme="dark"] .message.error {
   color: var(--secondary-text-color);
 }
 
+.select-badge {
+  color: var(--secondary-text-color)!important;
+}
+
+.active-badge {
+  color: var(--secondary-text-color)!important
+}
+
 .group-modal-badge {
   background-color: var(--primary-color)!important;
   color: white;
@@ -605,4 +875,37 @@ body[data-theme="dark"] .message.error {
 
 .spinner-border {
   color: var(--text-color)!important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .radio-group {
+    flex-direction: column;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    justify-content: center;
+  }
+  
+  .profile-card {
+    padding: 1.5rem;
+  }
+  
+  .main {
+    padding: 3rem 1rem 2rem 1rem !important;
+  }
+
+  .color-grid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .color-preview-large {
+    flex-direction: column;
+    text-align: center;
+  }
 }

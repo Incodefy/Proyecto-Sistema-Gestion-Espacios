@@ -131,7 +131,7 @@ body {
 }
 
 .calendar-icon {
-    background: var(--terciary-gradient);
+    background: var(--primary-color);
 }
 
 .import-icon {

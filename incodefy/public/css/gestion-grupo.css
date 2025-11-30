@@ -251,7 +251,7 @@ body[data-theme="dark"] .tab-button:hover {
 .space-general-box {
   flex: 1;
   padding: 0.5rem 1rem;
-  background: var(--primary-gradient);
+  background: var(--primary-color);
   color: white;
   border-radius: 0.5rem;
   font-weight: 500;
@@ -1260,4 +1260,43 @@ body[data-theme="dark"] .empty-state {
   .add-item-section .btn {
     width: 100%;
   }
+}
+
+/* ============= UTILIDADES CSP-SAFE ============= */
+
+/* Clase para alinear texto a la derecha */
+.text-right {
+  text-align: right !important;
+}
+
+/* Clase para fecha de miembro */
+.member-date {
+  color: var(--secondary-text-color);
+  font-size: 0.875rem;
+}
+
+/* Clase para notificaciones toast */
+.notification-toast {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  margin: 1rem !important;
+  z-index: 9999 !important;
+}
+
+/* Botón de agregar espacio general con ancho completo */
+.btn-add-general.btn-full-width {
+  width: 100% !important;
+  margin-top: 1rem !important;
+  justify-content: center !important;
+}
+
+/* Form group con ancho mínimo */
+.form-group-min-width {
+  min-width: 200px !important;
+}
+
+/* Clase de utilidad para ocultar elementos */
+.d-none {
+  display: none !important;
 }

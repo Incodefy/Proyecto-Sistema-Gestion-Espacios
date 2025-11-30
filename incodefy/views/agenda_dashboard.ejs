@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda - <%= grupoActivo?.nombre || 'Sistema' %></title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/navbar.css">
+    <link rel="stylesheet" href="/css/footer.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/fontawesome/css/all.min.css" rel="stylesheet">
+    
+    <%- include('partials/personalization-styles') %>
+    
+    <style>
+        :root {
+            --primary-color: #1a3c7c!important;
+            --primary-color-light: #375ca1!important;
+            --primary-color-dark: #142c59!important;
+        }
+        
+        /* Estilo para cards de coming soon (refactorizado de inline styles) */
+        .coming-soon-card {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+            --background-color: white!important;
+            --text-color: #2c2c2c!important;
+            --secondary-text-color: #64748b!important;
+            --card-background: white!important;
+            --border-color: #ddd!important;
+
+            --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+            --secondary-gradient: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color-dark) 100%);
+        }
+
+        body {
+            background: var(--background-color)!important;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+        }
+
+        .main {
+            margin-left: 0;
+            padding: 6rem 2rem 2rem 2rem!important;
+            min-height: 100vh;
+        }
+
+        .header-section {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 2rem 2.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 24px rgba(26, 60, 124, 0.15);
+        }
+
+        .header-section h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-section p {
+            font-size: 1rem;
+            opacity: 0.95;
+            margin: 0;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .option-card {
+            background: var(--card-background);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .option-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .option-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(26, 60, 124, 0.15);
+            border-color: var(--primary-color-light);
+        }
+
+        .option-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .option-card-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            color: white;
+            margin-bottom: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .option-card:hover .option-card-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .option-card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .option-card-description {
+            font-size: 0.95rem;
+            color: var(--secondary-text-color);
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+
+        .option-card-action {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 1rem;
+        }
+
+        .option-card-action i {
+            transition: transform 0.3s ease;
+        }
+
+        .option-card:hover .option-card-action i {
+            transform: translateX(4px);
+        }
+
+        .badge-coming-soon {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .main {
+                padding: 5.5rem 1rem 1rem 1rem!important;
+            }
+
+            .header-section {
+                padding: 1.5rem 1.25rem;
+            }
+
+            .header-section h1 {
+                font-size: 1.6rem;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .option-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
+    <div class="container-fluid">
+        <div class="row">
+            <%- include("navbar") %>
+
+            <div class="main">
+                <div class="container">
+                    <div class="header-section">
+                        <h1>
+                            <i class="fas fa-calendar-alt me-3"></i>
+                            Agenda
+                        </h1>
+                        <p>Gestiona las citas, horarios y disponibilidad de espacios</p>
+                    </div>
+
+                    <div class="options-grid">
+                        <!-- Gestión de Agenda -->
+                        <a href="/agenda/gestion" class="option-card">
+                            <div class="option-card-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="option-card-title">Gestión de Agenda</div>
+                            <div class="option-card-description">
+                                Visualiza y administra todas las citas en un calendario interactivo. 
+                                Crea, modifica y elimina agendamientos con facilidad.
+                            </div>
+                            <div class="option-card-action">
+                                Ir a Gestión
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+
+                        <!-- Reportes de Agenda (Coming Soon) -->
+                        <a href="#" class="option-card coming-soon-card" data-action="prevent-default">
+                            <span class="badge-coming-soon">Próximamente</span>
+                            <div class="option-card-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="option-card-title">Reportes y Estadísticas</div>
+                            <div class="option-card-description">
+                                Analiza patrones de agendamiento, ocupación de espacios y 
+                                genera reportes detallados sobre el uso de la agenda.
+                            </div>
+                            <div class="option-card-action">
+                                Próximamente
+                                <i class="fas fa-lock"></i>
+                            </div>
+                        </a>
+
+                        <!-- Configuración de Horarios (Coming Soon) -->
+                        <a href="#" class="option-card coming-soon-card" data-action="prevent-default">
+                            <span class="badge-coming-soon">Próximamente</span>
+                            <div class="option-card-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="option-card-title">Configuración de Horarios</div>
+                            <div class="option-card-description">
+                                Define horarios de atención, bloques de tiempo disponibles y 
+                                configura restricciones de agendamiento personalizadas.
+                            </div>
+                            <div class="option-card-action">
+                                Próximamente
+                                <i class="fas fa-lock"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <%- include("footer") %>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/agenda_dashboard.js"></script>
+</body>
+</html>

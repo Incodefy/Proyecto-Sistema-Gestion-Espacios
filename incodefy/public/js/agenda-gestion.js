@@ -170,6 +170,28 @@ function initializeEventListeners() {
     document.getElementById('bookingModal').addEventListener('click', (e) => {
         if (e.target.id === 'bookingModal') closeModal();
     });
+    
+    // Event delegation para elementos dinámicos (booking-block, cell-button, month-booking-item)
+    document.addEventListener('click', (e) => {
+        // Click en booking existente para editar
+        const bookingBlock = e.target.closest('[data-booking-id]');
+        if (bookingBlock) {
+            console.log('📌 Click en booking:', bookingBlock.getAttribute('data-booking-id'));
+            const bookingId = bookingBlock.getAttribute('data-booking-id');
+            openEditModal(bookingId);
+            return;
+        }
+        
+        // Click en botón para crear nueva agendación
+        const createButton = e.target.closest('[data-create-booking]');
+        if (createButton) {
+            console.log('➕ Click en crear booking');
+            const date = createButton.getAttribute('data-date');
+            const time = createButton.getAttribute('data-time');
+            openCreateModal(date, time);
+            return;
+        }
+    });
 }
 
 // Cargar datos iniciales
@@ -670,27 +692,27 @@ function renderOccupantsSelect() {
 }
 
 function showCalendar() {
-    document.getElementById('emptyState').style.display = 'none';
-    document.getElementById('viewControls').style.display = 'flex';
-    document.getElementById('calendarContainer').style.display = 'block';
+    document.getElementById('emptyState').classList.add('d-none');
+    document.getElementById('viewControls').classList.remove('d-none');
+    document.getElementById('calendarContainer').classList.remove('d-none');
 }
 
 function hideCalendar() {
-    document.getElementById('emptyState').style.display = 'block';
-    document.getElementById('viewControls').style.display = 'none';
-    document.getElementById('calendarContainer').style.display = 'none';
+    document.getElementById('emptyState').classList.remove('d-none');
+    document.getElementById('viewControls').classList.add('d-none');
+    document.getElementById('calendarContainer').classList.add('d-none');
 }
 
 function renderCalendar() {
     updateDateDisplay();
     
     if (state.viewMode === 'month') {
-        document.getElementById('timelineView').style.display = 'none';
-        document.getElementById('monthView').style.display = 'block';
+        document.getElementById('timelineView').classList.add('d-none');
+        document.getElementById('monthView').classList.remove('d-none');
         renderMonthView();
     } else {
-        document.getElementById('timelineView').style.display = 'block';
-        document.getElementById('monthView').style.display = 'none';
+        document.getElementById('timelineView').classList.remove('d-none');
+        document.getElementById('monthView').classList.add('d-none');
         renderTimelineView();
     }
 }
@@ -745,13 +767,16 @@ function renderTimelineView() {
                     const duration = calculateDuration(booking.startTime, booking.endTime);
                     const height = (duration / 30) * 40 - 8;
                     
-                    html += `<div class="booking-block" style="height: ${height}px" onclick="openEditModal('${booking.id}')">
+                    html += `<div class="booking-block booking-dynamic-height" data-booking-id="${booking.id}" data-height="${height}">
                         <div class="booking-name">${booking.occupant_name || booking.patient_name || 'Sin nombre'}</div>
                         <div class="booking-time">${booking.startTime} - ${booking.endTime}</div>
                     </div>`;
+                } else {
+                    // Slot de continuación - clickeable pero sin contenido visible
+                    html += `<div class="booking-continuation" data-booking-id="${booking.id}"></div>`;
                 }
             } else {
-                html += `<button class="cell-button" onclick="openCreateModal('${formatDate(day)}', '${time}')">
+                html += `<button class="cell-button" data-create-booking data-date="${formatDate(day)}" data-time="${time}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -768,6 +793,14 @@ function renderTimelineView() {
     html += '</div>';
     
     container.innerHTML = html;
+    
+    // Aplicar alturas dinámicas a los bookings después de renderizar (CSP-safe)
+    document.querySelectorAll('.booking-dynamic-height').forEach(block => {
+        const height = block.getAttribute('data-height');
+        if (height) {
+            block.style.height = height + 'px';
+        }
+    });
 }
 
 function renderMonthView() {
@@ -806,7 +839,7 @@ function renderMonthView() {
         gridHtml += '<div class="month-bookings">';
         
         dayBookings.slice(0, 3).forEach(booking => {
-            gridHtml += `<div class="month-booking-item" onclick="openEditModal('${booking.id}')">
+            gridHtml += `<div class="month-booking-item" data-booking-id="${booking.id}">
                 ${booking.startTime} ${booking.occupant_name || booking.patient_name || 'Sin nombre'}
             </div>`;
         });
@@ -830,7 +863,7 @@ function openCreateModal(date, time) {
     document.getElementById('dateInput').value = date;
     document.getElementById('startTimeSelect').value = time;
     document.getElementById('endTimeSelect').value = '';
-    document.getElementById('deleteBookingBtn').style.display = 'none';
+    document.getElementById('deleteBookingBtn').classList.add('d-none');
     document.getElementById('saveBookingBtn').textContent = 'Crear Agendación';
     
     document.getElementById('bookingModal').classList.add('active');
@@ -850,7 +883,7 @@ function openEditModal(bookingId) {
     document.getElementById('dateInput').value = booking.date;
     document.getElementById('startTimeSelect').value = booking.startTime;
     document.getElementById('endTimeSelect').value = booking.endTime;
-    document.getElementById('deleteBookingBtn').style.display = 'flex';
+    document.getElementById('deleteBookingBtn').classList.remove('d-none');
     document.getElementById('saveBookingBtn').textContent = 'Guardar Cambios';
     
     // Establecer el ocupante después de un pequeño delay para asegurar que el select está renderizado

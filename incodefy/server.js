@@ -14,6 +14,10 @@ const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// === Seguridad: Deshabilitar header X-Powered-By ===
+// Previene fingerprinting del servidor (CWE-497, WASC-13)
+app.disable('x-powered-by');
+
 // Configuración del motor de vistas EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -21,11 +25,10 @@ app.set('views', path.join(__dirname, 'views'));
 // === Configuración de CORS restrictiva ===
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:3000'];
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir solicitudes sin origin (como aplicaciones móviles o Postman)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -52,11 +55,22 @@ app.use(compression({
   threshold: 1024 // Solo comprimir respuestas > 1KB
 }));
 
+// === Middleware de seguridad para archivos estáticos ===
+// Debe ir ANTES de express.static para agregar headers a todos los archivos
+app.use((req, res, next) => {
+  // X-Content-Type-Options: nosniff - Previene MIME-sniffing (CWE-693, WASC-15)
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
 // === Middlewares de base ===
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Servir Font Awesome localmente desde node_modules (evitar CDN externos con CORS permisivo)
+app.use('/fontawesome', express.static(path.join(__dirname, 'node_modules/@fortawesome/fontawesome-free')));
 
 // === Configuración de Sesión Segura ===
 const session = require('express-session');
@@ -75,21 +89,27 @@ const sessionSecret = process.env.SESSION_SECRET || 'default-insecure-secret-cha
 
 app.use(session({
   secret: sessionSecret,
-  resave: true, // Forzar guardado de sesión en cada request
-  saveUninitialized: false,
+  resave: false, // Solo guardar si la sesión fue modificada
+  saveUninitialized: false, // No crear sesión hasta que se almacene algo
   name: 'sessionId',
-  rolling: true, // Renovar cookie en cada request
+  rolling: true, // Renovar cookie en cada request para mantener sesión activa
   cookie: {
-    httpOnly: true,
-    secure: false, // Deshabilitado para desarrollo local
-    sameSite: 'lax',
+    httpOnly: true, // Previene acceso desde JavaScript (XSS protection)
+    secure: process.env.NODE_ENV === 'production', // HTTPS solo en producción
+    sameSite: 'lax', // Protección CSRF
     maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  },
+  // Regenerar session ID en cada login para prevenir session fixation
+  genid: function(req) {
+    return require('crypto').randomBytes(16).toString('hex');
   }
 }));
 
 // === Integración de i18next (Internacionalización) ===
 // 1. Añade las funciones de i18next (req.t, req.i18n) a cada petición.
 //    Debe ir DESPUÉS de la sesión para poder persistir el idioma.
+//    NO usamos cookies de i18next porque no soportan httpOnly.
+//    El idioma se persiste en req.session.language (cookie de sesión segura).
 app.use(i18nextHttpMiddleware.handle(i18next));
 
 // 2. Middleware para cambiar el idioma basado en la sesión y exponer la función `t` a las vistas.
@@ -111,6 +131,38 @@ app.use((req, res, next) => {
 
 // === Middlewares de aplicación (dependen de sesión) ===
 app.use(flash());
+
+// === CONTENT SECURITY POLICY ===
+const { 
+  generateNonce, 
+  setCSPHeaders 
+} = require('./middleware/csp');
+
+// Generar nonce único por request para CSP (solo para páginas HTML, no archivos estáticos)
+app.use((req, res, next) => {
+  // No aplicar nonce ni CSP a archivos estáticos
+  const isStaticAsset = /\.(woff2?|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|css|js|map|webp|wasm)$/i.test(req.path);
+  if (isStaticAsset) {
+    return next();
+  }
+  generateNonce(req, res, next);
+});
+
+// Aplicar headers CSP (el middleware internamente ya filtra archivos estáticos)
+app.use(setCSPHeaders);
+
+// === PROTECCIÓN CSRF ===
+const { 
+  conditionalCsrfProtection, 
+  attachCsrfToken, 
+  csrfErrorHandler 
+} = require('./middleware/csrf');
+
+// Aplicar protección CSRF en todas las rutas (excepto las exentas)
+app.use(conditionalCsrfProtection);
+
+// Hacer el token CSRF disponible en todas las vistas
+app.use(attachCsrfToken);
 
 app.use((req, res, next) => {
   res.locals.error_msg = req.flash('error');
@@ -433,16 +485,23 @@ app.get('/test', (req, res) => {
 app.use((req, res) => {
   res.status(404).render('error', { 
     error: 'Página no encontrada',
-    message: `La ruta ${req.path} no existe`
+    message: `La ruta ${req.path} no existe`,
+    i18n: req.i18n || { language: 'es' },
+    t: req.t || ((key) => key)
   });
 });
+
+// Manejo de errores CSRF (debe ir ANTES del manejo de errores generales)
+app.use(csrfErrorHandler);
 
 // Manejo de errores generales
 app.use((err, req, res, next) => {
   console.error('Error en la aplicación:', err);
   res.status(500).render('error', { 
     error: 'Error interno del servidor',
-    message: 'Ha ocurrido un error inesperado'
+    message: 'Ha ocurrido un error inesperado',
+    i18n: req.i18n || { language: 'es' },
+    t: req.t || ((key) => key)
   });
 });
 

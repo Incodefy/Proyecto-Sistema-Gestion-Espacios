@@ -327,25 +327,133 @@ router.post('/login', async (req, res) => {
 // Logout
 router.get('/logout', (req, res) => {
   console.log('📤 Usuario cerrando sesión:', req.session.user?.email);
+  
+  // Guardar email para log antes de destruir sesión
+  const userEmail = req.session.user?.email;
+  
+  // Destruir sesión del servidor
   req.session.destroy((err) => {
     if (err) {
-      console.error('Error al destruir sesión:', err);
+      console.error('❌ Error al destruir sesión:', err);
+    } else {
+      console.log('✅ Sesión destruida para:', userEmail);
     }
-    // Limpiar la cookie de sesión (nombre personalizado 'sessionId')
-    res.clearCookie('sessionId');
-    // También limpiar cookie de idioma si existe
-    res.clearCookie('i18next');
-    res.redirect('/login');
+    
+    // Limpiar TODAS las cookies
+    res.clearCookie('sessionId', { path: '/' });
+    res.clearCookie('connect.sid', { path: '/' }); // Cookie por defecto de express-session
+    res.clearCookie('i18next', { path: '/' });
+    
+    // Headers para prevenir cache de la página de logout
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Clear-Site-Data': '"cache", "cookies", "storage"' // HTML5 API para limpiar todo
+    });
+    
+    // Redirigir al login con mensaje
+    res.redirect('/login?logout=true');
   });
+});
+
+// ============ RENOVACIÓN DE TOKEN ============
+/**
+ * Endpoint para renovar el token JWT usando el refreshToken
+ * Cognito permite renovar tokens sin requerir credenciales
+ * El refreshToken es válido por 30 días
+ */
+router.post('/refresh-token', async (req, res) => {
+  try {
+    // Verificar que existe una sesión con refreshToken
+    if (!req.session.user?.refreshToken) {
+      console.warn('⚠️ Intento de refresh sin refreshToken en sesión');
+      return res.status(401).json({ 
+        ok: false, 
+        error: 'No refresh token available',
+        shouldRelogin: true 
+      });
+    }
+
+    const refreshToken = req.session.user.refreshToken;
+    console.log('🔄 Renovando token para usuario:', req.session.user.email);
+
+    // Usar el flujo REFRESH_TOKEN_AUTH de Cognito
+    const refreshCommand = new InitiateAuthCommand({
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      ClientId: process.env.USER_POOL_CLIENT_ID,
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken
+      }
+    });
+
+    const authResult = await cognitoClient.send(refreshCommand);
+    const tokens = authResult.AuthenticationResult;
+
+    if (!tokens || !tokens.IdToken) {
+      throw new Error('No se recibieron tokens válidos en la respuesta');
+    }
+
+    // Actualizar tokens en la sesión
+    // IMPORTANTE: El refreshToken NO cambia, Cognito devuelve el mismo
+    req.session.user.idToken = tokens.IdToken;
+    req.session.user.accessToken = tokens.AccessToken;
+    req.session.user.authTime = new Date().toISOString();
+
+    console.log('✅ Token renovado exitosamente para:', req.session.user.email);
+
+    return res.json({ 
+      ok: true, 
+      message: 'Token refreshed successfully',
+      authTime: req.session.user.authTime
+    });
+
+  } catch (error) {
+    console.error('❌ Error al renovar token:', error.message);
+    
+    // Si el refreshToken también expiró o es inválido, el usuario debe hacer login
+    if (error.name === 'NotAuthorizedException' || error.message.includes('Invalid Refresh Token')) {
+      console.warn('🔒 RefreshToken inválido o expirado, requiere nuevo login');
+      
+      // Limpiar sesión
+      req.session.destroy();
+      
+      return res.status(401).json({ 
+        ok: false, 
+        error: 'Refresh token expired',
+        shouldRelogin: true,
+        message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.'
+      });
+    }
+
+    // Otros errores (red, configuración, etc)
+    return res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to refresh token',
+      message: 'Error al renovar la sesión. Intenta nuevamente.'
+    });
+  }
 });
 
 // Endpoint para verificar estado de autenticación
 router.get('/profile', (req, res) => {
+  // Si no hay sesión, devolver 401
   if (!req.session.user) {
-    return res.status(401).json({ error: 'No autenticado' });
+    return res.status(401).json({ 
+      error: 'No autenticado',
+      authenticated: false 
+    });
   }
   
+  // Headers anti-cache para esta respuesta también
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  
   res.json({
+    authenticated: true,
     user: {
       sub: req.session.user.sub,
       email: req.session.user.email,

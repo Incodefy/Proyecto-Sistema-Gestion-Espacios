@@ -1115,7 +1115,7 @@ class GestionGrupo {
             <th>Miembro</th>
             <th>Rol</th>
             <th>Fecha de Ingreso</th>
-            <th style="text-align: right;">Acciones</th>
+            <th class="text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -1153,7 +1153,7 @@ class GestionGrupo {
           <span class="role-badge ${rol}">${this.getRoleName(rol)}</span>
         </td>
         <td>
-          <span style="color: var(--secondary-text-color); font-size: 0.875rem;">${fecha}</span>
+          <span class="member-date">${fecha}</span>
         </td>
         <td>
           <div class="member-actions">
@@ -1289,16 +1289,16 @@ class GestionGrupo {
     
     container.innerHTML = this.especialidades.map(esp => `
       <div class="item-card ${this.especialidadSeleccionada === esp.id ? 'selected' : ''}" 
-           onclick="gestionGrupo.seleccionarEspecialidad('${esp.id}')">
+           data-action="select-especialidad" data-id="${esp.id}">
         <div class="item-info">
           <div class="item-name">${esp.nombre}</div>
           <div class="item-count">${this.ocupantes.filter(o => o.especialidad_id === esp.id).length} ${(this.nomenclatura.ocupante || 'ocupante').toLowerCase()}(s)</div>
         </div>
         <div class="item-actions">
-          <button class="btn-icon edit" onclick="event.stopPropagation(); gestionGrupo.editarEspecialidad('${esp.id}')" title="Editar">
+          <button class="btn-icon edit" data-action="edit-especialidad" data-id="${esp.id}" title="Editar">
             <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon delete" onclick="event.stopPropagation(); gestionGrupo.eliminarEspecialidad('${esp.id}')" title="Eliminar">
+          <button class="btn-icon delete" data-action="delete-especialidad" data-id="${esp.id}" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -1314,7 +1314,7 @@ class GestionGrupo {
     // Mostrar el formulario de agregar ocupante
     const addSection = document.getElementById('add-ocupante-section');
     if (addSection) {
-      addSection.style.display = 'flex';
+      addSection.classList.remove('d-none');
     }
     
     // Actualizar el subtitle
@@ -1473,10 +1473,10 @@ class GestionGrupo {
           <div class="item-name">${ocup.nombre}</div>
         </div>
         <div class="item-actions">
-          <button class="btn-icon edit" onclick="gestionGrupo.editarOcupante('${ocup.id}')" title="Editar">
+          <button class="btn-icon edit" data-action="edit-ocupante" data-id="${ocup.id}" title="Editar">
             <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon delete" onclick="gestionGrupo.eliminarOcupante('${ocup.id}')" title="Eliminar">
+          <button class="btn-icon delete" data-action="delete-ocupante" data-id="${ocup.id}" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -1715,16 +1715,16 @@ class GestionGrupo {
 
     tiposList.innerHTML = this.tiposInstrumentos.map(tipo => `
       <div class="item-card ${this.tipoSeleccionado === tipo.id ? 'selected' : ''}" 
-           onclick="gestionGrupo.seleccionarTipo('${tipo.id}')">
+           data-action="select-tipo" data-id="${tipo.id}">
         <div class="item-info">
           <span class="item-name">${tipo.nombre}</span>
           <span class="item-count">${this.instrumentos.filter(i => i.tipo_instrumento_id === tipo.id).length} instrumentos</span>
         </div>
         <div class="item-actions">
-          <button class="btn-icon edit" onclick="event.stopPropagation(); gestionGrupo.editarTipo('${tipo.id}')" title="Editar">
+          <button class="btn-icon edit" data-action="edit-tipo" data-id="${tipo.id}" title="Editar">
             <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon delete" onclick="event.stopPropagation(); gestionGrupo.eliminarTipo('${tipo.id}')" title="Eliminar">
+          <button class="btn-icon delete" data-action="delete-tipo" data-id="${tipo.id}" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -1736,7 +1736,7 @@ class GestionGrupo {
     this.tipoSeleccionado = tipoId;
     this.renderTipos();
     this.renderInstrumentos();
-    document.getElementById('add-instrumento-section').style.display = 'flex';
+    document.getElementById('add-instrumento-section').classList.remove('d-none');
     
     const tipo = this.tiposInstrumentos.find(t => t.id === tipoId);
     document.getElementById('instrumentos-subtitle').textContent = 
@@ -1834,7 +1834,7 @@ class GestionGrupo {
       if (data.ok) {
         if (this.tipoSeleccionado === id) {
           this.tipoSeleccionado = null;
-          document.getElementById('add-instrumento-section').style.display = 'none';
+          document.getElementById('add-instrumento-section').classList.add('d-none');
         }
         await this.cargarTiposInstrumentos();
         await this.cargarInstrumentos();
@@ -1900,10 +1900,10 @@ class GestionGrupo {
           <span class="item-name">${inst.nombre}</span>
         </div>
         <div class="item-actions">
-          <button class="btn-icon edit" onclick="gestionGrupo.editarInstrumento('${inst.id}')" title="Editar">
+          <button class="btn-icon edit" data-action="edit-instrumento" data-id="${inst.id}" title="Editar">
             <i class="fas fa-edit"></i>
           </button>
-          <button class="btn-icon delete" onclick="gestionGrupo.eliminarInstrumento('${inst.id}')" title="Eliminar">
+          <button class="btn-icon delete" data-action="delete-instrumento" data-id="${inst.id}" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -2018,8 +2018,7 @@ class GestionGrupo {
   showNotification(message, type = 'info') {
     // Crear notificación
     const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'warning'} position-fixed top-0 end-0 m-3`;
-    notification.style.zIndex = '9999';
+    notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'warning'} notification-toast`;
     notification.innerHTML = `
       <div class="d-flex align-items-center">
         <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
@@ -2039,23 +2038,105 @@ class GestionGrupo {
 let gestionGrupo;
 document.addEventListener('DOMContentLoaded', () => {
   gestionGrupo = new GestionGrupo();
-  window.gestionGrupo = gestionGrupo; // Exponer globalmente para onclick handlers
+  window.gestionGrupo = gestionGrupo; // Mantener para compatibilidad
+  
+  // ========= Event Listeners (refactorizado para CSP sin unsafe-inline) =========
+  
+  // Agregar especialidad
+  const btnAddEspecialidad = document.querySelector('[data-action="add-especialidad"]');
+  if (btnAddEspecialidad) {
+    btnAddEspecialidad.addEventListener('click', () => gestionGrupo.agregarEspecialidad());
+  }
+  
+  // Agregar ocupante
+  const btnAddOcupante = document.querySelector('[data-action="add-ocupante"]');
+  if (btnAddOcupante) {
+    btnAddOcupante.addEventListener('click', () => gestionGrupo.agregarOcupante());
+  }
+  
+  // Agregar tipo
+  const btnAddTipo = document.querySelector('[data-action="add-tipo"]');
+  if (btnAddTipo) {
+    btnAddTipo.addEventListener('click', () => gestionGrupo.agregarTipo());
+  }
+  
+  // Agregar instrumento
+  const btnAddInstrumento = document.querySelector('[data-action="add-instrumento"]');
+  if (btnAddInstrumento) {
+    btnAddInstrumento.addEventListener('click', () => gestionGrupo.agregarInstrumento());
+  }
+  
+  // ========= Delegación de eventos para items dinámicos =========
+  
+  // Especialidades
+  const especialidadesList = document.getElementById('especialidades-list');
+  if (especialidadesList) {
+    especialidadesList.addEventListener('click', (e) => {
+      const selectCard = e.target.closest('[data-action="select-especialidad"]');
+      const editBtn = e.target.closest('[data-action="edit-especialidad"]');
+      const deleteBtn = e.target.closest('[data-action="delete-especialidad"]');
+      
+      if (editBtn) {
+        e.stopPropagation();
+        gestionGrupo.editarEspecialidad(editBtn.dataset.id);
+      } else if (deleteBtn) {
+        e.stopPropagation();
+        gestionGrupo.eliminarEspecialidad(deleteBtn.dataset.id);
+      } else if (selectCard) {
+        gestionGrupo.seleccionarEspecialidad(selectCard.dataset.id);
+      }
+    });
+  }
+  
+  // Ocupantes
+  const ocupantesList = document.getElementById('ocupantes-list');
+  if (ocupantesList) {
+    ocupantesList.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-action="edit-ocupante"]');
+      const deleteBtn = e.target.closest('[data-action="delete-ocupante"]');
+      
+      if (editBtn) {
+        gestionGrupo.editarOcupante(editBtn.dataset.id);
+      } else if (deleteBtn) {
+        gestionGrupo.eliminarOcupante(deleteBtn.dataset.id);
+      }
+    });
+  }
+  
+  // Tipos de instrumentos
+  const tiposList = document.getElementById('tipos-list');
+  if (tiposList) {
+    tiposList.addEventListener('click', (e) => {
+      const selectCard = e.target.closest('[data-action="select-tipo"]');
+      const editBtn = e.target.closest('[data-action="edit-tipo"]');
+      const deleteBtn = e.target.closest('[data-action="delete-tipo"]');
+      
+      if (editBtn) {
+        e.stopPropagation();
+        gestionGrupo.editarTipo(editBtn.dataset.id);
+      } else if (deleteBtn) {
+        e.stopPropagation();
+        gestionGrupo.eliminarTipo(deleteBtn.dataset.id);
+      } else if (selectCard) {
+        gestionGrupo.seleccionarTipo(selectCard.dataset.id);
+      }
+    });
+  }
+  
+  // Instrumentos
+  const instrumentosList = document.getElementById('instrumentos-list');
+  if (instrumentosList) {
+    instrumentosList.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-action="edit-instrumento"]');
+      const deleteBtn = e.target.closest('[data-action="delete-instrumento"]');
+      
+      if (editBtn) {
+        gestionGrupo.editarInstrumento(editBtn.dataset.id);
+      } else if (deleteBtn) {
+        gestionGrupo.eliminarInstrumento(deleteBtn.dataset.id);
+      }
+    });
+  }
+  
+  // ========= Fin Event Listeners =========
 });
-
-// ============= FUNCIONES GLOBALES PARA ONCLICK HANDLERS =============
-
-function agregarEspecialidad() {
-  gestionGrupo.agregarEspecialidad();
-}
-
-function agregarOcupante() {
-  gestionGrupo.agregarOcupante();
-}
-
-function agregarTipo() {
-  gestionGrupo.agregarTipo();
-}
-
-function agregarInstrumento() {
-  gestionGrupo.agregarInstrumento();
-}

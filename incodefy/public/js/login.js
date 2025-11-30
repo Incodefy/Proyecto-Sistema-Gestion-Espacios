@@ -179,6 +179,19 @@ function showForgotPassword() {
 
 // --- Desvanecer alertas del backend ---
 document.addEventListener('DOMContentLoaded', function () {
+  // ========= Event Listeners (refactorizado para CSP sin unsafe-inline) =========
+  
+  // Forgot password link
+  const forgotPasswordLink = document.querySelector('[data-action="show-forgot-password"]');
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showForgotPassword();
+    });
+  }
+  
+  // ========= Fin Event Listeners =========
+  
   const messages = document.querySelectorAll('.alert');
   messages.forEach(function (message) {
     setTimeout(function () {

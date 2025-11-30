@@ -2,14 +2,16 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Crear Cuenta - Incodefy</title>
   <link rel="stylesheet" href="/css/signup.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css">
 </head>
 <body>
 <div class="wrapper">
   <div class="login-box">
     <form method="POST" action="/auth/signup" id="signupForm">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <h2><i class="fas fa-user-plus"></i> Crear Cuenta</h2>
       
       <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length) { %>
@@ -81,7 +83,7 @@
 
       <button type="submit" id="signupButton">
         <span class="button-text">Crear Cuenta</span>
-        <div class="spinner" id="spinner" style="display:none;">
+        <div class="spinner d-none" id="spinner">
           <i class="fa-solid fa-spinner fa-spin"></i>
         </div>
       </button>
@@ -93,6 +95,7 @@
   </div>
 </div>
 
+<script src="/js/csrf-helper.js"></script>
 <script src="/js/signup.js"></script>
 </body>
 </html>

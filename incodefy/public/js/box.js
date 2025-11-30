@@ -50,9 +50,8 @@ function actualizarEspecificos() {
                 if (contenedor) {
                     const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
                     const claseOculto = detallesVisibles ? '' : 'oculto';
-                    const displayStyle = detallesVisibles ? 'flex' : 'none';
                     contenedor.innerHTML = `
-                        <div class="contenido-especifico ${claseOculto}" style="display: ${displayStyle};">
+                        <div class="contenido-especifico ${claseOculto}">
                             ${info.estado === "Libre" && (!info.proxima_consulta || info.proxima_consulta.trim() === '') 
                                 ? `<p>${window.translations.notNextAppointment}</p>`
                                 : (info.proxima_consulta 
@@ -133,9 +132,8 @@ function actualizarBoxesBatch(boxIds) {
             if (contenedor) {
                 const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
                 const claseOculto = detallesVisibles ? '' : 'oculto';
-                const displayStyle = detallesVisibles ? 'flex' : 'none';
                 contenedor.innerHTML = `
-                    <div class="contenido-box ${claseOculto}" style="display: ${displayStyle};">
+                    <div class="contenido-box ${claseOculto}">
                         ${info.proxima_consulta ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` : ''}
                         ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
                         ${info.medico ? `<p>${window.nomenclatura.ocupante}: ${info.medico}</p>` : ''}
@@ -227,9 +225,9 @@ function aplicarFiltrosLocales() {
 
     const mensajeNoResultados = document.getElementById('mensaje-no-resultados');
     if (tieneResultados) {
-        mensajeNoResultados.style.display = 'none';
+        mensajeNoResultados.classList.add('hidden');
     } else {
-        mensajeNoResultados.style.display = 'block';
+        mensajeNoResultados.classList.remove('hidden');
     }
 
     contarEstadosVisibles();
@@ -247,7 +245,7 @@ function reiniciarFiltros() {
     
     document.querySelectorAll('.general-bloque').forEach(el => el.classList.remove('filtrado-oculto'));
     document.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(el => el.classList.remove('filtrado-oculto'));
-    document.getElementById('mensaje-no-resultados').style.display = 'none';
+    document.getElementById('mensaje-no-resultados').classList.add('hidden');
     
     contarEstadosVisibles();
 }
@@ -256,7 +254,6 @@ function aplicarEstadoVisual() {
     const elementos = document.querySelectorAll('.contenido-especifico');
     elementos.forEach(el => {
         el.classList.toggle('oculto', !detallesVisibles);
-        el.style.display = detallesVisibles ? 'flex' : 'none';
     });
     localStorage.setItem('detallesVisibles', detallesVisibles);
 }
@@ -299,11 +296,6 @@ document.addEventListener('DOMContentLoaded', function () {
         
         botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
         aplicarEstadoVisual();
-        
-        // Recargar página con el parámetro para que el servidor renderice correctamente
-        const url = new URL(window.location);
-        url.searchParams.set('detallesVisibles', detallesVisibles);
-        window.location.href = url.toString();
     });
 
     document.getElementById('filtroPasillo').addEventListener('input', aplicarFiltrosConRetraso);
@@ -320,6 +312,16 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // ========= Event Listeners (refactorizado para CSP sin unsafe-inline) =========
+    
+    // Reiniciar filtros
+    const btnResetFilters = document.querySelector('[data-action="reset-filters"]');
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener('click', reiniciarFiltros);
+    }
+    
+    // ========= Fin Event Listeners =========
+    
     const t = document.querySelector('.fab-consultas');
     if (t) new bootstrap.Tooltip(t);
 });
@@ -435,45 +437,89 @@ function handleWebSocketMessage(message) {
     console.log('📨 Mensaje WebSocket recibido:', message);
 
     const { type, data } = message;
+    
+    // Mapeo de tipos legacy a nuevos
+    const typeMapping = {
+        'INSERT': 'CITA_CREADA',
+        'MODIFY': 'CITA_MODIFICADA',
+        'REMOVE': 'CITA_ELIMINADA'
+    };
+    
+    const normalizedType = typeMapping[type] || type;
 
-    switch (type) {
+    switch (normalizedType) {
         // Espacios
         case 'ESPACIO_CREADO':
             console.log('🆕 Espacio creado:', data);
-            // Recargar la página para mostrar el nuevo espacio
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceCreated(data);
+            }
             setTimeout(() => location.reload(), 500);
             break;
 
         case 'ESPACIO_MODIFICADO':
             console.log('✏️ Espacio modificado:', data);
-            // Actualizar estados y invalidar caché
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceModified(data);
+            }
             invalidarCacheYActualizar();
             break;
 
         case 'ESPACIO_ELIMINADO':
             console.log('🗑️ Espacio eliminado:', data);
-            // Recargar la página para eliminar el espacio
+            if (window.notificationManager) {
+                window.notificationManager.showSpaceDeleted(data);
+            }
             setTimeout(() => location.reload(), 500);
             break;
 
-        // Agendas/Citas (tipos nuevos y legacy)
+        // Agendas/Citas
         case 'CITA_CREADA':
+            console.log('📅 Cita creada:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showAppointmentCreated(data);
+            }
+            invalidarCacheYActualizar();
+            break;
+            
         case 'CITA_MODIFICADA':
+            console.log('📅 Cita modificada:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showAppointmentModified(data);
+            }
+            invalidarCacheYActualizar();
+            break;
+            
         case 'CITA_ELIMINADA':
-        case 'INSERT':  // Legacy type
-        case 'MODIFY':  // Legacy type
-        case 'REMOVE':  // Legacy type
-            console.log('📅 Cambio en agenda:', type, data);
-            // Actualizar estados sin recargar
+            console.log('📅 Cita eliminada:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showAppointmentCancelled(data);
+            }
             invalidarCacheYActualizar();
             break;
 
         // Ocupantes
         case 'OCUPANTE_CREADO':
+            console.log('👤 Ocupante creado:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantCreated(data);
+            }
+            invalidarCacheYActualizar();
+            break;
+            
         case 'OCUPANTE_MODIFICADO':
+            console.log('👤 Ocupante modificado:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantModified(data);
+            }
+            invalidarCacheYActualizar();
+            break;
+            
         case 'OCUPANTE_ELIMINADO':
-            console.log('👤 Cambio en ocupante:', type, data);
-            // Los ocupantes afectan las agendas
+            console.log('👤 Ocupante eliminado:', data);
+            if (window.notificationManager) {
+                window.notificationManager.showOccupantDeleted(data);
+            }
             invalidarCacheYActualizar();
             break;
 

@@ -51,6 +51,7 @@ async function personalizationMiddleware(req, res, next) {
   // PRIORIDAD 1: Usar la personalización de la sesión (ya cargada en login)
   if (req.session.user.personalization && Object.keys(req.session.user.personalization).length > 0) {
     if (DEBUG) console.log('🎨 Personalization: Usando datos de sesión (req.session.user.personalization)');
+    console.log('🟢 MIDDLEWARE - Usando personalización de sesión:', JSON.stringify(req.session.user.personalization, null, 2));
     res.locals.personalization = req.session.user.personalization;
     return next();
   }

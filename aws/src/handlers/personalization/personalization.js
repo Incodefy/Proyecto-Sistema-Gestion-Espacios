@@ -112,6 +112,12 @@ module.exports.getPersonalization = async (event) => {
     const colorVariants = config.personalization.generateColorVariants(finalParameters['theme.primary_color']);
     finalParameters['theme.primary_color_light'] = colorVariants.light;
     finalParameters['theme.primary_color_dark'] = colorVariants.dark;
+    
+    console.log('🎨 GET - Variantes generadas:', {
+      primary: finalParameters['theme.primary_color'],
+      light: colorVariants.light,
+      dark: colorVariants.dark
+    });
 
     await publishPersonalizationEvent('PERSONALIZATION_REQUESTED', {
       userSub,
@@ -196,17 +202,37 @@ module.exports.setPersonalization = async (event) => {
     const validParameters = {};
     const errors = [];
     
+    console.log('🔍 PERSONALIZATION POST - Parámetros recibidos:', JSON.stringify(parameters, null, 2));
+    
     for (const [key, value] of Object.entries(parameters)) {
       if (PERSONALIZATION_PARAMETERS[key]) {
+        console.log(`📝 Validando ${key}:`, {
+          value,
+          type: PERSONALIZATION_PARAMETERS[key].type,
+          options: PERSONALIZATION_PARAMETERS[key].options
+        });
+        
         if (validateParameter(key, value)) {
-          validParameters[key] = value;
+          // Normalizar colores a minúsculas antes de guardar
+          if (PERSONALIZATION_PARAMETERS[key].type === 'color') {
+            const normalized = value.toLowerCase();
+            validParameters[key] = normalized;
+            console.log(`✅ Color validado y normalizado: ${value} → ${normalized}`);
+          } else {
+            validParameters[key] = value;
+            console.log(`✅ Parámetro validado: ${key} = ${value}`);
+          }
         } else {
+          console.log(`❌ Validación fallida para ${key}: ${value}`);
           errors.push(`Valor inválido para ${key}: ${value}`);
         }
       } else {
+        console.log(`❌ Parámetro no permitido: ${key}`);
         errors.push(`Parámetro no permitido: ${key}`);
       }
     }
+    
+    console.log('📦 Parámetros válidos finales:', JSON.stringify(validParameters, null, 2));
 
     if (errors.length > 0) {
       logger.warn("Validación fallida en parámetros", { errors });
@@ -308,8 +334,12 @@ function validateParameter(key, value) {
   
   switch (config.type) {
     case 'select':
-    case 'color':
       return config.options.includes(value);
+    case 'color':
+      // Normalizar color a minúsculas para comparación case-insensitive
+      const normalizedValue = typeof value === 'string' ? value.toLowerCase() : value;
+      const normalizedOptions = config.options.map(opt => opt.toLowerCase());
+      return normalizedOptions.includes(normalizedValue);
     case 'number':
       const num = Number(value);
       return !isNaN(num) && num >= config.min && num <= config.max;

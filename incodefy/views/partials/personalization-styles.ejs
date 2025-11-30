@@ -1,4 +1,4 @@
-<style id="personalization-styles">
+<style id="personalization-styles" nonce="<%= cspNonce %>">
   :root {
     /* --- 1. Colores y Tema (sin cambios) --- */
     --primary-color: #1a3c7c;
@@ -14,19 +14,24 @@
       (() => {
         if (!locals.personalization) return '';
         let styles = '';
-        const colorVariants = {
-            '#1a3c7c': { light: '#375ca1', dark: '#142c59' },
-            '#d53232ff': { light: '#e76464ff', dark: '#ad2424ff' },
-            '#059669': { light: '#1ec78fff', dark: '#068d67ff' },
-            '#7c3aed': { light: '#946cf2ff', dark: '#6028bbff' },
-            '#ea580c': { light: '#f3893dff', dark: '#c25125ff' }
-        };
+        
+        // Usar colores directamente desde la personalización (ya vienen con light/dark del Lambda)
         const primaryColor = personalization['theme.primary_color'];
-        if (primaryColor && colorVariants[primaryColor]) {
+        const primaryColorLight = personalization['theme.primary_color_light'];
+        const primaryColorDark = personalization['theme.primary_color_dark'];
+        
+        if (primaryColor) {
             styles += `--primary-color: ${primaryColor} !important;`;
-            styles += `--primary-color-light: ${colorVariants[primaryColor].light} !important;`;
-            styles += `--primary-color-dark: ${colorVariants[primaryColor].dark} !important;`;
+            
+            // Usar las variantes generadas por el Lambda
+            if (primaryColorLight) {
+                styles += `--primary-color-light: ${primaryColorLight} !important;`;
+            }
+            if (primaryColorDark) {
+                styles += `--primary-color-dark: ${primaryColorDark} !important;`;
+            }
         }
+        
         if (personalization['theme.mode'] === 'dark') {
           styles += `
             --background-color: #181818 !important;

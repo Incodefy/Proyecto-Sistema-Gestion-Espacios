@@ -34,10 +34,12 @@ router.post('/personalization', requireAuthAPI, async (req, res) => {
       const finalParameters = responseData.final_parameters || {};
       
       console.log('✅ Personalización guardada. Final parameters:', finalParameters);
+      console.log('🔵 NODE.JS - Respuesta completa del Lambda:', JSON.stringify(responseData, null, 2));
       
       // Actualizar la personalización en la sesión
       if (Object.keys(finalParameters).length > 0) {
         req.session.user.personalization = finalParameters;
+        console.log('🔵 NODE.JS - Sesión actualizada con:', JSON.stringify(req.session.user.personalization, null, 2));
         
         // Manejo especial del idioma
         const newLang = finalParameters['locale.language'];
@@ -53,13 +55,8 @@ router.post('/personalization', requireAuthAPI, async (req, res) => {
             }
           }
           
-          // Guardar cookie persistente
-          res.cookie('i18next', newLang, {
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
-          });
+          // El idioma se persiste SOLO en la sesión (cookie httpOnly segura)
+          // No usamos cookie 'i18next' separada porque no soporta httpOnly
         }
       }
       

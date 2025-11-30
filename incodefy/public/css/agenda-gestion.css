@@ -205,7 +205,7 @@ body {
 }
 
 .view-btn.active {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: #ffffff;
     border-color: var(--primary-color);
 }
@@ -380,7 +380,7 @@ body {
     left: 4px;
     top: 4px;
     right: 4px;
-    background: var(--cuarter-gradient);
+    background: var(--primary-color);
     border-left: 4px solid var(--primary-color-dark);
     border-radius: 0.25rem;
     padding: 0.5rem;
@@ -390,9 +390,19 @@ body {
 }
 
 .booking-block:hover {
-    background: var(--secondary-gradient);
+    background: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.booking-continuation {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    cursor: pointer;
+    z-index: 5;
 }
 
 .booking-name {
@@ -833,4 +843,17 @@ html[data-theme="dark"] .skeleton-overlay {
 
 .calendar-container.loading .calendar-card {
     opacity: 0.6;
+}
+
+/* Utility Classes for CSP Compliance */
+.d-none {
+    display: none !important;
+}
+
+.d-block {
+    display: block !important;
+}
+
+.d-flex {
+    display: flex !important;
 }

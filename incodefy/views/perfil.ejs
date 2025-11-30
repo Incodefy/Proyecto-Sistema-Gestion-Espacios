@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title><%= t('profile.title') %></title>
+  
+  <!-- Token CSRF para peticiones AJAX -->
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/perfil.css">
+  <link rel="stylesheet" href="/css/color-classes.css">
   <link rel="stylesheet" href="/css/footer.css">
+  <link rel="stylesheet" href="/css/notifications.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="/fontawesome/css/all.min.css" rel="stylesheet">
   
   <%- include('partials/personalization-styles') %>
 
@@ -58,32 +64,30 @@
                       </label>
                     </div>
                   </div>
-                  <!-- Color principal -->
+                  
+                  <!-- Selector de color mejorado -->
                   <div class="form-group">
                     <label><%= t('profile.theme.primary_color') %></label>
-                    <div class="color-group">
-                      <% const colors = [
-                        { value: '#1a3c7c', name: 'blue' },
-                        { value: '#d53232ff', name: 'red' },
-                        { value: '#059669', name: 'green' },
-                        { value: '#7c3aed', name: 'purple' },
-                        { value: '#ea580c', name: 'orange' }
-                      ]; %>
-                      <% colors.forEach(color => { %>
-                        <div class="color-option-wrapper">
-                          <input type="radio" 
-                                 id="color-<%= color.value.replace('#', '') %>" 
-                                 name="theme.primary_color" 
-                                 value="<%= color.value %>" 
-                                 <%= (!personalization['theme.primary_color'] && color.value === '#1a3c7c') || 
-                                     personalization['theme.primary_color'] === color.value ? 'checked' : '' %>>
-                          <label for="color-<%= color.value.replace('#', '') %>" class="color-option">
-                            <span class="color-preview" style="background-color: <%= color.value %>"></span>
-                            <span class="color-name"><%= t('colors.' + color.name) %></span>
-                          </label>
-                        </div>
-                      <% }); %>
+                    
+                    <!-- Vista previa del color actual -->
+                    <div class="color-preview-current" id="colorPreviewCurrent">
+                      <div class="preview-box" id="previewBox" data-preview-color="<%= personalization['theme.primary_color'] || '#1a3c7c' %>"></div>
+                      <div class="preview-info">
+                        <span class="preview-label">Color actual:</span>
+                        <span class="preview-name" id="previewName">Azul</span>
+                        <span class="preview-hex" id="previewHex"><%= personalization['theme.primary_color'] || '#1a3c7c' %></span>
+                      </div>
                     </div>
+
+                    <!-- Input oculto para el valor -->
+                    <input type="hidden" name="theme.primary_color" id="selectedColor" value="<%= personalization['theme.primary_color'] || '#1a3c7c' %>">
+                    
+                    <!-- Botón para abrir modal -->
+                    <button type="button" class="btn-open-color-picker" id="openColorPicker">
+                      <i class="fas fa-palette"></i>
+                      <span>Explorar más colores</span>
+                      <i class="fas fa-chevron-right"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -108,7 +112,7 @@
                                value="<%= scale.value %>"
                                <%= currentScale === scale.value ? 'checked' : '' %>>
                         <label class="radio-option" for="font-<%= scale.value %>">
-                          <i class="fas fa-font" style="font-size: <%= scale.value === 'pequeno' ? '0.8em' : (scale.value === 'grande' ? '1.2em' : '1em') %>;"></i> 
+                          <i class="fas fa-font scale-preview" data-scale="<%= scale.value %>"></i> 
                           <%= t('font_scales.' + scale.label) %>
                         </label>
                       <% }); %>
@@ -229,7 +233,7 @@
                 </div>
 
                 <!-- Loader y mensajes -->
-                <div id="loader" class="loader" style="display: none;">
+                <div id="loader" class="loader d-none">
                   <i class="fas fa-spinner fa-spin"></i> <%= t('profile.messages.saving') %>
                 </div>
                 <div id="message" class="message"></div>
@@ -244,7 +248,7 @@
   </div>
 
   <!-- Modal para cambiar de grupo -->
-  <div class="modal fade" id="changeGroupModal" tabindex="-1" aria-labelledby="changeGroupModalLabel" aria-hidden="true">
+  <div class="modal fade" id="changeGroupModal" tabindex="-1" aria-labelledby="changeGroupModalLabel">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -254,12 +258,17 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div id="groupsListContainer">
-            <div class="text-center py-4">
-              <div class="spinner-border" role="status">
-                <span class="visually-hidden">Cargando grupos...</span>
+          <div id="groupsList">
+            <div class="loading d-none">
+              <div class="text-center py-4">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Cargando grupos...</span>
+                </div>
               </div>
             </div>
+            <div class="error d-none text-danger text-center py-3"></div>
+            <div class="groups-list"></div>
+            <div id="groupChangeMessage" class="d-none mt-3"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -271,343 +280,94 @@
     </div>
   </div>
 
-  <script>
-    // Variables globales
-    let changeGroupModal = null;
-
-    // Función para cargar el grupo activo actual
-    async function loadActiveGroup() {
-      const container = document.getElementById('currentGroupInfo');
-      try {
-        const response = await fetch('/api/espacios/grupo-activo');
-        const data = await response.json();
-        
-        console.log('📊 Respuesta completa de grupo-activo:', data);
-        console.log('📊 Estructura de grupo_activo:', data.grupo_activo);
-        
-        if (data.ok && data.grupo_activo) {
-          const grupo = data.grupo_activo;
-          
-          // Log para ver todos los campos disponibles
-          console.log('📋 Campos disponibles en grupo:', Object.keys(grupo));
-          console.log('📋 Valor de nombre:', grupo.nombre);
-          console.log('📋 Valor completo del grupo:', grupo);
-          
-          // Intentar obtener el nombre de diferentes formas
-          const nombreGrupo = grupo.nombre || grupo.name || grupo.grupo_nombre || 'Sin nombre';
-          
-          const fechaCreacion = grupo.created_at ? 
-            new Date(grupo.created_at).toLocaleDateString('es-CL', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }) : 
-            'Fecha no disponible';
-          
-          container.classList.add('loaded');
-          container.innerHTML = `
-            <div>
-              <div class="current-group-name">${nombreGrupo}</div>
-              <div class="current-group-date">
-                <i class="fas fa-calendar"></i>
-                Creado: ${fechaCreacion}
-              </div>
+  <!-- Modal de selector de colores -->
+  <div class="modal fade d-none" id="colorPickerModal" tabindex="-1" aria-labelledby="colorPickerModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="colorPickerModalLabel">
+            <i class="fas fa-palette"></i> Seleccionar Color
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Vista previa grande -->
+          <div class="color-preview-large" id="colorPreviewLarge">
+            <div class="preview-large-box" id="previewLargeBox" data-preview-color="<%= personalization['theme.primary_color'] || '#1a3c7c' %>"></div>
+            <div class="preview-large-info">
+              <span class="preview-large-name" id="previewLargeName">Selecciona un color</span>
+              <span class="preview-large-hex" id="previewLargeHex"><%= personalization['theme.primary_color'] || '#1a3c7c' %></span>
             </div>
-            <div>
-              <span class="badge bg-success">Activo</span>
-            </div>
-          `;
-        } else {
-          container.innerHTML = `
-            <div class="text-muted">
-              <i class="fas fa-info-circle"></i> No tienes un grupo activo
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('❌ Error cargando grupo activo:', error);
-        container.innerHTML = `
-          <div class="text-danger">
-            <i class="fas fa-exclamation-triangle"></i> Error al cargar grupo activo
+          </div>          
+          <!-- Búsqueda de colores -->
+          <div class="color-search-container">
+            <input type="text" 
+                   id="colorSearch" 
+                   class="color-search-input" 
+                   placeholder="Buscar color por nombre...">
+            <i class="fas fa-search color-search-icon"></i>
           </div>
-        `;
-      }
-    }
 
-    // Función para cargar lista de grupos en el modal
-    async function loadGroupsList() {
-      const container = document.getElementById('groupsListContainer');
-      
-      // Mostrar loading
-      container.innerHTML = `
-        <div class="text-center py-4">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Cargando grupos...</span>
+          <!-- Colores Populares -->
+          <div class="color-category">
+            <h6 class="category-title">
+              <i class="fas fa-star"></i> Colores Populares
+            </h6>
+            <div class="color-grid" id="popularColors"></div>
+          </div>
+
+          <!-- Colores Vibrantes -->
+          <div class="color-category">
+            <h6 class="category-title">
+              <i class="fas fa-bolt"></i> Vibrantes
+            </h6>
+            <div class="color-grid" id="vibrantColors"></div>
+          </div>
+
+          <!-- Colores Pasteles -->
+          <div class="color-category">
+            <h6 class="category-title">
+              <i class="fas fa-cloud"></i> Pasteles
+            </h6>
+            <div class="color-grid" id="pastelColors"></div>
+          </div>
+
+          <!-- Colores Oscuros -->
+          <div class="color-category">
+            <h6 class="category-title">
+              <i class="fas fa-moon"></i> Oscuros
+            </h6>
+            <div class="color-grid" id="darkColors"></div>
           </div>
         </div>
-      `;
-      
-      try {
-        // Cargar grupos y grupo activo en paralelo
-        const [gruposRes, activoRes] = await Promise.all([
-          fetch('/api/espacios/grupos-usuario'),
-          fetch('/api/espacios/grupo-activo').catch(() => ({ ok: false }))
-        ]);
-        
-        const gruposData = await gruposRes.json();
-        const activoData = activoRes.ok ? await activoRes.json() : { ok: false };
-        
-        console.log('📋 Respuesta de grupos-usuario:', gruposData);
-        console.log('📋 Grupos array:', gruposData.grupos);
-        console.log('📋 Primer grupo (ejemplo):', gruposData.grupos?.[0]);
-        
-        const grupos = gruposData.grupos || [];
-        const grupoActivoId = activoData.ok ? activoData.grupo_activo?.grupo_id : null;
-        
-        console.log('✅ Grupo activo ID:', grupoActivoId);
-        console.log('✅ Tipo de grupoActivoId:', typeof grupoActivoId);
-        
-        if (grupos.length === 0) {
-          container.innerHTML = `
-            <div class="text-center text-muted py-4">
-              <i class="fas fa-folder-open fa-3x mb-3"></i>
-              <p>No tienes grupos disponibles</p>
-              <a href="/onboarding-espacios" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Crear primer grupo
-              </a>
-            </div>
-          `;
-          return;
-        }
-        
-        container.innerHTML = grupos.map((grupo, index) => {
-          console.log(`🔍 Procesando grupo ${index}:`, {
-            grupo_id: grupo.grupo_id,
-            nombre: grupo.nombre,
-            name: grupo.name,
-            tipo_grupo_id: typeof grupo.grupo_id
-          });
-          
-          const esActivo = String(grupo.grupo_id) === String(grupoActivoId);
-          
-          // Intentar obtener el nombre de diferentes formas
-          const nombreGrupo = grupo.nombre || grupo.name || grupo.grupo_nombre || 'Sin nombre';
-          
-          const fechaCreacion = grupo.created_at ? 
-            new Date(grupo.created_at).toLocaleDateString('es-CL', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            }) : 
-            'Fecha no disponible';
-          
-          return `
-            <div class="group-modal-item ${esActivo ? 'active' : ''}" 
-                data-grupo-id="${grupo.grupo_id}"
-                style="${esActivo ? 'cursor: default;' : 'cursor: pointer;'}">
-              <div class="group-modal-info">
-                <h6>${nombreGrupo}</h6>
-                <small>
-                  <i class="fas fa-calendar"></i>
-                  ${fechaCreacion}
-                </small>
-              </div>
-              ${esActivo ? 
-                '<span class="group-modal-badge">Activo</span>' : 
-                '<i class="fas fr fa-chevron-right text-muted"></i>'
-              }
-            </div>
-          `;
-        }).join('');
-        
-        // Event listeners para cada grupo
-        document.querySelectorAll('.group-modal-item').forEach(item => {
-          const grupoId = item.dataset.grupoId;
-          const esActivo = String(grupoId) === String(grupoActivoId);
-          
-          if (!esActivo) {
-            item.addEventListener('click', () => {
-              changeActiveGroup(grupoId, item);
-            });
-          }
-        });
-        
-      } catch (error) {
-        console.error('❌ Error cargando grupos:', error);
-        container.innerHTML = `
-          <div class="alert alert-danger">
-            <i class="fas fa-exclamation-triangle"></i>
-            Error al cargar los grupos. Por favor, intenta nuevamente.
-          </div>
-        `;
-      }
-    }
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-secondary" id="confirmColorBtn">
+            Aplicar Color
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    // Función para cambiar el grupo activo
-    async function changeActiveGroup(grupoId, itemElement) {
-      const messageDiv = document.getElementById('message');
-      
-      // Deshabilitar el item mientras se procesa
-      if (itemElement) {
-        itemElement.style.pointerEvents = 'none';
-        itemElement.style.opacity = '0.6';
-        itemElement.innerHTML = `
-          <div class="group-modal-info">
-            <h6>Cambiando grupo...</h6>
-            <small>
-              <div class="spinner-border spinner-border-sm" role="status"></div>
-              Por favor espera
-            </small>
-          </div>
-        `;
-      }
-      
-      try {
-        const response = await fetch('/api/espacios/asignar-grupo', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ grupo_id: grupoId })
-        });
-        
-        const data = await response.json();
-        
-        if (data.ok) {
-          messageDiv.innerHTML = `
-            <i class="fas fa-check-circle"></i> 
-            Grupo cambiado exitosamente. Recargando página...
-          `;
-          messageDiv.className = 'message success';
-          messageDiv.style.display = 'block';
-          
-          // Cerrar modal manualmente
-          const modalElement = document.getElementById('changeGroupModal');
-          modalElement.classList.remove('show');
-          modalElement.style.display = 'none';
-          document.body.classList.remove('modal-open');
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          
-          // Recargar página
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          throw new Error(data.error || 'Error al cambiar de grupo');
-        }
-      } catch (error) {
-        console.error('Error cambiando grupo:', error);
-        
-        messageDiv.innerHTML = `
-          <i class="fas fa-exclamation-triangle"></i> 
-          Error: ${error.message}
-        `;
-        messageDiv.className = 'message error';
-        messageDiv.style.display = 'block';
-        
-        // Restaurar el item
-        if (itemElement) {
-          itemElement.style.pointerEvents = 'auto';
-          itemElement.style.opacity = '1';
-        }
-        
-        // Recargar lista de grupos
-        setTimeout(() => {
-          loadGroupsList();
-        }, 2000);
-      }
-    }
-
-    // Inicializar cuando el DOM esté listo
-    document.addEventListener('DOMContentLoaded', function() {
-      // Cargar grupo activo
-      loadActiveGroup();
-      
-      // Inicializar modal (sin Bootstrap JS, usando atributos data)
-      const modalElement = document.getElementById('changeGroupModal');
-      
-      // Event listener para abrir modal
-      document.getElementById('changeGroupBtn').addEventListener('click', () => {
-        modalElement.classList.add('show');
-        modalElement.style.display = 'block';
-        document.body.classList.add('modal-open');
-        
-        // Agregar backdrop
-        const backdrop = document.createElement('div');
-        backdrop.className = 'modal-backdrop fade show';
-        document.body.appendChild(backdrop);
-        
-        // Cargar grupos
-        loadGroupsList();
-      });
-      
-      // Event listeners para cerrar modal
-      const closeButtons = modalElement.querySelectorAll('[data-bs-dismiss="modal"]');
-      closeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          modalElement.classList.remove('show');
-          modalElement.style.display = 'none';
-          document.body.classList.remove('modal-open');
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-        });
-      });
-      
-      // Cerrar al hacer click fuera del modal
-      modalElement.addEventListener('click', (e) => {
-        if (e.target === modalElement) {
-          modalElement.classList.remove('show');
-          modalElement.style.display = 'none';
-          document.body.classList.remove('modal-open');
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-        }
-      });
-    });
-
-    // Evento principal - Submit del formulario (guardar cambios)
-    document.getElementById('personalizationForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const loader = document.getElementById('loader');
-      const saveBtn = document.getElementById('saveBtn');
-      const messageDiv = document.getElementById('message');
-
-      // Mostrar loader y deshabilitar botón
-      loader.style.display = 'block';
-      saveBtn.disabled = true;
-      messageDiv.style.display = 'none';
-
-      try {
-        const formData = new FormData(this);
-        const parameters = Object.fromEntries(formData.entries());
-        
-        const response = await fetch('/api/personalization', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parameters })
-        });
-
-        const result = await response.json();
-        if (!result.ok) {
-          throw new Error(result.error || '<%= t("profile.messages.save_error") %>');
-        }
-
-        // Mostrar mensaje de éxito y recargar la página para aplicar cambios
-        messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> <%= t("profile.messages.save_success") %>`;
-        messageDiv.className = 'message success';
-        messageDiv.style.display = 'block';
-
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-
-      } catch (error) {
-        messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error: ${error.message}`;
-        messageDiv.className = 'message error';
-        messageDiv.style.display = 'block';
-        loader.style.display = 'none';
-        saveBtn.disabled = false;
-      }
-    });
+  <!-- Script externo para perfil -->
+  <script src="/js/color-picker.js?v=<%= Date.now() %>"></script>
+  <script src="/js/perfil.js?v=<%= Date.now() %>"></script>
+  <script src="/js/notifications.js?v=<%= Date.now() %>"></script>
+  <script nonce="<%= cspNonce %>">
+    window.notificationManager = new NotificationManager();
   </script>
+  
+  <!-- Protección CSRF automática -->
+  <script src="/js/csrf-helper.js?v=<%= Date.now() %>"></script>
+  
+  <!-- Protección de sesión: Previene acceso después de logout -->
+  <script src="/js/session-guard.js?v=<%= Date.now() %>"></script>
+  
+  <!-- Autenticación: Interceptor y renovación automática de tokens -->
+  <script src="/js/auth-interceptor.js?v=<%= Date.now() %>"></script>
+  <script src="/js/token-manager.js?v=<%= Date.now() %>"></script>
 </body>
 </html>

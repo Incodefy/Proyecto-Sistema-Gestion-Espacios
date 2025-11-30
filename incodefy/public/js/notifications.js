@@ -82,12 +82,12 @@ class NotificationManager {
     notification.className = `notification notification-${type} notification-enter`;
     notification.dataset.notificationId = id;
 
-    // Icono según el tipo
+    // Icono según el tipo usando Font Awesome
     const icons = {
-      success: '✓',
-      info: 'ℹ',
-      warning: '⚠',
-      error: '✕'
+      success: '<i class="fas fa-check-circle"></i>',
+      info: '<i class="fas fa-info-circle"></i>',
+      warning: '<i class="fas fa-exclamation-triangle"></i>',
+      error: '<i class="fas fa-times-circle"></i>'
     };
 
     notification.innerHTML = `

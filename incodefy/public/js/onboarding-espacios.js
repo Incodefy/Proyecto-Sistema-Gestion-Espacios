@@ -205,14 +205,14 @@ class OnboardingEspacios {
                   Creado: ${new Date(grupo.created_at).toLocaleDateString('es-CL')}
                 </div>
               </div>
-              <button class="btn btn-primary" onclick="onboardingApp.seleccionarGrupo('${grupo.grupo_id}')">
+              <button class="btn btn-primary" data-action="seleccionar-grupo" data-grupo-id="${grupo.grupo_id}">
                 Seleccionar <i class="fas fa-arrow-right"></i>
               </button>
             </div>
           `).join('')}
         </div>
 
-        <button class="btn-add-large" onclick="onboardingApp.irACrearGrupo()">
+        <button class="btn-add-large" data-action="crear-grupo">
           <i class="fas fa-plus-circle"></i> Crear Nuevo Grupo
         </button>
       </div>
@@ -365,7 +365,7 @@ class OnboardingEspacios {
 
           <div class="action-buttons">
             ${tieneGrupos ? `
-              <button class="btn btn-secondary" onclick="onboardingApp.volverASeleccion()">
+              <button class="btn btn-secondary" data-action="volver-seleccion">
                 <i class="fas fa-arrow-left"></i> Volver
               </button>
             ` : ''}
@@ -931,10 +931,10 @@ class OnboardingEspacios {
             <div class="item-name">${tipo.nombre}</div>
           </div>
           <div class="item-actions">
-            <button class="btn-icon" onclick="onboardingApp.editTipoInstrumento(${idx})">
+            <button class="btn-icon" data-action="edit-tipo-instrumento" data-index="${idx}">
               <i class="fas fa-pen"></i>
             </button>
-            <button class="btn-icon danger" onclick="onboardingApp.deleteTipoInstrumento(${idx})">
+            <button class="btn-icon danger" data-action="delete-tipo-instrumento" data-index="${idx}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -965,10 +965,10 @@ class OnboardingEspacios {
                       <div class="item-name">${inst.nombre}</div>
                     </div>
                     <div class="item-actions">
-                      <button class="btn-icon" onclick="onboardingApp.editInstrumento(${globalIndex})">
+                      <button class="btn-icon" data-action="edit-instrumento" data-index="${globalIndex}">
                         <i class="fas fa-pen"></i>
                       </button>
-                      <button class="btn-icon danger" onclick="onboardingApp.deleteInstrumento(${globalIndex})">
+                      <button class="btn-icon danger" data-action="delete-instrumento" data-index="${globalIndex}">
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
@@ -988,7 +988,7 @@ class OnboardingEspacios {
             >
             <button 
               class="btn btn-primary" 
-              onclick="onboardingApp.addInstrumento('${tipo.id}', ${tipoIndex})"
+              data-action="add-instrumento" data-tipo-id="${tipo.id}" data-tipo-index="${tipoIndex}"
               style="flex: 0 0 auto;"
             >
               <i class="fas fa-plus"></i> Agregar
@@ -1013,10 +1013,10 @@ class OnboardingEspacios {
             <div class="item-name">${esp.nombre}</div>
           </div>
           <div class="item-actions">
-            <button class="btn-icon" onclick="onboardingApp.editEspecialidad(${idx})">
+            <button class="btn-icon" data-action="edit-especialidad" data-index="${idx}">
               <i class="fas fa-pen"></i>
             </button>
-            <button class="btn-icon danger" onclick="onboardingApp.deleteEspecialidad(${idx})">
+            <button class="btn-icon danger" data-action="delete-especialidad" data-index="${idx}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -1147,10 +1147,10 @@ class OnboardingEspacios {
                 <div class="item-name">${tipo.nombre}</div>
               </div>
               <div class="item-actions">
-                <button class="btn-icon" onclick="onboardingApp.editTipoInstrumento(${idx})">
+                <button class="btn-icon" data-action="edit-tipo-instrumento" data-index="${idx}">
                   <i class="fas fa-pen"></i>
                 </button>
-                <button class="btn-icon danger" onclick="onboardingApp.deleteTipoInstrumento(${idx})">
+                <button class="btn-icon danger" data-action="delete-tipo-instrumento" data-index="${idx}">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -1166,16 +1166,16 @@ class OnboardingEspacios {
             placeholder="Nombre del tipo de ${this.instrumentName.toLowerCase()}"
             style="flex: 1; margin: 0;"
           >
-          <button class="btn btn-primary" onclick="onboardingApp.addTipoInstrumento()" style="flex: 0 0 auto;">
+          <button class="btn btn-primary btn-flex-auto" data-action="add-tipo-instrumento">
             <i class="fas fa-plus"></i> Agregar
           </button>
         </div>
 
         <div class="action-buttons">
-          <button class="btn btn-secondary" onclick="onboardingApp.volverATiposDesdeEspacios()">
+          <button class="btn btn-secondary" data-action="volver-tipos-desde-espacios">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
-          <button class="btn btn-primary" onclick="onboardingApp.continuarAInstrumentos()">
+          <button class="btn btn-primary" data-action="continuar-instrumentos">
             Continuar <i class="fas fa-arrow-right"></i>
           </button>
         </div>
@@ -1307,10 +1307,10 @@ class OnboardingEspacios {
                           <div class="item-name">${inst.nombre}</div>
                         </div>
                         <div class="item-actions">
-                          <button class="btn-icon" onclick="onboardingApp.editInstrumento(${globalIndex})">
+                          <button class="btn-icon" data-action="edit-instrumento" data-index="${globalIndex}">
                             <i class="fas fa-pen"></i>
                           </button>
-                          <button class="btn-icon danger" onclick="onboardingApp.deleteInstrumento(${globalIndex})">
+                          <button class="btn-icon danger" data-action="delete-instrumento" data-index="${globalIndex}">
                             <i class="fas fa-trash"></i>
                           </button>
                         </div>
@@ -1330,7 +1330,7 @@ class OnboardingEspacios {
                 >
                 <button 
                   class="btn btn-primary" 
-                  onclick="onboardingApp.addInstrumento('${tipo.id}', ${tipoIndex})"
+                  data-action="add-instrumento" data-tipo-id="${tipo.id}" data-tipo-index="${tipoIndex}"
                   style="flex: 0 0 auto;"
                 >
                   <i class="fas fa-plus"></i> Agregar
@@ -1341,10 +1341,10 @@ class OnboardingEspacios {
         </div>
 
         <div class="action-buttons" style="margin-top: 2rem;">
-          <button class="btn btn-secondary" onclick="onboardingApp.volverATiposInstrumentos()">
+          <button class="btn btn-secondary" data-action="volver-tipos-instrumentos">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
-          <button class="btn btn-primary" onclick="onboardingApp.continuarDesdeInstrumentos()">
+          <button class="btn btn-primary" data-action="continuar-desde-instrumentos">
             Continuar <i class="fas fa-arrow-right"></i>
           </button>
         </div>
@@ -1471,16 +1471,15 @@ class OnboardingEspacios {
                 <div class="item-name">${esp.nombre}</div>
               </div>
               <div class="item-actions">
-                <button class="btn-icon" onclick="onboardingApp.editEspecialidad(${idx})">
+                <button class="btn-icon" data-action="edit-especialidad" data-index="${idx}">
                   <i class="fas fa-pen"></i>
                 </button>
-                <button class="btn-icon danger" onclick="onboardingApp.deleteEspecialidad(${idx})">
+                <button class="btn-icon danger" data-action="delete-especialidad" data-index="${idx}">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
             </div>
-          `).join('')}
-        </div>
+          `).join('')}        </div>
 
         <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
           <input 
@@ -1490,16 +1489,16 @@ class OnboardingEspacios {
             placeholder="Nombre de la ${this.especialidadName.toLowerCase()}"
             style="flex: 1; margin: 0;"
           >
-          <button class="btn btn-primary" onclick="onboardingApp.addEspecialidad()" style="flex: 0 0 auto;">
+          <button class="btn btn-primary btn-flex-auto" data-action="add-especialidad">
             <i class="fas fa-plus"></i> Agregar
           </button>
         </div>
 
         <div class="action-buttons">
-          <button class="btn btn-secondary" onclick="onboardingApp.volverAEspacios()">
+          <button class="btn btn-secondary" data-action="volver-espacios">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
-          <button class="btn btn-primary" onclick="onboardingApp.continuarAOcupantes()" ${this.especialidades.length === 0 ? 'disabled' : ''}>
+          <button class="btn btn-primary" data-action="continuar-ocupantes" ${this.especialidades.length === 0 ? 'disabled' : ''}>
             Continuar <i class="fas fa-arrow-right"></i>
           </button>
         </div>
@@ -1670,15 +1669,15 @@ class OnboardingEspacios {
           `).join('')}
         </div>
 
-        <button class="btn-add-large" onclick="onboardingApp.addOcupante()">
+        <button class="btn-add-large" data-action="add-ocupante">
           <i class="fas fa-plus"></i> Agregar ${this.occupantName.toLowerCase()}
         </button>
 
         <div class="action-buttons">
-          <button class="btn btn-secondary" onclick="onboardingApp.volverAEspecialidades()">
+          <button class="btn btn-secondary" data-action="volver-especialidades">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
-          <button class="btn btn-primary" onclick="onboardingApp.finalizarConfiguracion()">
+          <button class="btn btn-primary" data-action="finalizar-configuracion">
             Finalizar Configuración <i class="fas fa-check-circle"></i>
           </button>
         </div>
@@ -1936,4 +1935,94 @@ class OnboardingEspacios {
 // ==================== INICIALIZAR APP ==================== //
 document.addEventListener('DOMContentLoaded', () => {
   window.onboardingApp = new OnboardingEspacios();
+  
+  // Event delegation para todos los botones con data-action
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-action]');
+    if (!button) return;
+    
+    const action = button.getAttribute('data-action');
+    const app = window.onboardingApp;
+    
+    // Prevenir múltiples clicks
+    e.stopPropagation();
+    
+    switch (action) {
+      // Grupos
+      case 'seleccionar-grupo':
+        app.seleccionarGrupo(button.getAttribute('data-grupo-id'));
+        break;
+      case 'crear-grupo':
+        app.irACrearGrupo();
+        break;
+      case 'volver-seleccion':
+        app.volverASeleccion();
+        break;
+        
+      // Tipos Instrumentos
+      case 'edit-tipo-instrumento':
+        app.editTipoInstrumento(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'delete-tipo-instrumento':
+        app.deleteTipoInstrumento(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'add-tipo-instrumento':
+        app.addTipoInstrumento();
+        break;
+      case 'volver-tipos-desde-espacios':
+        app.volverATiposDesdeEspacios();
+        break;
+      case 'continuar-instrumentos':
+        app.continuarAInstrumentos();
+        break;
+        
+      // Instrumentos
+      case 'edit-instrumento':
+        app.editInstrumento(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'delete-instrumento':
+        app.deleteInstrumento(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'add-instrumento':
+        app.addInstrumento(
+          button.getAttribute('data-tipo-id'),
+          parseInt(button.getAttribute('data-tipo-index'))
+        );
+        break;
+      case 'volver-tipos-instrumentos':
+        app.volverATiposInstrumentos();
+        break;
+      case 'continuar-desde-instrumentos':
+        app.continuarDesdeInstrumentos();
+        break;
+        
+      // Especialidades
+      case 'edit-especialidad':
+        app.editEspecialidad(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'delete-especialidad':
+        app.deleteEspecialidad(parseInt(button.getAttribute('data-index')));
+        break;
+      case 'add-especialidad':
+        app.addEspecialidad();
+        break;
+      case 'volver-espacios':
+        app.volverAEspacios();
+        break;
+      case 'continuar-ocupantes':
+        app.continuarAOcupantes();
+        break;
+        
+      // Ocupantes
+      case 'add-ocupante':
+        app.addOcupante();
+        break;
+      case 'volver-especialidades':
+        app.volverAEspecialidades();
+        break;
+      case 'finalizar-configuracion':
+        app.finalizarConfiguracion();
+        break;
+    }
+  });
 });

@@ -41,10 +41,12 @@ i18next
       'th', // Tailandés
       'fa'  // Persa (Farsi)
     ],
-    // Opciones para el detector de idioma (aunque lo sobreescribiremos)
+    // Opciones para el detector de idioma
+    // IMPORTANTE: No usamos caché de cookies aquí porque i18next-http-middleware
+    // no soporta httpOnly. El idioma se maneja mediante req.session.language
     detection: {
-      order: ['querystring', 'cookie', 'header'],
-      caches: ['cookie'],
+      order: ['querystring', 'header'],
+      caches: false // Deshabilitado - usamos sesión en su lugar
     },
     // Permite que las claves de traducción no existan en un idioma
     // y se resuelvan con el idioma de fallback (es)

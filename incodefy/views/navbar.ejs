@@ -1,5 +1,5 @@
 <nav class="custom-navbar">
-  <div class="navbar-toggle" onclick="toggleNavbar()" aria-label="Abrir menú de navegación">
+  <div class="navbar-toggle" data-action="toggle-navbar" aria-label="Abrir menú de navegación">
     <i class="fas fa-bars"></i>
   </div>
   
@@ -10,7 +10,7 @@
   </div>
 
   <!-- Overlay para cerrar el menú -->
-  <div class="navbar-overlay" onclick="closeNavbar()"></div>
+  <div class="navbar-overlay" data-action="close-navbar"></div>
 
   <ul class="navbar-menu">
     <% if (user) { %>
@@ -72,35 +72,4 @@
   <div class="reloj-wrapper" id="reloj"></div>
 </nav>
 
-<script>
-  function actualizarReloj() {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-    const ss = String(now.getSeconds()).padStart(2, '0');
-    document.getElementById('reloj').textContent = `${hh} : ${mm} : ${ss}`;
-  }
-
-  function toggleNavbar() {
-    const navbar = document.querySelector('.navbar-menu');
-    const overlay = document.querySelector('.navbar-overlay');
-    navbar.classList.toggle('show');
-    overlay.classList.toggle('show');
-  }
-
-  function closeNavbar() {
-    const navbar = document.querySelector('.navbar-menu');
-    const overlay = document.querySelector('.navbar-overlay');
-    navbar.classList.remove('show');
-    overlay.classList.remove('show');
-  }
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      closeNavbar();
-    }
-  });
-
-  actualizarReloj();
-  setInterval(actualizarReloj, 1000);
-</script>
+<script src="/js/navbar.js"></script>

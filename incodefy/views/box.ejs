@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <title><%= t('box.title') %></title>
+  
+  <!-- Token CSRF para peticiones AJAX -->
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/box.css">
   <link rel="stylesheet" href="/css/footer.css">
+  <link rel="stylesheet" href="/css/notifications.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="/fontawesome/css/all.min.css" rel="stylesheet">
 
   <!-- El bloque <style> se ha eliminado y se reemplaza por esta línea -->
   <%- include('partials/personalization-styles') %>
@@ -62,7 +67,7 @@
                     </select>
                     </div>
                     <div class="filtros-botones">
-                    <button onclick="reiniciarFiltros()"><%= t('common.reset_filters') %></button>
+                    <button data-action="reset-filters"><%= t('common.reset_filters') %></button>
                     <button id="toggle-detalles" class="btn-toggle-detalles"><%= t('common.show_details') %></button>
                     </div>
                 </div>
@@ -96,7 +101,7 @@
                 </div>
 
                 <!-- Mensaje sin resultados -->
-                <div id="mensaje-no-resultados" class="no-resultados" style="display: none;">
+                <div id="mensaje-no-resultados" class="no-resultados hidden">
                     <i class="fas fa-search"></i>
                     <h3><%= t('common.no_results') %></h3>
                     <p><%= t('common.no_results_desc') %></p>
@@ -127,7 +132,7 @@
                             <% } %>
                                 <h3><%= especifico.nombre %></h3>
                                 <div id="info-especifico-<%= especifico.id %>" class="info-especifico">
-                                    <div class="contenido-especifico <%= detallesVisibles ? '' : 'oculto' %>" style="display: <%= detallesVisibles ? 'flex' : 'none' %>;">
+                                    <div class="contenido-especifico <%= detallesVisibles ? '' : 'oculto' %>">
                                         <% if (especifico.estado === "Libre" && (!especifico.proxima_consulta || especifico.proxima_consulta.trim() === '')) { %>
                                             <p><%= t('box.no_next_consultations') %></p>
                                         <% } else if (especifico.proxima_consulta) { %>
@@ -167,7 +172,19 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <script src="/js/notifications.js?v=<%= Date.now() %>"></script>
+    
+    <!-- Protección CSRF automática -->
+    <script src="/js/csrf-helper.js?v=<%= Date.now() %>"></script>
+    
+    <!-- Protección de sesión: Previene acceso después de logout -->
+    <script src="/js/session-guard.js?v=<%= Date.now() %>"></script>
+    
+    <!-- Autenticación: Interceptor y renovación automática de tokens -->
+    <script src="/js/auth-interceptor.js?v=<%= Date.now() %>"></script>
+    <script src="/js/token-manager.js?v=<%= Date.now() %>"></script>
+    
+    <script nonce="<%= cspNonce %>">
         window.translations = {
             nextAppointment: "<%= t('box.next_appointment') %>",
             notNextAppointment: "<%= t('box.no_next_consultations') %>",
@@ -183,6 +200,9 @@
         };
         window.detallesVisiblesInicial = <%= detallesVisibles %>;
         window.grupoId = "<%= typeof grupoActivo === 'string' ? grupoActivo : grupoActivo.grupo_id %>";
+        
+        // Inicializar NotificationManager
+        window.notificationManager = new NotificationManager();
     </script>
     <script src="/js/box.js?v=<%= Date.now() %>"></script>
 </body>

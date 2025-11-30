@@ -930,3 +930,5 @@ body[data-theme="dark"] .btn-add-large:hover {
     max-width: none;
   }
 }
+/* Utilidades CSP-safe */
+.btn-flex-auto { flex: 0 0 auto !important; }

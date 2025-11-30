@@ -14,6 +14,11 @@ body {
   min-height: 100vh;
 }
 
+/* Utility class */
+.hidden {
+  display: none !important;
+}
+
 .container-fluid {
   flex: 1;
   display: flex;
@@ -298,6 +303,30 @@ body {
 }
 
 .contenido-especifico p {
+  margin: 0;
+  font-size: var(--font-size-small);
+  line-height: 1.6;
+  color: var(--secondary-text-color);
+  font-weight: 500;
+}
+
+.contenido-box {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 500px;
+  opacity: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contenido-box.oculto {
+  display: none;
+  max-height: 0;
+  opacity: 0;
+}
+
+.contenido-box p {
   margin: 0;
   font-size: var(--font-size-small);
   line-height: 1.6;

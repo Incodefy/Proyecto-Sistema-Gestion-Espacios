@@ -47,7 +47,7 @@ body {
 /* ========== HEADER CON TABS INTEGRADOS ========== */
 
 .page-header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 3.5rem;
 }
 
 .header-content {
@@ -162,8 +162,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    margin-top: 1rem!important;
     animation: slideInUp 0.5s ease-out;
+    margin-top: -1.4rem!important;
 }
 
 @keyframes slideInUp {
@@ -665,7 +665,7 @@ body {
     border-radius: 10px;
     font-weight: 600;
     font-size: 0.95rem;
-    border: none;
+    border: none!important;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
