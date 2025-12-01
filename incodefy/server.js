@@ -236,6 +236,15 @@ app.use(injectPermissions);
 
 // === RUTAS PÚBLICAS (sin autenticación) ===
 
+// Health check endpoint para ALB
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 app.get('/', async (req, res) => {
   console.log('Acceso a ruta raíz');
   console.log('Usuario autenticado:', req.session.user ? 'SÍ' : 'NO');
