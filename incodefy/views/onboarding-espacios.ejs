@@ -17,6 +17,7 @@
   <script src="/js/onboarding-espacios.js"></script>
   <script>
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
+    window.csrfToken = '<%= csrfToken %>';
   </script>
 </body>
 </html>

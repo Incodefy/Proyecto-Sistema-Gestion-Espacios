@@ -161,7 +161,10 @@ class OnboardingEspacios {
 
       const response = await fetch('/onboarding-espacios/api/grupos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': window.csrfToken
+        },
         body: JSON.stringify({ nombre: this.groupName })
       });
 
@@ -414,7 +417,10 @@ class OnboardingEspacios {
 
       const response = await fetch(`/onboarding-espacios/api/grupos/${this.grupoSeleccionado}/nomenclatura`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': window.csrfToken
+        },
         body: JSON.stringify({
           nomenclatura: {
             general: this.generalSpaceName,
@@ -1856,7 +1862,10 @@ class OnboardingEspacios {
 
       const response = await fetch('/onboarding-espacios/api/espacios/configuracion', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': window.csrfToken
+        },
         body: JSON.stringify(payload)
       });
 
