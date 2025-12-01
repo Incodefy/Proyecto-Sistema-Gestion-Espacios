@@ -1,0 +1,84 @@
+# Ejemplo de configuración de variables
+# Copia este archivo a terraform.tfvars y ajusta los valores
+
+# ========================================
+# CONFIGURACIÓN GENERAL
+# ========================================
+
+region       = "us-east-1"
+stage        = "dev"
+project_name = "HospitalPadreHurtado"
+
+# ========================================
+# RED
+# ========================================
+
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# IMPORTANTE: En producción, restringir a IPs administrativas específicas
+# Ejemplo: ["203.0.113.0/24", "198.51.100.0/24"]
+admin_ssh_cidrs = ["0.0.0.0/0"]
+
+# ========================================
+# EC2 & AUTO SCALING
+# ========================================
+
+# AMI IDs por región (Ubuntu 22.04 LTS)
+# us-east-1: ami-0c7217cdde317cfec
+# us-east-2: ami-0ea3c35c5c3284d82
+# us-west-1: ami-0d9858aa3c6322f73
+# us-west-2: ami-0735c191cf914754d
+
+ec2_ami_id           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS en us-east-1
+ec2_instance_type    = "t3.micro"               # t2.micro, t3.small, etc.
+
+asg_min_size         = 2 # Mínimo 2 para redundancia
+asg_max_size         = 6
+asg_desired_capacity = 2
+
+# ========================================
+# BASE DE DATOS
+# ========================================
+
+# Este proyecto usa DynamoDB como base de datos principal
+# Las tablas DynamoDB se crean automáticamente en dynamodb.tf
+# No se requiere configuración adicional de base de datos
+
+# ========================================
+# APLICACIÓN
+# ========================================
+
+# Generar con: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+session_secret = "" # COMPLETAR con secret seguro
+
+# Cognito User Pool (obtener de AWS Console o serverless output)
+user_pool_id        = "" # COMPLETAR
+user_pool_client_id = "" # COMPLETAR
+
+# URL de la API Lambda (obtener después del deploy serverless)
+api_base_url = "" # COMPLETAR - Ejemplo: https://abc123.execute-api.us-east-1.amazonaws.com/dev
+
+# ========================================
+# SEGURIDAD AVANZADA (opcional)
+# ========================================
+
+enable_waf       = false # WAF agrega costo adicional (~$5-10/mes)
+enable_guardduty = false # GuardDuty agrega costo (~$4/mes para 1000 eventos)
+
+# ========================================
+# ALERTAS
+# ========================================
+
+alarm_email           = "" # COMPLETAR con tu email
+critical_alarm_email  = "" # COMPLETAR con tu email
+security_alert_email  = "" # COMPLETAR con tu email
+
+# ========================================
+# GREMLIN (Chaos Engineering)
+# ========================================
+
+gremlin_enabled               = false
+gremlin_team_id               = ""
+gremlin_api_key               = ""
+gremlin_scheduled_experiments = false

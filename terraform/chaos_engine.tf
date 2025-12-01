@@ -11,15 +11,14 @@ resource "aws_lambda_function" "chaos_engine" {
 
   environment {
     variables = {
-      AWS_REGION = var.region
-      STAGE      = var.stage
+      STAGE = var.stage
     }
   }
 }
 
 # API Gateway HTTP para exponer la Lambda
 resource "aws_apigatewayv2_api" "chaos_api" {
-  name          = "hospital-chaos-api"
+  name          = "incodefy-chaos-api"
   protocol_type = "HTTP"
 }
 
@@ -63,7 +62,7 @@ resource "aws_cloudwatch_metric_alarm" "chaos_latency_alarm" {
 
 # SNS topic para alertas
 resource "aws_sns_topic" "chaos_alerts" {
-  name = "hpp-chaos-alerts"
+  name = "incodefy-chaos-alerts"
 }
 
 output "chaos_api_url" {

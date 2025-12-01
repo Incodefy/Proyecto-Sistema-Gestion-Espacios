@@ -12,7 +12,7 @@ locals {
   api_gateway_namespace = "AWS/ApiGateway"
   lambda_namespace = "AWS/Lambda"
   dynamodb_namespace = "AWS/DynamoDB"
-  custom_namespace = "HospitalPadreHurtado"
+  custom_namespace = "incodefy"
   
   # SLO targets por servicio
   slo_targets = {
@@ -374,7 +374,7 @@ resource "aws_cloudwatch_dashboard" "system_health" {
           title = "DynamoDB Read/Write Capacity (Units/sec)"
           region = var.region
           metrics = [
-            [ local.dynamodb_namespace, "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.agenda.name, { stat = "Sum", period = 60, label = "Read" } ],
+            [ local.dynamodb_namespace, "ConsumedReadCapacityUnits", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60, label = "Read" } ],
             [ ".", "ConsumedWriteCapacityUnits", ".", ".", { stat = "Sum", period = 60, label = "Write" } ]
           ]
           view = "timeSeries"
@@ -392,7 +392,7 @@ resource "aws_cloudwatch_dashboard" "system_health" {
           title = "DynamoDB Throttles"
           region = var.region
           metrics = [
-            [ local.dynamodb_namespace, "UserErrors", "TableName", aws_dynamodb_table.agenda.name, { stat = "Sum", period = 60 } ]
+            [ local.dynamodb_namespace, "UserErrors", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60 } ]
           ]
           view = "timeSeries"
           stacked = false
@@ -424,11 +424,6 @@ resource "aws_cloudwatch_dashboard" "system_health" {
       }
     ]
   })
-
-  depends_on = [
-    aws_dynamodb_table.agenda,
-    aws_dynamodb_table.hpp_parameters
-  ]
 }
 
 # ========================================

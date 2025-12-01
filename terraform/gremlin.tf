@@ -240,6 +240,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "chaos_reports" {
     id     = "delete_old_reports"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = 90
     }
