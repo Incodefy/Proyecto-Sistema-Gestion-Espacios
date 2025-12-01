@@ -49,7 +49,7 @@ body {
 /* Header */
 .header {
     background-color: var(--card-background);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color)!important;
     padding: 1.5rem 0;
     position: relative;
 }
@@ -61,7 +61,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--mix-gradient);
+    background: var(--primary-color)!important;
 }
 
 .title {
@@ -319,12 +319,6 @@ body {
 .timeline-row {
     display: flex;
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s;
-}
-
-.timeline-row:hover {
-    background-color: var(--border-color);
-    opacity: 0.5;
 }
 
 .time-label {
@@ -343,6 +337,17 @@ body {
     min-height: 40px;
     border-right: 1px solid var(--border-color);
     position: relative;
+    transition: background-color 0.15s ease;
+}
+
+.timeline-cell:hover {
+    background-color: rgba(26, 60, 124, 0.03);
+}
+
+[data-theme="dark"] .timeline-cell:hover,
+body[data-theme="dark"] .timeline-cell:hover,
+html[data-theme="dark"] .timeline-cell:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .timeline-cell:last-child {
@@ -357,52 +362,74 @@ body {
     border: none;
     background-color: transparent;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cell-button:hover {
-    background-color: var(--primary-color);
-    opacity: 0.1;
+    background-color: rgba(26, 60, 124, 0.08);
+}
+
+[data-theme="dark"] .cell-button:hover,
+body[data-theme="dark"] .cell-button:hover,
+html[data-theme="dark"] .cell-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .cell-button svg {
     color: var(--secondary-text-color);
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
 }
 
 .cell-button:hover svg {
-    opacity: 1;
+    opacity: 0.6;
 }
 
 .booking-block {
     position: absolute;
-    left: 4px;
-    top: 4px;
-    right: 4px;
+    left: 2px;
+    top: 2px;
+    right: 2px;
     background: var(--primary-color);
-    border-left: 4px solid var(--primary-color-dark);
-    border-radius: 0.25rem;
-    padding: 0.5rem;
+    border-left: 3px solid var(--primary-color-dark);
+    border-radius: 4px;
+    padding: 6px 8px;
     cursor: pointer;
-    transition: all 0.2s;
     z-index: 10;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+}
+
+/* Desactivar pointer events en TODOS los hijos */
+.booking-block * {
+    pointer-events: none;
 }
 
 .booking-block:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 20;
 }
 
 .booking-continuation {
     position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     cursor: pointer;
     z-index: 5;
+}
+
+.booking-continuation:hover {
+    background-color: rgba(26, 60, 124, 0.05);
+}
+
+[data-theme="dark"] .booking-continuation:hover,
+body[data-theme="dark"] .booking-continuation:hover,
+html[data-theme="dark"] .booking-continuation:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .booking-name {
@@ -412,12 +439,15 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    pointer-events: none;
+    margin-bottom: 2px;
 }
 
 .booking-time {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.9);
-    margin-top: 0.25rem;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 /* Month View */
@@ -450,12 +480,18 @@ body {
     padding: 0.5rem;
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s;
+    transition: background-color 0.15s ease;
+    cursor: pointer;
 }
 
 .month-cell:hover {
-    background-color: var(--border-color);
-    opacity: 0.5;
+    background-color: rgba(26, 60, 124, 0.03);
+}
+
+[data-theme="dark"] .month-cell:hover,
+body[data-theme="dark"] .month-cell:hover,
+html[data-theme="dark"] .month-cell:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Celdas fuera del mes actual - más tenues */
@@ -497,18 +533,20 @@ html[data-theme="dark"] .month-cell-outside {
     font-size: 0.75rem;
     background: var(--cuarter-gradient);
     color: white;
-    border-radius: 0.25rem;
-    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    padding: 4px 8px;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: all 0.2s;
+    transition: transform 0.15s ease, background 0.15s ease;
+    will-change: transform;
 }
 
 .month-booking-item:hover {
     background: var(--secondary-gradient);
-    transform: translateX(2px);
+    transform: translateX(3px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .month-more {
@@ -697,7 +735,7 @@ html[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
 .btn-primary {
     padding: 0.625rem 1.5rem;
     border: none;
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: #ffffff;
     font-size: 0.875rem;
     font-weight: 500;
@@ -707,7 +745,7 @@ html[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
 }
 
 .btn-primary:hover {
-    background: var(--secondary-gradient);
+    background: var(--primary-color);
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }

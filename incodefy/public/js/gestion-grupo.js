@@ -32,6 +32,9 @@ class GestionGrupo {
   async init() {
     console.log('🚀 Iniciando Gestión de Grupo');
     
+    // Restaurar tab desde URL ANTES de cargar datos
+    this.restoreTabFromURL();
+    
     // Cargar grupo activo y nomenclatura primero (necesarios para las siguientes llamadas)
     await this.cargarGrupoActivo();
     await this.cargarNomenclatura();
@@ -241,7 +244,17 @@ class GestionGrupo {
   initEventListeners() {
     // Tabs
     document.querySelectorAll('.tab-button').forEach(button => {
-      button.addEventListener('click', () => this.switchTab(button.dataset.tab));
+      button.addEventListener('click', () => {
+        const tabName = button.dataset.tab;
+        this.switchTab(tabName);
+        // Actualizar URL con hash
+        window.location.hash = tabName;
+      });
+    });
+
+    // Escuchar cambios en el hash (botón atrás/adelante del navegador)
+    window.addEventListener('hashchange', () => {
+      this.restoreTabFromURL();
     });
 
     // Nomenclatura
@@ -512,6 +525,24 @@ class GestionGrupo {
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.toggle('active', content.id === `tab-${tabName}`);
     });
+  }
+
+  restoreTabFromURL() {
+    // Obtener hash de la URL (sin el #)
+    let hash = window.location.hash.slice(1);
+    
+    // Lista de tabs válidos
+    const validTabs = ['nomenclatura', 'espacios', 'recursos-medicos', 'instrumentos', 'miembros'];
+    
+    // Si el hash no es válido o está vacío, usar 'nomenclatura' por defecto
+    if (!hash || !validTabs.includes(hash)) {
+      hash = 'nomenclatura';
+      // Actualizar la URL sin recargar la página
+      window.history.replaceState(null, '', `#${hash}`);
+    }
+    
+    // Cambiar al tab correspondiente
+    this.switchTab(hash);
   }
 
   updateDynamicTexts() {

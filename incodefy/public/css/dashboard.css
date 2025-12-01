@@ -70,7 +70,7 @@ body {
 }
 
 .header-section {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: var(--white);
     padding: 30px 20px 30px 30px!important;
     border-radius: var(--border-radius);
@@ -98,21 +98,20 @@ body {
 
 /* --- ESTILOS DE BOTONES DE FILTRO MEJORADOS --- */
 .btn-primary {
-    background: var(--terciary-gradient) !important;
+    background: var(--primary-color) !important;
     border: none !important;
     color: white !important;
     font-weight: 600;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(20, 44, 89, 0.3);
+    box-shadow: 0 2px 6px rgba(20, 44, 89, 0.3);
     border-radius: 8px;
     padding: 8px 16px;
 }
 
 .btn-primary:hover {
-    background: var(--primary-color-dark) !important;
     border: none !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(20, 44, 89, 0.4);
+    box-shadow: 0 3px 10px rgba(20, 44, 89, 0.4);
 }
 
 .btn-outline-primary {
@@ -184,7 +183,7 @@ body {
     z-index: 1000 !important;
     background: var(--card-background);
     border-radius: 16px;
-    padding: 25px 25px 25px 25px !important;
+    padding: 25px 25px 22px 25px !important;
     box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
     border: 1px solid rgba(20, 44, 89, 0.08);
     overflow: visible !important;
@@ -197,7 +196,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--mix-gradient);
+    background: var(--primary-color);
     border-radius: 50px 50px 0 0!important;
     margin: 0 6px;
 }

@@ -65,7 +65,7 @@ body {
 
 .page-title {
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-color);
     margin-bottom: 0.5rem;
     display: flex;
@@ -100,7 +100,7 @@ body {
     background: transparent;
     border: none;
     border-radius: 8px;
-    color: var(--secondary-text-color);
+    color: var(--text-color);
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
@@ -109,13 +109,11 @@ body {
 }
 
 .tab-btn:hover {
-    background: var(--card-background);
-    color: var(--primary-color);
     transform: translateY(-2px);
 }
 
 .tab-btn.active {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: white;
     box-shadow: 0 4px 12px rgba(26, 60, 124, 0.25);
 }
@@ -181,7 +179,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: white;
     padding: 0.75rem 1.5rem;
     border-radius: 999px;
@@ -200,8 +198,6 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-    animation: shimmer 3s infinite;
 }
 
 @keyframes shimmer {
@@ -563,7 +559,7 @@ body {
 }
 
 .appointments-icon {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
 }
 
 .spaces-icon {
@@ -610,9 +606,9 @@ body {
 }
 
 .form-check-input {
-    width: 3rem;
+    width: 2.4rem!important;
     height: 1.5rem;
-    min-width: 3rem;
+    min-width: 2.4rem;
     cursor: pointer;
     background-color: var(--border-color);
     border: 2px solid var(--border-color);
@@ -696,7 +692,7 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary-gradient);
+    background: var(--primary-color)!important;
     color: white;
     box-shadow: 0 4px 12px rgba(26, 60, 124, 0.25);
     border: none;

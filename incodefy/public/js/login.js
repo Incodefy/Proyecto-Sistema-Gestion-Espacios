@@ -152,8 +152,8 @@ if (loginForm) {
 
     // Si llegamos aquí, el form es válido - mostrar spinner pero NO preventDefault
     loginButton.disabled = true;
-    buttonText.style.display = 'none';
-    spinner.style.display = 'inline-block';
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
     
     // NO HACER e.preventDefault() - dejar que el formulario se envíe normalmente
   });
@@ -195,8 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const messages = document.querySelectorAll('.alert');
   messages.forEach(function (message) {
     setTimeout(function () {
-      message.style.opacity = '0';
-      message.style.transform = 'translateY(-20px)';
+      message.classList.add('fade-out');
       setTimeout(function () {
         if (message.parentNode) {
           message.parentNode.removeChild(message);

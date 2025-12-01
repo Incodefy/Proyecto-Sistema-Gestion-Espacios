@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="<%= i18n.language %>">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Crear Cuenta - Incodefy</title>
   <link rel="stylesheet" href="/css/signup.css">
@@ -12,12 +13,12 @@
   <div class="login-box">
     <form method="POST" action="/auth/signup" id="signupForm">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <h2><i class="fas fa-user-plus"></i> Crear Cuenta</h2>
+      <h2>Crear Cuenta</h2>
       
       <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length) { %>
         <div class="messages-container">
           <% error_msg.forEach(msg => { %>
-            <div class="alert alert-danger fade-in">
+            <div class="alert alert-error fade-in">
               <i class="fa-solid fa-exclamation-circle"></i>
               <%= msg %>
             </div>

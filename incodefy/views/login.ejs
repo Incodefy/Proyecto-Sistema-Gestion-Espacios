@@ -1,17 +1,54 @@
 <!DOCTYPE html>
-<html lang="<%= i18n.language %>">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= t('login.title') %></title>
   
   <meta name="csrf-token" content="<%= csrfToken %>">
+  
+  <!-- Resource Hints para optimización -->
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  
+  <!-- Preload recursos críticos -->
+  <link rel="preload" href="/css/login.css" as="style">
+  <link rel="preload" href="/fontawesome/css/all.min.css" as="style">
+  <link rel="preload" href="/js/login.js" as="script">
   
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   
-  <link rel="stylesheet" href="/css/login.css">
-  <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+  <!-- CSS crítico inline para First Contentful Paint -->
+  <style nonce="<%= cspNonce %>">
+    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    body{margin:0;overflow-x:hidden}
+    .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden}
+    .login-box{width:100%;max-width:450px;position:relative;z-index:10;background:rgba(15,23,42,.85);backdrop-filter:blur(20px);border-radius:24px;padding:3rem;box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
+    .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
+  </style>
+  
+  <!-- CSS crítico con media print para cargar async (sin onload inline) -->
+  <link rel="stylesheet" href="/css/login.css" media="print" id="login-css">
+  <noscript><link rel="stylesheet" href="/css/login.css"></noscript>
+  
+  <!-- Font Awesome con defer (sin onload inline) -->
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css" media="print" id="fontawesome-css">
+  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css"></noscript>
+  
+  <!-- Async CSS loader script -->
+  <script nonce="<%= cspNonce %>">
+    // Cargar CSS de forma async (CSP-compliant)
+    var loginCss = document.getElementById('login-css');
+    var fontawesomeCss = document.getElementById('fontawesome-css');
+    if (loginCss) {
+      loginCss.media = 'all';
+    }
+    if (fontawesomeCss) {
+      fontawesomeCss.media = 'all';
+    }
+  </script>
 </head>
 <body>
 <div class="wrapper">
@@ -22,12 +59,13 @@
       <% if (typeof redirect !== 'undefined' && redirect) { %>
         <input type="hidden" name="redirect" value="<%= redirect %>">
       <% } %>
+      
       <h2><%= t('login.title') %></h2>
 
       <% if (error_msg && error_msg.length) { %>
         <div class="messages-container">
           <% error_msg.forEach(msg => { %>
-            <div class="alert alert-danger fade-in">
+            <div class="alert alert-error fade-in">
               <i class="fa-solid fa-exclamation-circle"></i>
               <%= msg %>
             </div>
@@ -81,7 +119,8 @@
 
 <script src="/js/csrf-helper.js"></script>
 
-<script>
+<script nonce="<%= cspNonce %>">
+  // Limpiar almacenamiento local al cargar login
   try {
     localStorage.clear();
     sessionStorage.clear();
@@ -90,37 +129,22 @@
     console.warn('⚠️ No se pudo limpiar almacenamiento:', e);
   }
 
+  // Manejar mensaje de logout desde URL
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('logout') === 'true') {
     const logoutMsg = document.getElementById('logoutMessage');
     if (logoutMsg) {
-      logoutMsg.style.display = 'block';
+      logoutMsg.classList.remove('d-none');
       
       const newUrl = window.location.pathname + (urlParams.get('redirect') ? '?redirect=' + urlParams.get('redirect') : '');
       window.history.replaceState({}, '', newUrl);
       
       setTimeout(() => {
-        logoutMsg.style.display = 'none';
+        logoutMsg.classList.add('d-none');
       }, 5000);
     }
   }
-
-  const togglePassword = document.getElementById('togglePassword');
-  const passwordInput = document.getElementById('password');
-  
-  if (togglePassword && passwordInput) {
-    togglePassword.addEventListener('click', function() {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      this.classList.toggle('fa-eye');
-      this.classList.toggle('fa-eye-slash');
-    });
-  }
-
-  function showForgotPassword() {
-    alert('Por favor, contacta al administrador del sistema para restablecer tu contraseña.');
-  }
 </script>
-<script src="/js/login.js"></script>
+<script src="/js/login.js" defer></script>
 </body>
 </html>

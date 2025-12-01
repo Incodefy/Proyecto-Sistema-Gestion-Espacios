@@ -60,6 +60,23 @@ app.use(compression({
 app.use((req, res, next) => {
   // X-Content-Type-Options: nosniff - Previene MIME-sniffing (CWE-693, WASC-15)
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Cache-Control para archivos estáticos (mejora rendimiento)
+  if (req.url.match(/\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    // Archivos versionados: caché largo (1 año)
+    if (req.url.match(/\.(woff|woff2|ttf|eot)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    // CSS/JS: caché mediano (1 día) para permitir actualizaciones
+    else if (req.url.match(/\.(css|js)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+    }
+    // Imágenes: caché largo (7 días)
+    else if (req.url.match(/\.(jpg|jpeg|png|gif|ico|svg)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    }
+  }
+  
   next();
 });
 

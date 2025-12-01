@@ -31,7 +31,7 @@ body {
 
 /* Header mejorado */
 .page-header {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: white;
     padding: 30px 20px 20px 30px!important;
     border-radius: 20px;
@@ -878,106 +878,6 @@ body {
     width: 100%;
 }
 
-/* Timeline View (D�a/Semana) - DEPRECATED CSS GRID VERSION - COMMENTED OUT
-.timeline-scroll {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 700px;
-}
-
-.timeline-content {
-    min-width: 800px;
-    position: relative;
-}
-
-.timeline-header {
-    display: grid;
-    grid-template-columns: 80px repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1px;
-    background: var(--border-color);
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-}
-
-.timeline-header-cell {
-    background: var(--card-background);
-    padding: 1rem;
-    text-align: center;
-    font-weight: 600;
-    color: var(--text-color);
-}
-
-.timeline-header-cell.time-label {
-    background: var(--primary-color);
-    color: white;
-}
-
-.timeline-body {
-    display: grid;
-    grid-template-columns: 80px repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1px;
-    background: var(--border-color);
-}
-
-.timeline-row {
-    display: contents;
-}
-
-.timeline-cell {
-    background: var(--card-background);
-    min-height: 60px;
-    padding: 0.5rem;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.2s ease;
-}
-
-.timeline-cell:hover {
-    background: var(--primary-color-light);
-    opacity: 0.1;
-}
-
-.timeline-cell.time-label {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: var(--secondary-text-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: default;
-}
-
-.timeline-event {
-    position: absolute;
-    left: 2px;
-    right: 2px;
-    background: var(--primary-gradient);
-    color: white;
-    border-radius: 6px;
-    padding: 0.5rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s ease;
-    z-index: 10;
-}
-
-.timeline-event:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.timeline-event-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-}
-
-.timeline-event-time {
-    font-size: 0.75rem;
-    opacity: 0.9;
-}
-END DEPRECATED CSS GRID VERSION */
-
 /* Month View */
 .month-header {
     display: grid;
@@ -1168,7 +1068,7 @@ END DEPRECATED CSS GRID VERSION */
     gap: 1rem;
     justify-content: flex-end;
     margin-top: 2rem;
-    padding-top: 1rem;
+    padding-top: 1.5rem!important;
     border-top: 2px solid var(--border-color);
 }
 
@@ -1402,7 +1302,12 @@ END DEPRECATED CSS GRID VERSION */
     height: 100%;
 }
 
-/* Timeline View (Día/Semana) */
+/* ========================================
+   ESTILOS DEL CALENDARIO - MEJORADOS
+   Reemplazar la sección de calendario en detalle_box.css
+======================================== */
+
+/* Timeline View (Día/Semana) - Mejoras en hover y espaciado */
 .timeline-scroll {
     overflow-x: auto;
     overflow-y: auto;
@@ -1438,7 +1343,7 @@ END DEPRECATED CSS GRID VERSION */
     background: var(--card-background);
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 30;
 }
 
 .timeline-time-col {
@@ -1488,18 +1393,10 @@ END DEPRECATED CSS GRID VERSION */
     display: flex;
     border-bottom: 1px solid var(--border-color);
     min-height: 50px;
-    transition: background-color 0.2s;
+    /* REMOVIDO: transition y hover de toda la fila */
 }
 
-.timeline-row:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-
-[data-theme="dark"] .timeline-row:hover,
-body[data-theme="dark"] .timeline-row:hover,
-html[data-theme="dark"] .timeline-row:hover {
-    background-color: rgba(255, 255, 255, 0.02);
-}
+/* REMOVIDO el hover de timeline-row para evitar resaltar toda la fila */
 
 .time-label {
     width: 80px;
@@ -1523,10 +1420,22 @@ html[data-theme="dark"] .timeline-row:hover {
     border-right: 1px solid var(--border-color);
     position: relative;
     background: var(--card-background);
+    transition: background-color 0.15s ease;
 }
 
 .timeline-cell:last-child {
     border-right: none;
+}
+
+/* Hover solo en la celda individual */
+.timeline-cell:hover {
+    background-color: rgba(26, 60, 124, 0.03);
+}
+
+[data-theme="dark"] .timeline-cell:hover,
+body[data-theme="dark"] .timeline-cell:hover,
+html[data-theme="dark"] .timeline-cell:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .cell-button {
@@ -1537,7 +1446,7 @@ html[data-theme="dark"] .timeline-row:hover {
     border: none;
     background-color: transparent;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1547,36 +1456,67 @@ html[data-theme="dark"] .timeline-row:hover {
     background-color: rgba(26, 60, 124, 0.08);
 }
 
+[data-theme="dark"] .cell-button:hover,
+body[data-theme="dark"] .cell-button:hover,
+html[data-theme="dark"] .cell-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
 .cell-button svg {
     color: var(--secondary-text-color);
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
 }
 
 .cell-button:hover svg {
-    opacity: 0.7;
+    opacity: 0.6;
 }
 
+/* Bloques de agendamiento - Mejor espaciado y sin tireteo */
 .booking-block {
     position: absolute;
-    left: 4px;
-    top: 4px;
-    right: 4px;
-    background: var(--primary-color);
-    border-left: 4px solid var(--primary-color-dark);
-    border-radius: 0.375rem;
-    padding: 0.5rem;
+    left: 2px;
+    top: 2px;
+    right: 2px;
+    background: var(--primary-color)!important;
+    border-left: 3px solid var(--primary-color-dark);
+    border-radius: 4px;
+    padding: 6px 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     z-index: 10;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Desactivar pointer events en TODOS los hijos para evitar tireteo */
+.booking-block * {
+    pointer-events: none;
+}
+
 .booking-block:hover {
-    background: var(--secondary-gradient);
+    background: var(--primary-color);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 20;
+}
+
+.booking-continuation {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.booking-continuation:hover {
+    background-color: rgba(26, 60, 124, 0.05);
+}
+
+[data-theme="dark"] .booking-continuation:hover,
+body[data-theme="dark"] .booking-continuation:hover,
+html[data-theme="dark"] .booking-continuation:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .booking-name {
@@ -1587,16 +1527,19 @@ html[data-theme="dark"] .timeline-row:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    margin-bottom: 2px;
 }
 
 .booking-time {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.95);
-    margin-top: 0.25rem;
     font-weight: 600;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
-/* Month View */
+/* Month View - Mejoras en hover */
 .month-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -1627,18 +1570,19 @@ html[data-theme="dark"] .timeline-row:hover {
     padding: 0.5rem;
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s;
+    transition: background-color 0.15s ease;
     background: var(--card-background);
+    cursor: pointer;
 }
 
 .month-cell:hover {
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: rgba(26, 60, 124, 0.03);
 }
 
 [data-theme="dark"] .month-cell:hover,
 body[data-theme="dark"] .month-cell:hover,
 html[data-theme="dark"] .month-cell:hover {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .month-cell-outside {
@@ -1678,24 +1622,99 @@ html[data-theme="dark"] .month-cell-outside {
     font-size: 0.75rem;
     background: var(--cuarter-gradient);
     color: white;
-    border-radius: 0.25rem;
-    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    padding: 4px 8px;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: all 0.2s;
+    transition: transform 0.15s ease, background 0.15s ease;
+    will-change: transform;
 }
 
 .month-booking-item:hover {
     background: var(--secondary-gradient);
-    transform: translateX(2px);
+    transform: translateX(3px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .month-more {
     font-size: 0.75rem;
     color: var(--secondary-text-color);
     padding: 0 0.5rem;
+}
+
+/* Responsive para el calendario */
+@media (max-width: 992px) {
+    .timeline-scroll {
+        max-height: 650px;
+        min-height: 650px;
+    }
+}
+
+@media (max-width: 768px) {
+    .timeline-scroll {
+        max-height: 600px;
+        min-height: 600px;
+    }
+    
+    #timelineContent {
+        min-width: 600px;
+    }
+    
+    .timeline-day-header {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .day-number {
+        font-size: 1.5rem;
+    }
+    
+    .month-cell {
+        min-height: 90px;
+        font-size: 0.85rem;
+    }
+    
+    .calendar-container {
+        min-height: 600px;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-container {
+        padding: 0;
+        min-height: 500px;
+    }
+    
+    .timeline-scroll {
+        max-height: 500px;
+        min-height: 500px;
+    }
+    
+    .timeline-row {
+        min-height: 45px;
+    }
+    
+    .timeline-cell {
+        min-height: 45px;
+    }
+    
+    .time-label {
+        font-size: 0.7rem;
+    }
+    
+    .booking-name {
+        font-size: 0.7rem;
+    }
+    
+    .booking-time {
+        font-size: 0.65rem;
+    }
+    
+    .month-cell {
+        min-height: 70px;
+        padding: 0.25rem;
+    }
 }
 
 /* Modal de Agendamiento */
@@ -1847,7 +1866,7 @@ input[type="date"].form-input-modern {
 }
 
 .btn-primary-modern {
-    background: var(--primary-gradient);
+    background: var(--primary-color);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
