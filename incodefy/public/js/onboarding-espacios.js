@@ -163,7 +163,7 @@ class OnboardingEspacios {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'CSRF-Token': window.csrfToken
+          'X-CSRF-Token': window.csrfToken
         },
         body: JSON.stringify({ nombre: this.groupName })
       });
@@ -419,7 +419,7 @@ class OnboardingEspacios {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'CSRF-Token': window.csrfToken
+          'X-CSRF-Token': window.csrfToken
         },
         body: JSON.stringify({
           nomenclatura: {
@@ -1864,7 +1864,7 @@ class OnboardingEspacios {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'CSRF-Token': window.csrfToken
+          'X-CSRF-Token': window.csrfToken
         },
         body: JSON.stringify(payload)
       });
