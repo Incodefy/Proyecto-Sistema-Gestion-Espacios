@@ -507,27 +507,35 @@ app.get('/test', (req, res) => {
   });
 });
 
-// Manejo de errores 404
-app.use((req, res) => {
-  res.status(404).render('error', { 
-    error: 'Página no encontrada',
-    message: `La ruta ${req.path} no existe`,
-    i18n: req.i18n || { language: 'es' },
-    t: req.t || ((key) => key)
-  });
-});
-
 // Manejo de errores CSRF (debe ir ANTES del manejo de errores generales)
 app.use(csrfErrorHandler);
 
 // Manejo de errores generales
 app.use((err, req, res, next) => {
   console.error('Error en la aplicación:', err);
-  res.status(500).render('error', { 
-    error: 'Error interno del servidor',
-    message: 'Ha ocurrido un error inesperado',
-    i18n: req.i18n || { language: 'es' },
-    t: req.t || ((key) => key)
+  const statusCode = err.status || err.statusCode || 500;
+  
+  res.status(statusCode).render('error', { 
+    error: err.message || 'Error interno del servidor',
+    message: err.details || 'Ha ocurrido un error inesperado',
+    i18n: req.i18n || { language: req.session?.language || 'es' },
+    t: req.t || ((key) => key),
+    user: req.session?.user || null,
+    currentPath: req.path,
+    personalization: res.locals.personalization || req.session?.user?.personalization || {}
+  });
+});
+
+// Manejo de errores 404 (debe ir AL FINAL)
+app.use((req, res) => {
+  res.status(404).render('error', { 
+    error: 'Página no encontrada',
+    message: `La ruta ${req.path} no existe`,
+    i18n: req.i18n || { language: req.session?.language || 'es' },
+    t: req.t || ((key) => key),
+    user: req.session?.user || null,
+    currentPath: req.path,
+    personalization: res.locals.personalization || req.session?.user?.personalization || {}
   });
 });
 
