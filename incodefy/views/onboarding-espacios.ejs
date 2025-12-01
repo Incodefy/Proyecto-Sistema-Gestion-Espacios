@@ -15,7 +15,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/onboarding-espacios.js"></script>
-  <script>
+  <script nonce="<%= cspNonce %>">
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
     window.csrfToken = '<%= csrfToken %>';
   </script>

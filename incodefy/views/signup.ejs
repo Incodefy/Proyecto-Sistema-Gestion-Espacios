@@ -3,10 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Crear Cuenta - Incodefy</title>
-  <link rel="stylesheet" href="/css/signup.css">
-  <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+  
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  
+  <!-- Resource Hints para optimización -->
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  
+  <!-- Preload recursos críticos con cache-busting -->
+  <link rel="preload" href="/css/signup.css?v=<%= Date.now() %>" as="style">
+  <link rel="preload" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" as="style">
+  <link rel="preload" href="/js/signup.js?v=<%= Date.now() %>" as="script">
+  
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <!-- CSS crítico inline para First Contentful Paint -->
+  <style nonce="<%= cspNonce %>">
+    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif}
+    body{margin:0;overflow-x:hidden}
+    .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden}
+    .login-box{width:100%;max-width:450px;position:relative;z-index:10;background:rgba(15,23,42,.85);backdrop-filter:blur(20px);border-radius:24px;padding:3rem;box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
+    .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
+  </style>
+  
+  <!-- CSS crítico con media print para cargar async (sin onload inline) con cache-busting -->
+  <link rel="stylesheet" href="/css/signup.css?v=<%= Date.now() %>" media="print" id="signup-css">
+  <noscript><link rel="stylesheet" href="/css/signup.css?v=<%= Date.now() %>"></noscript>
+  
+  <!-- Font Awesome con defer (sin onload inline) con cache-busting -->
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" media="print" id="fontawesome-css">
+  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>"></noscript>
+  
+  <!-- Script para cambiar media de print a all (CSP-compliant) -->
+  <script nonce="<%= cspNonce %>">
+    // Cambiar media de print a all para cargar CSS de forma async
+    var signupCss = document.getElementById('signup-css');
+    var fontawesomeCss = document.getElementById('fontawesome-css');
+    if (signupCss) signupCss.media = 'all';
+    if (fontawesomeCss) fontawesomeCss.media = 'all';
+  </script>
+  
+  <!-- Utility classes para animaciones CSP-compliant -->
+  <style nonce="<%= cspNonce %>">
+    .d-none{display:none!important}
+    .d-block{display:block!important}
+    .fade-in{animation:fadeIn .3s ease-in}
+    .fade-out{animation:fadeOut .3s ease-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+  </style>
 </head>
 <body>
 <div class="wrapper">
@@ -38,36 +86,48 @@
       <% } %>
 
       <div class="input-box">
-        <span class="icon"><i class="fa-solid fa-user"></i></span>
-        <input type="text" name="nombre" id="nombre" required
+        <input type="text" 
+               name="nombre" 
+               id="nombre" 
+               required
+               placeholder="Nombre completo"
                value="<%= typeof form_data !== 'undefined' && form_data ? form_data.nombre : '' %>">
-        <label>Nombre completo</label>
+        <span class="icon"><i class="fa-solid fa-user"></i></span>
         <div class="error-message" id="nombre-error"></div>
       </div>
 
       <div class="input-box">
-        <span class="icon"><i class="fa-solid fa-envelope"></i></span>
-        <input type="email" name="email" id="email" required
+        <input type="email" 
+               name="email" 
+               id="email" 
+               required
+               placeholder="Correo electrónico"
                value="<%= typeof form_data !== 'undefined' && form_data ? form_data.email : '' %>">
-        <label>Correo electrónico</label>
+        <span class="icon"><i class="fa-solid fa-envelope"></i></span>
         <div class="error-message" id="email-error"></div>
       </div>
 
       <div class="input-box">
+        <input type="password" 
+               name="password" 
+               id="password" 
+               required
+               placeholder="Contraseña">
         <span class="icon">
           <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
         </span>
-        <input type="password" name="password" id="password" required>
-        <label>Contraseña</label>
         <div class="error-message" id="password-error"></div>
       </div>
 
       <div class="input-box">
+        <input type="password" 
+               name="confirm_password" 
+               id="confirm_password" 
+               required
+               placeholder="Confirmar contraseña">
         <span class="icon">
           <i class="fa-solid fa-eye" id="toggleConfirmPassword" title="Mostrar contraseña"></i>
         </span>
-        <input type="password" name="confirm_password" id="confirm_password" required>
-        <label>Confirmar contraseña</label>
         <div class="error-message" id="confirm-password-error"></div>
       </div>
 
@@ -96,7 +156,9 @@
   </div>
 </div>
 
-<script src="/js/csrf-helper.js"></script>
-<script src="/js/signup.js"></script>
+<script src="/js/csrf-helper.js?v=<%= Date.now() %>"></script>
+
+<!-- Signup script con defer para no bloquear el renderizado inicial con cache-busting -->
+<script src="/js/signup.js?v=<%= Date.now() %>" defer></script>
 </body>
 </html>

@@ -8,13 +8,13 @@
   <meta name="csrf-token" content="<%= csrfToken %>">
   
   <!-- Resource Hints para optimización -->
-  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   
-  <!-- Preload recursos críticos -->
-  <link rel="preload" href="/css/login.css" as="style">
-  <link rel="preload" href="/fontawesome/css/all.min.css" as="style">
-  <link rel="preload" href="/js/login.js" as="script">
+  <!-- Preload recursos críticos con cache-busting -->
+  <link rel="preload" href="/css/login.css?v=<%= Date.now() %>" as="style">
+  <link rel="preload" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" as="style">
+  <link rel="preload" href="/js/login.js?v=<%= Date.now() %>" as="script">
   
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
@@ -22,33 +22,39 @@
   
   <!-- CSS crítico inline para First Contentful Paint -->
   <style nonce="<%= cspNonce %>">
-    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif}
     body{margin:0;overflow-x:hidden}
     .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden}
     .login-box{width:100%;max-width:450px;position:relative;z-index:10;background:rgba(15,23,42,.85);backdrop-filter:blur(20px);border-radius:24px;padding:3rem;box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
     .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
   </style>
   
-  <!-- CSS crítico con media print para cargar async (sin onload inline) -->
-  <link rel="stylesheet" href="/css/login.css" media="print" id="login-css">
-  <noscript><link rel="stylesheet" href="/css/login.css"></noscript>
+  <!-- CSS crítico con media print para cargar async (sin onload inline) con cache-busting -->
+  <link rel="stylesheet" href="/css/login.css?v=<%= Date.now() %>" media="print" id="login-css">
+  <noscript><link rel="stylesheet" href="/css/login.css?v=<%= Date.now() %>"></noscript>
   
-  <!-- Font Awesome con defer (sin onload inline) -->
-  <link rel="stylesheet" href="/fontawesome/css/all.min.css" media="print" id="fontawesome-css">
-  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css"></noscript>
+  <!-- Font Awesome con defer (sin onload inline) con cache-busting -->
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" media="print" id="fontawesome-css">
+  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>"></noscript>
   
-  <!-- Async CSS loader script -->
+  <!-- Script para cambiar media de print a all (CSP-compliant) -->
   <script nonce="<%= cspNonce %>">
-    // Cargar CSS de forma async (CSP-compliant)
+    // Cambiar media de print a all para cargar CSS de forma async
     var loginCss = document.getElementById('login-css');
     var fontawesomeCss = document.getElementById('fontawesome-css');
-    if (loginCss) {
-      loginCss.media = 'all';
-    }
-    if (fontawesomeCss) {
-      fontawesomeCss.media = 'all';
-    }
+    if (loginCss) loginCss.media = 'all';
+    if (fontawesomeCss) fontawesomeCss.media = 'all';
   </script>
+  
+  <!-- Utility classes para animaciones CSP-compliant -->
+  <style nonce="<%= cspNonce %>">
+    .d-none{display:none!important}
+    .d-block{display:block!important}
+    .fade-in{animation:fadeIn .3s ease-in}
+    .fade-out{animation:fadeOut .3s ease-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+  </style>
 </head>
 <body>
 <div class="wrapper">
@@ -81,21 +87,27 @@
       </div>
 
       <div class="input-box">
-        <span class="icon"><i class="fa-solid fa-user"></i></span>
-        <input type="email" name="correo" id="email" required
+        <input type="email" 
+               name="correo" 
+               id="email" 
+               required
+               placeholder="<%= t('login.email') %>"
                value="<%= form_data ? form_data.correo : '' %>"
                class="<%= form_errors && form_errors.email ? 'error' : '' %>">
-        <label><%= t('login.email') %></label>
+        <span class="icon"><i class="fa-solid fa-user"></i></span>
         <div class="error-message" id="email-error"></div>
       </div>
 
       <div class="input-box">
+        <input type="password" 
+               name="password" 
+               id="password" 
+               required
+               placeholder="<%= t('login.password') %>"
+               class="<%= form_errors && form_errors.password ? 'error' : '' %>">
         <span class="icon">
           <i class="fa-solid fa-eye" id="togglePassword" title="<%= t('login.show_password') %>"></i>
         </span>
-        <input type="password" name="password" id="password" required
-               class="<%= form_errors && form_errors.password ? 'error' : '' %>">
-        <label><%= t('login.password') %></label>
         <div class="error-message" id="password-error"></div>
       </div>
 
@@ -117,34 +129,33 @@
   </div>
 </div>
 
-<script src="/js/csrf-helper.js"></script>
+<script src="/js/csrf-helper.js?v=<%= Date.now() %>"></script>
 
 <script nonce="<%= cspNonce %>">
-  // Limpiar almacenamiento local al cargar login
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-    console.log('✅ Almacenamiento local limpiado');
-  } catch (e) {
-    console.warn('⚠️ No se pudo limpiar almacenamiento:', e);
-  }
+  // Limpiar localStorage y sessionStorage al cargar la página de login
+  localStorage.clear();
+  sessionStorage.clear();
 
-  // Manejar mensaje de logout desde URL
+  // Mostrar mensaje de logout si viene de cerrar sesión
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('logout') === 'true') {
     const logoutMsg = document.getElementById('logoutMessage');
     if (logoutMsg) {
       logoutMsg.classList.remove('d-none');
       
+      // Limpiar el parámetro logout de la URL sin recargar la página
       const newUrl = window.location.pathname + (urlParams.get('redirect') ? '?redirect=' + urlParams.get('redirect') : '');
       window.history.replaceState({}, '', newUrl);
       
+      // Ocultar mensaje después de 5 segundos
       setTimeout(() => {
         logoutMsg.classList.add('d-none');
       }, 5000);
     }
   }
 </script>
-<script src="/js/login.js" defer></script>
+
+<!-- Login script con defer para no bloquear el renderizado inicial con cache-busting -->
+<script src="/js/login.js?v=<%= Date.now() %>" defer></script>
 </body>
 </html>

@@ -105,6 +105,10 @@
   padding: 2px 0!important;
 }
 
+.gestion {
+  padding: 2px 0!important;
+}
+
 /* EFECTO HOVER */
 .menu-link:hover {
   transform: scale(1.03) translateZ(0) !important;

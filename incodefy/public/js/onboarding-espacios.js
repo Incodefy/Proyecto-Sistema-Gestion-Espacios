@@ -599,7 +599,7 @@ class OnboardingEspacios {
   renderSpecificSpace(spaceId, spec) {
     if (spec.isEditing) {
       return `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="editing-container">
           <input 
             type="text" 
             class="space-specific-input" 
@@ -608,7 +608,6 @@ class OnboardingEspacios {
             placeholder="Nombre del ${this.specificSpaceName.toLowerCase()}"
             value="${spec.name}"
             autofocus
-            style="flex: 1; margin: 0;"
           >
           <button class="btn-icon success" data-action="confirm-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!spec.name.trim() ? 'disabled' : ''}>
             <i class="fas fa-check"></i>
@@ -620,7 +619,7 @@ class OnboardingEspacios {
       `;
     } else if (this.editingId === spec.id) {
       return `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="editing-container">
           <input 
             type="text" 
             class="space-specific-input" 
@@ -629,7 +628,6 @@ class OnboardingEspacios {
             placeholder="Nombre del ${this.specificSpaceName.toLowerCase()}"
             value="${this.editingValue}"
             autofocus
-            style="flex: 1; margin: 0;"
           >
           <button class="btn-icon success" data-action="save-edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
             <i class="fas fa-check"></i>
@@ -953,10 +951,10 @@ class OnboardingEspacios {
     const container = document.getElementById('instrumentosContainer');
     if (container) {
       container.innerHTML = this.tiposInstrumentos.map((tipo, tipoIndex) => `
-        <div style="border: 1px solid var(--gray-300); border-radius: 0.5rem; padding: 1.5rem; background: var(--gray-100);">
-          <h3 style="margin-bottom: 1rem; color: var(--text-dark);">${tipo.nombre}</h3>
+        <div class="tipo-container">
+          <h3>${tipo.nombre}</h3>
           
-          <div class="items-list" style="margin-bottom: 1rem;">
+          <div class="items-list items-list-container">
             ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).length === 0 ? `
               <div class="empty-state">
                 <i class="fas fa-inbox"></i>
@@ -984,18 +982,16 @@ class OnboardingEspacios {
             `}
           </div>
 
-          <div style="display: flex; gap: 0.75rem;">
+          <div class="input-with-button">
             <input 
               type="text" 
               id="nombreInstrumento_${tipoIndex}" 
               class="form-input" 
               placeholder="Nombre del ${this.instrumentName.toLowerCase()}"
-              style="flex: 1; margin: 0;"
             >
             <button 
               class="btn btn-primary" 
               data-action="add-instrumento" data-tipo-id="${tipo.id}" data-tipo-index="${tipoIndex}"
-              style="flex: 0 0 auto;"
             >
               <i class="fas fa-plus"></i> Agregar
             </button>
@@ -1048,8 +1044,8 @@ class OnboardingEspacios {
       ` : this.ocupantes.map((ocu, idx) => `
         <div class="item-card">
           ${ocu.isEditing ? `
-            <div style="display: flex; gap: 0.75rem; width: 100%; align-items: flex-start;">
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="multi-field-container">
+              <div class="multi-field-group">
                 <input 
                   type="text" 
                   class="form-input" 
@@ -1057,13 +1053,11 @@ class OnboardingEspacios {
                   data-field="nombre"
                   value="${ocu.nombre}"
                   placeholder="Nombre del ${this.occupantName.toLowerCase()}"
-                  style="margin: 0;"
                 >
                 <select 
                   class="form-select" 
                   data-ocupante-index="${idx}"
                   data-field="especialidad_id"
-                  style="margin: 0;"
                 >
                   <option value="">Seleccionar ${this.especialidadName.toLowerCase()}...</option>
                   ${this.especialidades.map(esp => `
@@ -1164,13 +1158,12 @@ class OnboardingEspacios {
           `).join('')}
         </div>
 
-        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div class="form-row">
           <input 
             type="text" 
             id="nombreTipoInstrumento" 
             class="form-input" 
             placeholder="Nombre del tipo de ${this.instrumentName.toLowerCase()}"
-            style="flex: 1; margin: 0;"
           >
           <button class="btn btn-primary btn-flex-auto" data-action="add-tipo-instrumento">
             <i class="fas fa-plus"></i> Agregar
@@ -1212,7 +1205,6 @@ class OnboardingEspacios {
       nombre 
     });
     input.value = '';
-    this.showNotification('Tipo agregado', 'success');
     this.updateTiposList();
   }
 
@@ -1293,12 +1285,12 @@ class OnboardingEspacios {
           <p>Asigna ${this.pluralize(this.instrumentName.toLowerCase())} a cada tipo creado</p>
         </div>
 
-        <div id="instrumentosContainer" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div id="instrumentosContainer" class="instrumentos-container">
           ${this.tiposInstrumentos.map((tipo, tipoIndex) => `
-            <div style="border: 1px solid var(--gray-300); border-radius: 0.5rem; padding: 1.5rem; background: var(--gray-100);">
-              <h3 style="margin-bottom: 1rem; color: var(--text-dark);">${tipo.nombre}</h3>
+            <div class="tipo-container">
+              <h3>${tipo.nombre}</h3>
               
-              <div class="items-list" style="margin-bottom: 1rem;">
+              <div class="items-list items-list-container">
                 ${this.instrumentos.filter(inst => inst.tipo_id === tipo.id).length === 0 ? `
                   <div class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -1326,18 +1318,16 @@ class OnboardingEspacios {
                 `}
               </div>
 
-              <div style="display: flex; gap: 0.75rem;">
+              <div class="input-with-button">
                 <input 
                   type="text" 
                   id="nombreInstrumento_${tipoIndex}" 
                   class="form-input" 
                   placeholder="Nombre del ${this.instrumentName.toLowerCase()}"
-                  style="flex: 1; margin: 0;"
                 >
                 <button 
                   class="btn btn-primary" 
                   data-action="add-instrumento" data-tipo-id="${tipo.id}" data-tipo-index="${tipoIndex}"
-                  style="flex: 0 0 auto;"
                 >
                   <i class="fas fa-plus"></i> Agregar
                 </button>
@@ -1346,7 +1336,7 @@ class OnboardingEspacios {
           `).join('')}
         </div>
 
-        <div class="action-buttons" style="margin-top: 2rem;">
+        <div class="action-buttons mt-2">
           <button class="btn btn-secondary" data-action="volver-tipos-instrumentos">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
@@ -1382,7 +1372,6 @@ class OnboardingEspacios {
       tipo_id: tipoId
     });
     nombreInput.value = '';
-    this.showNotification(`${this.instrumentName} agregado`, 'success');
     this.updateInstrumentosList();
   }
 
@@ -1487,13 +1476,12 @@ class OnboardingEspacios {
             </div>
           `).join('')}        </div>
 
-        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div class="form-row">
           <input 
             type="text" 
             id="nuevaEspecialidad" 
             class="form-input" 
             placeholder="Nombre de la ${this.especialidadName.toLowerCase()}"
-            style="flex: 1; margin: 0;"
           >
           <button class="btn btn-primary btn-flex-auto" data-action="add-especialidad">
             <i class="fas fa-plus"></i> Agregar
@@ -1504,7 +1492,7 @@ class OnboardingEspacios {
           <button class="btn btn-secondary" data-action="volver-espacios">
             <i class="fas fa-arrow-left"></i> Volver
           </button>
-          <button class="btn btn-primary" data-action="continuar-ocupantes" ${this.especialidades.length === 0 ? 'disabled' : ''}>
+          <button class="btn btn-primary" data-action="continuar-ocupantes">
             Continuar <i class="fas fa-arrow-right"></i>
           </button>
         </div>
@@ -1534,7 +1522,6 @@ class OnboardingEspacios {
     const especialidadId = `ESP#${this.especialidades.length + 1}`;
     this.especialidades.push({ id: especialidadId, nombre });
     input.value = '';
-    this.showNotification('Especialidad agregada', 'success');
     this.updateEspecialidadesList();
   }
 
@@ -1623,8 +1610,8 @@ class OnboardingEspacios {
           ` : this.ocupantes.map((ocu, idx) => `
             <div class="item-card">
               ${ocu.isEditing ? `
-                <div style="display: flex; gap: 0.75rem; width: 100%; align-items: flex-start;">
-                  <div style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div class="multi-field-container">
+                  <div class="multi-field-group">
                     <input 
                       type="text" 
                       class="form-input" 
@@ -1632,13 +1619,11 @@ class OnboardingEspacios {
                       data-field="nombre"
                       value="${ocu.nombre}"
                       placeholder="Nombre del ${this.occupantName.toLowerCase()}"
-                      style="margin: 0;"
                     >
                     <select 
                       class="form-select" 
                       data-ocupante-index="${idx}"
                       data-field="especialidad_id"
-                      style="margin: 0;"
                     >
                       <option value="">Seleccionar ${this.especialidadName.toLowerCase()}...</option>
                       ${this.especialidades.map(esp => `
