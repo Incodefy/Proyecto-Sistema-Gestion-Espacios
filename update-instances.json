@@ -1,10 +1,11 @@
 {
   "Parameters": {
     "commands": [
+      "cd /home/appuser/hospital-app/incodefy && npm install --production 2>&1 | tail -5",
       "pkill -f 'node.*server.js' || true",
       "cd /home/appuser/hospital-app/incodefy && nohup node server.js > /tmp/app.log 2>&1 &",
       "sleep 5",
-      "ss -tlnp 2>/dev/null | grep :3000 && echo 'Server started successfully' || echo 'Server failed to start'"
+      "ss -tlnp 2>/dev/null | grep :3000 && echo 'Server started' || echo 'Failed'"
     ]
   }
 }
