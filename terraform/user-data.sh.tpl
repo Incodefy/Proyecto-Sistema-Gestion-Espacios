@@ -49,29 +49,21 @@ mkdir -p /var/log/hospital-app
 chown -R appuser:appuser /home/appuser/hospital-app
 chown -R appuser:appuser /var/log/hospital-app
 
-# Configurar variables de entorno
-echo "Configuring environment variables..."
-cat > /home/appuser/hospital-app/.env << EOF
-NODE_ENV=production
-PORT=3000
+# Configurar variables de entorno desde AWS SSM Parameter Store
+echo "Fetching environment variables from AWS SSM..."
+cd /home/appuser/hospital-app
+chmod +x scripts/fetch-env-from-aws.sh
+AWS_REGION=${region} ENVIRONMENT=production ./scripts/fetch-env-from-aws.sh
 
-# AWS Configuration
-AWS_REGION=${region}
-USER_POOL_ID=${user_pool_id}
-USER_POOL_CLIENT_ID=${user_pool_client}
+# Verificar que .env fue creado
+if [ ! -f /home/appuser/hospital-app/incodefy/.env ]; then
+  echo "ERROR: .env file was not created!"
+  exit 1
+fi
 
-# Session
-SESSION_SECRET=${session_secret}
-
-# DynamoDB Configuration (base de datos principal)
-DYNAMODB_REGION=${region}
-
-# API
-API_BASE_URL=${api_base_url}
-EOF
-
-chown appuser:appuser /home/appuser/hospital-app/.env
-chmod 600 /home/appuser/hospital-app/.env
+echo ".env file created successfully"
+chown appuser:appuser /home/appuser/hospital-app/incodefy/.env
+chmod 600 /home/appuser/hospital-app/incodefy/.env
 
 # Instalar Git
 echo "Installing Git..."
@@ -147,8 +139,20 @@ ufw --force enable
 
 # Signal al Auto Scaling que la instancia está lista
 echo "Starting application with PM2..."
-su - appuser -c "cd /home/appuser/hospital-app/incodefy && pm2 start server.js --name hospital-app"
-su - appuser -c "pm2 save"
+su - appuser -c "export HOME=/home/appuser && cd /home/appuser/hospital-app/incodefy && pm2 start server.js --name hospital-app"
+su - appuser -c "export HOME=/home/appuser && pm2 save"
+
+# Esperar a que el servidor inicie
+echo "Waiting for server to start..."
+sleep 10
+
+# Verificar que el servidor esté corriendo
+if netstat -tlnp | grep :3000 > /dev/null; then
+  echo "Server is running on port 3000"
+else
+  echo "WARNING: Server is not responding on port 3000"
+  su - appuser -c "export HOME=/home/appuser && pm2 logs --lines 50 --nostream"
+fi
 
 echo "Instance configuration completed successfully!"
 echo "=========================================="

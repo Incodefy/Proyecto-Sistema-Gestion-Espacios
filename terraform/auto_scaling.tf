@@ -153,7 +153,8 @@ resource "aws_autoscaling_group" "app" {
   ]
   target_group_arns         = [aws_lb_target_group.app.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 300
+  health_check_grace_period = 600  # 10 minutos para dar tiempo a npm install
+  default_instance_warmup   = 600  # 10 minutos de warmup
 
   min_size         = var.asg_min_size
   max_size         = var.asg_max_size
