@@ -29,6 +29,9 @@ AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter --name "/hospital/${ENV}/aws-secre
 API_BASE_URL=$(aws ssm get-parameter --name "/hospital/${ENV}/api-base-url" --query 'Parameter.Value' --output text --region ${REGION})
 PERMISSIONS_ENDPOINT=$(aws ssm get-parameter --name "/hospital/${ENV}/permissions-endpoint" --query 'Parameter.Value' --output text --region ${REGION})
 PERSONALIZATION_ENDPOINT=$(aws ssm get-parameter --name "/hospital/${ENV}/personalization-endpoint" --query 'Parameter.Value' --output text --region ${REGION})
+
+# CORS Configuration
+ALLOWED_ORIGINS=$(aws ssm get-parameter --name "/hospital/${ENV}/ALLOWED_ORIGINS" --query 'Parameter.Value' --output text --region ${REGION} 2>/dev/null || echo "http://localhost:3000")
 EOF
 
 echo "✅ Archivo .env creado exitosamente en incodefy/.env"
