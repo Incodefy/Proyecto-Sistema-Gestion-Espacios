@@ -61,6 +61,16 @@ router.get('/login', (req, res) => {
     return res.redirect(redirect || '/dashboard');
   }
 
+  // Debug: Verificar que i18n, csrf y csp estén disponibles
+  console.log('🔍 Debug login - res.locals:', {
+    hasT: typeof res.locals.t,
+    hasCsrfToken: typeof res.locals.csrfToken,
+    hasCspNonce: typeof res.locals.cspNonce,
+    hasI18n: typeof res.locals.i18n,
+    reqT: typeof req.t,
+    reqI18n: typeof req.i18n
+  });
+
   res.render('login', {
     error_msg: req.flash('error') || [],
     form_errors: {},
