@@ -137,8 +137,13 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-resource "aws_vpc_endpoint_route_table_association" "s3_private" {
-  route_table_id  = aws_route_table.private.id
+resource "aws_vpc_endpoint_route_table_association" "s3_private_az1" {
+  route_table_id  = aws_route_table.private_az1.id
+  vpc_endpoint_id = aws_vpc_endpoint.s3.id
+}
+
+resource "aws_vpc_endpoint_route_table_association" "s3_private_az2" {
+  route_table_id  = aws_route_table.private_az2.id
   vpc_endpoint_id = aws_vpc_endpoint.s3.id
 }
 
@@ -154,8 +159,13 @@ resource "aws_vpc_endpoint" "dynamodb" {
   }
 }
 
-resource "aws_vpc_endpoint_route_table_association" "dynamodb_private" {
-  route_table_id  = aws_route_table.private.id
+resource "aws_vpc_endpoint_route_table_association" "dynamodb_private_az1" {
+  route_table_id  = aws_route_table.private_az1.id
+  vpc_endpoint_id = aws_vpc_endpoint.dynamodb.id
+}
+
+resource "aws_vpc_endpoint_route_table_association" "dynamodb_private_az2" {
+  route_table_id  = aws_route_table.private_az2.id
   vpc_endpoint_id = aws_vpc_endpoint.dynamodb.id
 }
 

@@ -1,10 +1,10 @@
-output "lambda_function_name" {
-  value = aws_lambda_function.chaos_engine.function_name
-}
+# output "lambda_function_name" {
+#   value = aws_lambda_function.chaos_engine.function_name
+# }
 
-output "api_endpoint" {
-  value = aws_apigatewayv2_api.chaos_api.api_endpoint
-}
+# output "api_endpoint" {
+#   value = aws_apigatewayv2_api.chaos_api.api_endpoint
+# }
 
 # ========================================
 # NETWORK OUTPUTS
@@ -30,9 +30,12 @@ output "private_subnet_ids" {
   value       = [aws_subnet.private_az1.id, aws_subnet.private_az2.id]
 }
 
-output "nat_gateway_ip" {
-  description = "Elastic IP del NAT Gateway"
-  value       = aws_eip.nat.public_ip
+output "nat_gateway_ips" {
+  description = "Elastic IPs de los NAT Gateways"
+  value = {
+    az1 = aws_eip.nat_az1.public_ip
+    az2 = aws_eip.nat_az2.public_ip
+  }
 }
 
 # ========================================
