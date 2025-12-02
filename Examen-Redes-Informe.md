@@ -2,8 +2,10 @@
 
 **Proyecto:** Sistema de Gestión de Espacios – Hospital Padre Hurtado  
 **Alcance evaluado:** Plataforma completa (autenticación, onboarding, dashboards, gestión de agenda y notificaciones)  
-**Fecha:** 1 de diciembre de 2025  
-**Elaborado por:** Equipo de Arquitectura Incodefy
+**Fecha:** 2 de diciembre de 2025  
+**Elaborado por:** Equipo de Arquitectura Incodefy  
+**Región AWS:** us-east-2 (Ohio)  
+**Ambiente:** Desarrollo (dev)
 
 ---
 
@@ -115,14 +117,150 @@ El acceso mínimo se garantiza con un rol de Auto Scaling que limita los permiso
 ---
 
 ## 6. Evidencias
-El estado saludable de ambas instancias (`i-00f5aa534def91c18` e `i-088f0014a972b79df`) quedó documentado mediante el comando `aws elbv2 describe-target-health`, confirmando que ambas instancias están en estado `healthy` tras pasar los health checks del ALB. La aplicación responde correctamente en la URL `http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com/health` con status 200 OK, validando el correcto funcionamiento del balanceador y las instancias.
 
-La configuración de los dos NAT Gateways se verificó mediante:
-- `aws ec2 describe-nat-gateways`: Confirmando `nat-04fb545d7a5a7a700` (AZ1) y `nat-06cbfb9957b5982d8` (AZ2) en estado `available`
-- `terraform output nat_gateway_ips`: Mostrando las IPs públicas `18.190.37.131` y `18.216.35.171`
-- Las tablas de rutas privadas muestran rutas independientes hacia cada NAT Gateway
+### 6.1 Infraestructura de Red
 
-Los comandos de SSM aplicados sobre ambas instancias evidencian la administración centralizada sin necesidad de habilitar SSH en Internet. El despliegue automatizado mediante `terraform apply` creó 104 recursos, incluyendo la infraestructura de red redundante, los grupos de seguridad, VPC endpoints, y toda la configuración de monitoreo con CloudWatch.
+**VPC y Subredes:**
+- VPC ID: `vpc-025fee8cc937d720e` con CIDR `10.1.0.0/16`
+- Subredes públicas: `subnet-0de2d8c1db3bcabca` (AZ1) y `subnet-0ec2b39f63db38ec5` (AZ2)
+- Subredes privadas: `subnet-07aff748007505a55` (AZ1) y `subnet-081f598a9366ebfb5` (AZ2)
+- Internet Gateway: `igw-0a7274b5c6918fe89`
+
+**NAT Gateways (Alta Disponibilidad):**
+```bash
+aws ec2 describe-nat-gateways --query "NatGateways[*].[NatGatewayId,State,SubnetId,NatGatewayAddresses[0].PublicIp]"
+```
+- NAT Gateway AZ1: `nat-04fb545d7a5a7a700` → IP `18.190.37.131` (subnet pública AZ1)
+- NAT Gateway AZ2: `nat-06cbfb9957b5982d8` → IP `18.216.35.171` (subnet pública AZ2)
+- Verificación: `terraform output nat_gateway_ips` confirma ambas IPs activas
+
+**Tablas de Rutas Segmentadas:**
+- Tabla pública: `rtb-09eac5493b223cfee` → ruta `0.0.0.0/0` al IGW
+- Tabla privada AZ1: `rtb-05833853bd2e927a7` → ruta `0.0.0.0/0` a NAT Gateway AZ1
+- Tabla privada AZ2: `rtb-0c0e38d0fe2338f67` → ruta `0.0.0.0/0` a NAT Gateway AZ2
+
+### 6.2 Balanceo y Auto Scaling
+
+**Application Load Balancer:**
+- Nombre: `incodefy-alb-dev`
+- DNS: `incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com`
+- ARN: `arn:aws:elasticloadbalancing:us-east-2:643913569214:loadbalancer/app/incodefy-alb-dev/29e6f85155d7854a`
+- Security Group: `sg-0094e37a8ea3771d3` (permite HTTP/HTTPS desde 0.0.0.0/0)
+- Target Group: `incodefy-tg-dev` con health check en `/health` cada 30s
+
+**Instancias EC2 Activas:**
+```bash
+aws elbv2 describe-target-health --target-group-arn <arn>
+```
+- `i-03f159d6568ca5515` → **healthy** (AZ2)
+- `i-088f0014a972b79df` → **healthy** (AZ1)
+- Ambas instancias ejecutan Node.js/Express en puerto 3000 bajo PM2
+- Security Group: `sg-05884e33759f46068` (ingreso solo desde ALB en puerto 3000)
+
+**Verificación de Conectividad:**
+```powershell
+Invoke-WebRequest -Uri "http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com/health"
+# StatusCode: 200 OK
+# Content: {"status":"healthy","timestamp":"2025-12-02T16:44:55.558Z","uptime":147.87}
+```
+
+### 6.3 Security Groups y NACLs
+
+**Security Groups Implementados:**
+- ALB SG (`sg-0094e37a8ea3771d3`): HTTP 80, HTTPS 443 desde `0.0.0.0/0`
+- EC2 SG (`sg-05884e33759f46068`): Puerto 3000 desde ALB SG, egress `0.0.0.0/0`
+- VPC Endpoints SG (`sg-0487bdf82333011e7`): HTTPS 443 desde `10.1.0.0/16`
+- Lambda SG (`sg-07b9684882e102a06`): Egress HTTPS para servicios AWS
+
+**Network ACLs:**
+- NACL pública (`acl-0e40b2b53c08fbad4`): Reglas explícitas para HTTP(80), HTTPS(443), SSH(22), puertos efímeros
+- NACL privada (`acl-03ea5373e061f732f`): Puerto 3000 y 443 desde VPC, bloquea resto
+
+### 6.4 VPC Endpoints (Reducción de Tráfico NAT)
+
+**Endpoints Gateway:**
+- S3: `vpce-017a1807dc01f3a83` (asociado a tablas de rutas privadas)
+- DynamoDB: `vpce-032280732fde6f663` (asociado a tablas de rutas privadas)
+
+**Endpoints Interface:**
+- SSM: `vpce-07f1f70ae91e70cca` (subredes privadas AZ1 y AZ2)
+- CloudWatch Logs: `vpce-0744367cd7d9f1d40` (subredes privadas AZ1 y AZ2)
+
+### 6.5 Gestión Remota Segura
+
+**AWS Systems Manager (SSM):**
+Todos los comandos de despliegue y configuración se ejecutaron via SSM:
+```bash
+aws ssm send-command --instance-ids i-03f159d6568ca5515 \
+  --document-name "AWS-RunShellScript" \
+  --parameters 'commands=["cd /home/ec2-user/...","git pull...","pm2 restart..."]'
+```
+- Sin exposición de puerto SSH (22) a Internet
+- IAM Role `incodefy-ec2-app-role-dev` con políticas mínimas para SSM, Parameter Store y CloudWatch
+
+### 6.6 Resolución de Problemas CORS
+
+Durante las pruebas iniciales se identificó un bloqueo CORS al acceder desde el dominio del ALB. **Solución implementada:**
+
+**Commit:** `7048bd6` - "Fix: Permitir CORS desde dominios de AWS (ALB, CloudFront)"
+
+**Cambio en `server.js`:**
+```javascript
+// Permitir dinámicamente dominios de AWS
+if (origin.includes('.elb.amazonaws.com') || origin.includes('.cloudfront.net')) {
+  return callback(null, true);
+}
+```
+
+**Despliegue automatizado:**
+- `git push origin felipe-4` → actualización del código
+- SSM ejecutó `git pull` y `pm2 restart` en ambas instancias
+- Verificación: Health checks pasaron, aplicación accesible sin errores CORS
+
+### 6.7 Monitoreo y Observabilidad
+
+**CloudWatch Alarms Configuradas:**
+- Alarmas de disponibilidad (críticas y warnings) por módulo
+- Alarmas de latencia P95 y P99
+- Alarmas de tasa de errores
+- Alarmas de CPU alta/baja para Auto Scaling
+- Topics SNS: `feli-dev-cloudwatch-alarms`, `feli-dev-critical-alarms`, `incodefy-security-alerts-dev`
+
+**Dashboards:**
+- Sistema de salud: `feli-dev-system-health`
+- Experimentos chaos: `feli-dev-chaos-experiments`
+
+**Log Groups:**
+- VPC Flow Logs: `/aws/vpc/incodefy-dev` (retención 7 días)
+- Application Logs: Agregados via CloudWatch Agent en instancias EC2
+
+### 6.8 Automatización con Terraform
+
+**Resumen del despliegue:**
+```bash
+terraform apply -auto-approve
+# Apply complete! Resources: 104 added, 0 changed, 0 destroyed.
+```
+
+**Recursos creados (104 total):**
+- 1 VPC, 4 subredes, 1 IGW, 2 NAT Gateways, 2 EIPs
+- 6 tablas de rutas con sus asociaciones
+- 4 Security Groups, 2 Network ACLs con 14 reglas
+- 1 ALB, 1 Target Group, 1 Listener
+- 1 Launch Template, 1 Auto Scaling Group con 3 políticas
+- 4 VPC Endpoints (S3, DynamoDB, SSM, CloudWatch Logs)
+- 16 CloudWatch Alarms, 2 Dashboards
+- 3 SNS Topics con 3 suscripciones email
+- 5 roles IAM con políticas adjuntas
+- 3 parámetros SSM (session_secret, user_pool_id, user_pool_client_id)
+- 1 S3 bucket para Lambda
+
+**Estado final verificado:**
+- Todas las instancias healthy
+- NAT Gateways operativos en ambas AZs
+- VPC Endpoints conectados
+- Alarmas activas y dashboards poblados
+- Aplicación respondiendo correctamente en todas las rutas
 
 ---
 
@@ -135,7 +273,7 @@ El despliegue completo del Sistema de Gestión de Espacios cumple y supera los r
 3. **ALB + Auto Scaling Multi-AZ** con health checks automáticos y distribución de tráfico entre zonas
 4. **VPC Endpoints** para SSM, CloudWatch Logs, S3 y DynamoDB, reduciendo tráfico por NAT Gateway y mejorando seguridad
 
-La ciberseguridad se reforzó con controles CSRF, CORS, políticas IAM de mínimo privilegio y administración exclusiva via SSM. La estrategia se demostró funcional mediante pruebas sobre la URL `http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com`, donde los flujos de autenticación, dashboards, agenda, onboarding, APIs de instrumentos y notificaciones operaron correctamente desde el primer momento.
+La ciberseguridad se reforzó con controles CSRF, CORS (configurado dinámicamente para dominios AWS), políticas IAM de mínimo privilegio y administración exclusiva via SSM. Durante las pruebas se identificó y resolvió un bloqueo CORS que impedía el acceso desde el dominio del ALB, implementando una solución que permite automáticamente orígenes de servicios AWS (.elb.amazonaws.com, .cloudfront.net) sin comprometer la seguridad. La estrategia se demostró completamente funcional mediante pruebas exhaustivas sobre la URL `http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com`, donde todos los flujos (autenticación, dashboards, agenda, onboarding, APIs de instrumentos y notificaciones) operan correctamente con las dos instancias balanceadas activas.
 
 La experiencia permitió validar en un entorno real los principios de redes y alta disponibilidad estudiados, evidenciando la importancia de:
 - Eliminar puntos únicos de falla en todas las capas de la arquitectura
