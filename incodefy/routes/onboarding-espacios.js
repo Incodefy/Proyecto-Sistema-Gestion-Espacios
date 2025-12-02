@@ -210,6 +210,50 @@ router.post('/api/espacios/configuracion', async (req, res) => {
         const checkGrupoActivo = require('../middleware/checkGrupoActivo');
         checkGrupoActivo.invalidarCache(req);
         console.log(`[${TRACE_ID}] 🔄 Cache de grupo activo invalidado`);
+        
+        // REFRESCAR PERMISOS: Obtener los permisos del usuario en el nuevo grupo
+        try {
+          console.log(`[${TRACE_ID}] 🔐 Refrescando permisos del usuario...`);
+          const permissionsResponse = await req.apiClient.getMyPermissions();
+          
+          console.log(`[${TRACE_ID}] 📋 Respuesta de permisos:`, JSON.stringify(permissionsResponse, null, 2));
+          
+          if (permissionsResponse?.permissions_by_group) {
+            // La respuesta de Lambda ya viene con permissions_by_group expandidos
+            req.session.user.permissions_by_group = permissionsResponse.permissions_by_group;
+            req.session.user.has_admin_permissions = permissionsResponse.has_admin_permissions || false;
+            req.session.user.groups = permissionsResponse.groups || [];
+            
+            // Guardar la sesión de forma explícita
+            await new Promise((resolve, reject) => {
+              req.session.save((err) => {
+                if (err) {
+                  console.error(`[${TRACE_ID}] ❌ Error guardando sesión:`, err);
+                  reject(err);
+                } else {
+                  console.log(`[${TRACE_ID}] ✅ Sesión guardada exitosamente`);
+                  resolve();
+                }
+              });
+            });
+            
+            const permisosNuevoGrupo = permissionsResponse.permissions_by_group[response.grupo_id];
+            console.log(`[${TRACE_ID}] ✅ Permisos refrescados y sesión guardada:`, {
+              grupos: permissionsResponse.groups?.length || 0,
+              rol_en_nuevo_grupo: permisosNuevoGrupo?.role,
+              permisos_en_nuevo_grupo: permisosNuevoGrupo?.permissions?.length || 0,
+              primeros_5_permisos: permisosNuevoGrupo?.permissions?.slice(0, 5),
+              session_permissions_by_group_keys: Object.keys(req.session.user.permissions_by_group || {})
+            });
+          } else {
+            console.warn(`[${TRACE_ID}] ⚠️ Respuesta sin permissions_by_group`);
+          }
+        } catch (permErr) {
+          console.error(`[${TRACE_ID}] ❌ Error refrescando permisos:`, permErr.message);
+          console.error(`[${TRACE_ID}] Stack:`, permErr.stack);
+          // No es crítico, el usuario puede hacer logout/login
+        }
+        
       } catch (activateErr) {
         console.warn(`[${TRACE_ID}] ⚠️ No se pudo activar el grupo automáticamente`, activateErr.message);
         // No es crítico, continuamos

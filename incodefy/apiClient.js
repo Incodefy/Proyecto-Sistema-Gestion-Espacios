@@ -627,6 +627,30 @@ class ApiClient {
     return response.data;
   }
 
+  // ============ PERMISOS ============
+  /**
+   * Obtiene las membresías y permisos del usuario en todos sus grupos
+   * @returns {Promise<object>} - { groups: [], has_admin_permissions: bool, permissions_by_group: {} }
+   */
+  async getMyPermissions() {
+    const response = await this.client.get('/my-permissions');
+    return response.data;
+  }
+
+  /**
+   * Verifica si el usuario tiene un permiso específico en un grupo
+   * @param {string} grupo_id - ID del grupo
+   * @param {string} permission - Permiso a verificar (ej: 'agenda.read')
+   * @returns {Promise<object>} - { has_access: bool, message: string }
+   */
+  async checkPermission(grupo_id, permission) {
+    const response = await this.client.post('/check-permission', {
+      group_id: grupo_id,
+      permission
+    });
+    return response.data;
+  }
+
   // ============ MÉTODO GENÉRICO FETCH ============
   /**
    * Método genérico para hacer peticiones GET
