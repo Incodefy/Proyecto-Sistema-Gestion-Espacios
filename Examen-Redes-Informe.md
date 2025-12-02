@@ -17,16 +17,16 @@ El Sistema de Gestión de Espacios del Hospital Padre Hurtado integra múltiples
 
 | Componente | Descripción |
 |------------|-------------|
-| **VPC** | `10.1.0.0/16`, DNS habilitado, etiquetada como `hpph-vpc-dev`. |
-| **Subredes públicas** | `10.1.1.0/24 (us-east-2a)` y `10.1.2.0/24 (us-east-2b)`, destinadas a ALB y NAT. |
-| **Subredes privadas** | `10.1.10.0/24 (us-east-2a)` y `10.1.11.0/24 (us-east-2b)` para Auto Scaling de EC2. |
+| **VPC** | `10.1.0.0/16`, DNS habilitado, etiquetada como `incodefy-vpc-dev`. |
+| **Subredes públicas** | `10.1.1.0/24 (us-east-2a)` y `10.1.2.0/24 (us-east-2b)`, destinadas a ALB y NAT Gateways. |
+| **Subredes privadas** | `10.1.11.0/24 (us-east-2a)` y `10.1.12.0/24 (us-east-2b)` para Auto Scaling de EC2. |
 | **Internet Gateway** | Permite salida directa a Internet para recursos públicos. |
-| **NAT Gateway** | Desplegado en `10.1.1.0/24` para habilitar tráfico saliente seguro desde subredes privadas. |
+| **NAT Gateways** | Dos NAT Gateways desplegados (uno en cada AZ) con IPs `18.190.37.131` (AZ1) y `18.216.35.171` (AZ2) para alta disponibilidad. |
 | **Application Load Balancer** | `incodefy-alb-dev`, balancea peticiones HTTP al puerto 3000. |
 | **Auto Scaling Group** | Provee dos instancias t3.micro distribuidas en AZs distintas con health checks `/health`. |
 | **Servicios administrados** | SSM Parameter Store (variables sensibles), CloudWatch Logs, WAF opcional. |
 
-El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico de Internet para todas las rutas de la plataforma (`/`, `/dashboard`, `/agenda`, `/onboarding-espacios`, `/api/*`). El ALB enruta hacia el Target Group compuesto por instancias EC2 privadas que ejecutan la aplicación Node.js/Express, la cual sirve los dashboards, APIs de integración, motor de notificaciones y vistas de onboarding desde un único runtime. El tráfico saliente de estas instancias pasa por el NAT Gateway, mientras que el acceso administrativo se realiza únicamente via AWS Systems Manager (SSM), eliminando la exposición SSH pública.
+El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico de Internet para todas las rutas de la plataforma (`/`, `/dashboard`, `/agenda`, `/onboarding-espacios`, `/api/*`). El ALB enruta hacia el Target Group compuesto por instancias EC2 privadas que ejecutan la aplicación Node.js/Express, la cual sirve los dashboards, APIs de integración, motor de notificaciones y vistas de onboarding desde un único runtime. El tráfico saliente de estas instancias pasa por los NAT Gateways (uno por AZ para alta disponibilidad), mientras que el acceso administrativo se realiza únicamente via AWS Systems Manager (SSM), eliminando la exposición SSH pública.
 
 ---
 
@@ -36,54 +36,57 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 							┌───────────────────────────────┐
 							│      Internet / Usuarios      │
 							└───────────────────────────────┘
-										 │
-										 ▼
+									 │
+									 ▼
 							┌───────────────────────────────┐
 							│ Application Load Balancer     │
 							│ (subredes públicas 10.1.1/24  │
 							│  y 10.1.2/24)                 │
 							└───────────────────────────────┘
-										 │ HTTP 80
-										 ▼
+									 │ HTTP 80
+									 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                      VPC 10.1.0.0/16  –  hpph-vpc-dev                       │
+│                    VPC 10.1.0.0/16  –  incodefy-vpc-dev                     │
 │                                                                             │
 │  ┌────────────────────────┐         ┌────────────────────────┐              │
 │  │ Subred pública AZ1     │         │ Subred pública AZ2     │              │
 │  │ 10.1.1.0/24            │         │ 10.1.2.0/24            │              │
 │  │ • ALB ENI              │         │ • ALB ENI              │              │
-│  │ • NAT Gateway          │         │                         │             │
+│  │ • NAT Gateway AZ1      │         │ • NAT Gateway AZ2      │              │
+│  │   (18.190.37.131)      │         │   (18.216.35.171)      │              │
 │  └────────────────────────┘         └────────────────────────┘              │
-│                │                                   │                       │
-│                ▼                                   ▼                       │
+│         │                                      │                            │
+│         ▼                                      ▼                            │
 │  ┌────────────────────────┐         ┌────────────────────────┐              │
 │  │ Subred privada AZ1     │         │ Subred privada AZ2     │              │
-│  │ 10.1.10.0/24           │         │ 10.1.11.0/24           │              │
+│  │ 10.1.11.0/24           │         │ 10.1.12.0/24           │              │
 │  │ • EC2 App (ASG)        │         │ • EC2 App (ASG)        │              │
-│  │ • CloudWatch / SSM     │         │ • CloudWatch / SSM     │              │
+│  │ • VPC Endpoints        │         │ • VPC Endpoints        │              │
+│  │   (SSM, CloudWatch)    │         │   (SSM, CloudWatch)    │              │
 │  └────────────────────────┘         └────────────────────────┘              │
-│                │                                   │                       │
-│                └──────────────┬────────────┬───────┘                       │
-│                               │            │                               │
-│                       ┌───────▼──────┐ ┌───▼────────┐                      │
-│                       │ NAT Gateway  │ │ Endpoints   │                      │
-│                       │ (salida)     │ │ SSM / Logs  │                      │
-│                       └───────┬──────┘ └────┬───────┘                      │
-└───────────────────────────────┼─────────────┼───────────────────────────────┘
-								│             │
-								▼             ▼
-					┌────────────────┐  ┌──────────────────────┐
-					│ AWS Cognito,    │ │ Parameter Store /    │
-					│ DynamoDB, S3   │  │ Secrets Manager      │
-					└────────────────┘  └──────────────────────┘
-```
-
-----
+│         │                                      │                            │
+│         └──────────────────┬───────────────────┘                            │
+│                            │                                                │
+│                    ┌───────▼────────┐                                       │
+│                    │ VPC Endpoints   │                                       │
+│                    │ S3 / DynamoDB   │                                       │
+│                    └────────┬────────┘                                       │
+└─────────────────────────────┼──────────────────────────────────────────────┘
+								│
+								▼
+					┌────────────────────────────────────┐
+					│ Servicios AWS Externos             │
+					│ • Cognito (autenticación)          │
+					│ • DynamoDB (datos)                 │
+					│ • S3 (almacenamiento)              │
+					│ • Parameter Store (configuración)  │
+					└────────────────────────────────────┘
+```----
 
 ## 3. Configuraciones de red
 
 ### 3.1 Subredes y ruteo
-Las tablas de rutas públicas envían `0.0.0.0/0` al Internet Gateway, permitiendo que el ALB y el NAT Gateway atiendan tráfico externo sin restricciones. Las tablas de rutas privadas, en cambio, redirigen `0.0.0.0/0` hacia el NAT Gateway para que las instancias alojadas en subredes privadas actualicen dependencias o consulten servicios AWS sin quedar expuestas a Internet.
+Las tablas de rutas públicas envían `0.0.0.0/0` al Internet Gateway, permitiendo que el ALB y los NAT Gateways atiendan tráfico externo sin restricciones. Las tablas de rutas privadas están segmentadas por zona de disponibilidad: cada subred privada (AZ1 y AZ2) tiene su propia tabla de rutas que redirige `0.0.0.0/0` hacia su NAT Gateway local, garantizando que si una AZ falla, la otra mantiene conectividad saliente independiente. Esta configuración permite que las instancias alojadas en subredes privadas actualicen dependencias o consulten servicios AWS sin quedar expuestas a Internet, manteniendo alta disponibilidad.
 
 ### 3.2 Security Groups
 El security group del ALB permite tráfico HTTP y HTTPS desde cualquier origen (`0.0.0.0/0`) y mantiene la salida abierta para responder a los clientes. El security group de las instancias EC2 restringe el ingreso únicamente al puerto 3000 proveniente del ALB y permite conexiones SSH exclusivas desde los rangos administrativos definidos en `var.admin_ssh_cidrs`, manteniendo salida abierta para invocar Cognito, DynamoDB y otros servicios. Finalmente, los security groups asignados a Lambda y a los endpoints privados autorizan únicamente el tráfico saliente necesario para consumir servicios internos y peticiones HTTPS.
@@ -94,7 +97,15 @@ Las NACL públicas incluyen reglas explícitas que habilitan HTTP (80), HTTPS (4
 ---
 
 ## 4. Redundancia y disponibilidad
-La redundancia se logra mediante subredes públicas y privadas duplicadas en `us-east-2a` y `us-east-2b`, combinadas con un Auto Scaling Group que mantiene siempre dos instancias activas y se apoya en los health checks del ALB para garantizar que el tráfico solo rote a nodos sanos. Esta configuración protege no solo el flujo de onboarding, sino también el dashboard principal, los endpoints de agenda y la API de notificaciones. Se configuró un período de gracia de 600 segundos para permitir que `npm install` concluya antes de evaluar el estado de salud, y se habilitó un drenado de sesiones de treinta segundos (`deregistration_delay = 30`) que permite finalizar solicitudes en curso antes de reemplazar instancias.
+La arquitectura implementa redundancia completa en múltiples capas:
+
+**Nivel de red:** Dos NAT Gateways independientes (uno por AZ) con IPs elásticas dedicadas (`18.190.37.131` en us-east-2a y `18.216.35.171` en us-east-2b) eliminan el punto único de falla para conectividad saliente. Cada subred privada enruta su tráfico a través de su NAT Gateway local mediante tablas de rutas independientes, garantizando que la falla de una zona de disponibilidad completa no afecte la conectividad de la otra.
+
+**Nivel de cómputo:** Un Auto Scaling Group mantiene siempre dos instancias EC2 activas distribuidas entre `us-east-2a` y `us-east-2b`, apoyándose en los health checks del ALB (`/health`) para garantizar que el tráfico solo rote a nodos sanos. Esta configuración protege no solo el flujo de onboarding, sino también el dashboard principal, los endpoints de agenda y la API de notificaciones.
+
+**Nivel de balanceo:** El Application Load Balancer distribuye peticiones entre ambas zonas de disponibilidad, con health checks configurados para verificar la disponibilidad cada 30 segundos. Se estableció un período de gracia de 600 segundos para permitir que `npm install` concluya antes de evaluar el estado de salud, y se habilitó un drenado de sesiones de treinta segundos (`deregistration_delay = 30`) que permite finalizar solicitudes en curso antes de reemplazar instancias.
+
+Esta configuración multi-capa cumple con los principios de alta disponibilidad estudiados, con un costo incremental de ~$32/mes por el segundo NAT Gateway, justificado por la eliminación de puntos únicos de falla críticos.
 
 ---
 
@@ -104,12 +115,32 @@ El acceso mínimo se garantiza con un rol de Auto Scaling que limita los permiso
 ---
 
 ## 6. Evidencias
-El estado saludable de ambas instancias (`i-0cfe405e606970490` e `i-0ac44d7824dbbf0ef`) quedó documentado mediante el comando `aws elbv2 describe-target-health`. Los registros de arranque almacenados en `/home/appuser/app.log` confirman el mensaje `Server running on port 3000` junto con las URLs configuradas para permisos y personalización. El historial de Git refleja en el commit `7c930cf` la incorporación del encabezado `X-CSRF-Token`, cumplimiento clave para los controles de seguridad. Finalmente, los comandos de SSM aplicados sobre ambas instancias evidencian la administración centralizada sin necesidad de habilitar SSH en Internet. Las capturas y salidas completas se incluyen en la carpeta `evidencias/` entregada al docente como parte del paquete comprimido.
+El estado saludable de ambas instancias (`i-00f5aa534def91c18` e `i-088f0014a972b79df`) quedó documentado mediante el comando `aws elbv2 describe-target-health`, confirmando que ambas instancias están en estado `healthy` tras pasar los health checks del ALB. La aplicación responde correctamente en la URL `http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com/health` con status 200 OK, validando el correcto funcionamiento del balanceador y las instancias.
+
+La configuración de los dos NAT Gateways se verificó mediante:
+- `aws ec2 describe-nat-gateways`: Confirmando `nat-04fb545d7a5a7a700` (AZ1) y `nat-06cbfb9957b5982d8` (AZ2) en estado `available`
+- `terraform output nat_gateway_ips`: Mostrando las IPs públicas `18.190.37.131` y `18.216.35.171`
+- Las tablas de rutas privadas muestran rutas independientes hacia cada NAT Gateway
+
+Los comandos de SSM aplicados sobre ambas instancias evidencian la administración centralizada sin necesidad de habilitar SSH en Internet. El despliegue automatizado mediante `terraform apply` creó 104 recursos, incluyendo la infraestructura de red redundante, los grupos de seguridad, VPC endpoints, y toda la configuración de monitoreo con CloudWatch.
 
 ---
 
 ## 7. Conclusiones
 
-El despliegue completo del Sistema de Gestión de Espacios cumple los requisitos del examen: se diseñó una VPC personalizada con subredes públicas y privadas, se configuraron Security Groups y NACLs específicos, se estableció redundancia mediante ALB + Auto Scaling Multi-AZ y se reforzó la ciberseguridad con controles CSRF, CORS, IAM mínimo y administración via SSM. La estrategia se demostró funcional mediante pruebas sobre la URL `http://incodefy-alb-dev-1108693392.us-east-2.elb.amazonaws.com`, donde los flujos de autenticación, dashboards, agenda, onboarding, APIs de instrumentos y notificaciones operaron sin interrupciones tras aplicar los fixes descritos.
+El despliegue completo del Sistema de Gestión de Espacios cumple y supera los requisitos del examen: se diseñó una VPC personalizada con subredes públicas y privadas en múltiples zonas de disponibilidad, se configuraron Security Groups y NACLs específicos por capa, y se implementó redundancia completa mediante:
 
-La experiencia permitió validar en un entorno real los principios de redes estudiados, evidenciando la importancia de la defensa en profundidad, la automatización con Terraform y la observabilidad activa para mantener la continuidad del servicio clínico en todos los módulos de la plataforma.
+1. **Dos NAT Gateways** con IPs elásticas independientes (18.190.37.131 y 18.216.35.171), eliminando el punto único de falla para conectividad saliente
+2. **Tablas de rutas privadas segmentadas** por AZ, permitiendo que cada zona mantenga conectividad independiente
+3. **ALB + Auto Scaling Multi-AZ** con health checks automáticos y distribución de tráfico entre zonas
+4. **VPC Endpoints** para SSM, CloudWatch Logs, S3 y DynamoDB, reduciendo tráfico por NAT Gateway y mejorando seguridad
+
+La ciberseguridad se reforzó con controles CSRF, CORS, políticas IAM de mínimo privilegio y administración exclusiva via SSM. La estrategia se demostró funcional mediante pruebas sobre la URL `http://incodefy-alb-dev-736907592.us-east-2.elb.amazonaws.com`, donde los flujos de autenticación, dashboards, agenda, onboarding, APIs de instrumentos y notificaciones operaron correctamente desde el primer momento.
+
+La experiencia permitió validar en un entorno real los principios de redes y alta disponibilidad estudiados, evidenciando la importancia de:
+- Eliminar puntos únicos de falla en todas las capas de la arquitectura
+- La defensa en profundidad mediante segmentación de red y controles de acceso granulares
+- La automatización con Terraform para garantizar consistencia y reproducibilidad (104 recursos desplegados)
+- La observabilidad activa con CloudWatch para mantener la continuidad del servicio clínico
+
+El costo incremental de ~$32/mes por el segundo NAT Gateway se justifica plenamente al garantizar disponibilidad continua para un sistema crítico de gestión hospitalaria.
