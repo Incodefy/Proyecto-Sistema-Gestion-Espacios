@@ -29,22 +29,11 @@
     .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
   </style>
   
-  <!-- CSS crítico con media print para cargar async (sin onload inline) con cache-busting -->
-  <link rel="stylesheet" href="/css/signup.css?v=<%= Date.now() %>" media="print" id="signup-css">
-  <noscript><link rel="stylesheet" href="/css/signup.css?v=<%= Date.now() %>"></noscript>
+  <!-- CSS principal - carga directa -->
+  <link rel="stylesheet" href="/css/signup.css?v=<%= Date.now() %>">
   
-  <!-- Font Awesome con defer (sin onload inline) con cache-busting -->
-  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" media="print" id="fontawesome-css">
-  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>"></noscript>
-  
-  <!-- Script para cambiar media de print a all (CSP-compliant) -->
-  <script nonce="<%= cspNonce %>">
-    // Cambiar media de print a all para cargar CSS de forma async
-    var signupCss = document.getElementById('signup-css');
-    var fontawesomeCss = document.getElementById('fontawesome-css');
-    if (signupCss) signupCss.media = 'all';
-    if (fontawesomeCss) fontawesomeCss.media = 'all';
-  </script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>">
   
   <!-- Utility classes para animaciones CSP-compliant -->
   <style nonce="<%= cspNonce %>">
