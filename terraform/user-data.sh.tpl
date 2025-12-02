@@ -49,52 +49,11 @@ mkdir -p /var/log/hospital-app
 chown -R appuser:appuser /home/appuser/hospital-app
 chown -R appuser:appuser /var/log/hospital-app
 
-# Instalar Git PRIMERO
-echo "Installing Git..."
-apt-get install -y git
-
-# Clonar repositorio ANTES de configurar variables
-echo "Cloning application repository..."
-cd /home/appuser/hospital-app
-git clone -b felipe-4 https://github.com/Incodefy/Proyecto-Sistema-Gestion-Espacios.git .
-
-# Cambiar permisos después de clonar
-chown -R appuser:appuser /home/appuser/hospital-app
-
 # Configurar variables de entorno desde AWS SSM Parameter Store
 echo "Fetching environment variables from AWS SSM..."
-cd /home/appuser/hospital-app/incodefy
-
-# Obtener parámetros de SSM
-SESSION_SECRET=$(aws ssm get-parameter --name "/incodefy/${stage}/session_secret" --with-decryption --query 'Parameter.Value' --output text --region ${region} 2>/dev/null || echo "default-session-secret-$(openssl rand -hex 32)")
-USER_POOL_ID=$(aws ssm get-parameter --name "/incodefy/${stage}/user_pool_id" --query 'Parameter.Value' --output text --region ${region} 2>/dev/null || echo "")
-USER_POOL_CLIENT_ID=$(aws ssm get-parameter --name "/incodefy/${stage}/user_pool_client_id" --query 'Parameter.Value' --output text --region ${region} 2>/dev/null || echo "")
-API_BASE_URL=$(aws ssm get-parameter --name "/incodefy/${stage}/api_base_url" --query 'Parameter.Value' --output text --region ${region} 2>/dev/null || echo "https://3kszik08dk.execute-api.${region}.amazonaws.com")
-
-# Crear archivo .env con valores completos
-cat > .env << EOF
-NODE_ENV=production
-PORT=3000
-SESSION_SECRET=$SESSION_SECRET
-
-AWS_REGION=${region}
-USER_POOL_ID=$USER_POOL_ID
-USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID
-
-# API Base URL (Lambda function)
-API_BASE_URL=$API_BASE_URL
-
-# API Endpoints
-PERMISSIONS_ENDPOINT=/my-permissions
-PERSONALIZATION_ENDPOINT=/personalization
-
-# CORS Configuration
-ALLOWED_ORIGINS=http://${alb_dns_name},https://${alb_dns_name}
-EOF
-
-echo ".env file created successfully"
-chown appuser:appuser .env
-chmod 600 .env
+cd /home/appuser/hospital-app
+chmod +x scripts/fetch-env-from-aws.sh
+AWS_REGION=${region} ENVIRONMENT=production ./scripts/fetch-env-from-aws.sh
 
 # Verificar que .env fue creado
 if [ ! -f /home/appuser/hospital-app/incodefy/.env ]; then
@@ -102,7 +61,23 @@ if [ ! -f /home/appuser/hospital-app/incodefy/.env ]; then
   exit 1
 fi
 
-# Cambiar permisos finales
+echo ".env file created successfully"
+chown appuser:appuser /home/appuser/hospital-app/incodefy/.env
+chmod 600 /home/appuser/hospital-app/incodefy/.env
+
+# Instalar Git
+echo "Installing Git..."
+apt-get install -y git
+
+# Clonar repositorio
+echo "Cloning application repository..."
+rm -rf /home/appuser/hospital-app/*
+git clone https://github.com/Incodefy/Proyecto-Sistema-Gestion-Espacios.git /home/appuser/hospital-app/repo
+mv /home/appuser/hospital-app/repo/* /home/appuser/hospital-app/
+mv /home/appuser/hospital-app/repo/.* /home/appuser/hospital-app/ 2>/dev/null || true
+rm -rf /home/appuser/hospital-app/repo
+
+# Cambiar permisos
 chown -R appuser:appuser /home/appuser/hospital-app
 
 # Instalar dependencias de la aplicación

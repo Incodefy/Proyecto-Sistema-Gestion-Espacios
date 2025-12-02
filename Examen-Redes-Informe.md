@@ -21,7 +21,7 @@ El Sistema de Gestión de Espacios del Hospital Padre Hurtado integra múltiples
 | **Subredes públicas** | `10.1.1.0/24 (us-east-2a)` y `10.1.2.0/24 (us-east-2b)`, destinadas a ALB y NAT. |
 | **Subredes privadas** | `10.1.10.0/24 (us-east-2a)` y `10.1.11.0/24 (us-east-2b)` para Auto Scaling de EC2. |
 | **Internet Gateway** | Permite salida directa a Internet para recursos públicos. |
-| **NAT Gateways** | Dos NAT Gateways redundantes: uno en `10.1.1.0/24` (AZ1) y otro en `10.1.2.0/24` (AZ2) para alta disponibilidad del tráfico saliente. |
+| **NAT Gateway** | Desplegado en `10.1.1.0/24` para habilitar tráfico saliente seguro desde subredes privadas. |
 | **Application Load Balancer** | `incodefy-alb-dev`, balancea peticiones HTTP al puerto 3000. |
 | **Auto Scaling Group** | Provee dos instancias t3.micro distribuidas en AZs distintas con health checks `/health`. |
 | **Servicios administrados** | SSM Parameter Store (variables sensibles), CloudWatch Logs, WAF opcional. |
@@ -52,31 +52,30 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 │  │ Subred pública AZ1     │         │ Subred pública AZ2     │              │
 │  │ 10.1.1.0/24            │         │ 10.1.2.0/24            │              │
 │  │ • ALB ENI              │         │ • ALB ENI              │              │
-│  │ • NAT Gateway AZ1      │         │ • NAT Gateway AZ2      │              │
-│  └──────────┬─────────────┘         └──────────┬─────────────┘              │
-│             │                                  │                           │
-│             ▼                                  ▼                           │
+│  │ • NAT Gateway          │         │                         │             │
+│  └────────────────────────┘         └────────────────────────┘              │
+│                │                                   │                       │
+│                ▼                                   ▼                       │
 │  ┌────────────────────────┐         ┌────────────────────────┐              │
 │  │ Subred privada AZ1     │         │ Subred privada AZ2     │              │
 │  │ 10.1.10.0/24           │         │ 10.1.11.0/24           │              │
 │  │ • EC2 App (ASG)        │         │ • EC2 App (ASG)        │              │
 │  │ • CloudWatch / SSM     │         │ • CloudWatch / SSM     │              │
-│  │ • RT → NAT AZ1         │         │ • RT → NAT AZ2         │              │
 │  └────────────────────────┘         └────────────────────────┘              │
-│             │                                  │                           │
-│             └────────────┬──────────┬──────────┘                           │
-│                          │          │                                       │
-│                  ┌───────▼──────┐ ┌─▼────────┐                              │
-│                  │ VPC Endpoints │ │ Internet  │                             │
-│                  │ SSM / Logs    │ │ Gateway   │                             │
-│                  └───────┬──────┘ └─┬────────┘                              │
-└──────────────────────────┼──────────┼───────────────────────────────────────┘
-							│          │
-							▼          ▼
-				┌────────────────┐  ┌──────────────────────┐
-				│ AWS Cognito,    │ │ Parameter Store /    │
-				│ DynamoDB, S3   │  │ Secrets Manager      │
-				└────────────────┘  └──────────────────────┘
+│                │                                   │                       │
+│                └──────────────┬────────────┬───────┘                       │
+│                               │            │                               │
+│                       ┌───────▼──────┐ ┌───▼────────┐                      │
+│                       │ NAT Gateway  │ │ Endpoints   │                      │
+│                       │ (salida)     │ │ SSM / Logs  │                      │
+│                       └───────┬──────┘ └────┬───────┘                      │
+└───────────────────────────────┼─────────────┼───────────────────────────────┘
+								│             │
+								▼             ▼
+					┌────────────────┐  ┌──────────────────────┐
+					│ AWS Cognito,    │ │ Parameter Store /    │
+					│ DynamoDB, S3   │  │ Secrets Manager      │
+					└────────────────┘  └──────────────────────┘
 ```
 
 ----
@@ -84,7 +83,7 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 ## 3. Configuraciones de red
 
 ### 3.1 Subredes y ruteo
-Las tablas de rutas públicas envían `0.0.0.0/0` al Internet Gateway, permitiendo que el ALB y los NAT Gateways atiendan tráfico externo sin restricciones. Las tablas de rutas privadas están segregadas por zona de disponibilidad: la subred privada en AZ1 (10.1.10.0/24) redirige su tráfico saliente hacia el NAT Gateway desplegado en la subred pública de la misma AZ1, mientras que la subred privada en AZ2 (10.1.11.0/24) utiliza el NAT Gateway ubicado en la subred pública AZ2. Esta configuración elimina el punto único de falla para el tráfico saliente a Internet y garantiza que la caída de una zona de disponibilidad no afecte la conectividad de la otra.
+Las tablas de rutas públicas envían `0.0.0.0/0` al Internet Gateway, permitiendo que el ALB y el NAT Gateway atiendan tráfico externo sin restricciones. Las tablas de rutas privadas, en cambio, redirigen `0.0.0.0/0` hacia el NAT Gateway para que las instancias alojadas en subredes privadas actualicen dependencias o consulten servicios AWS sin quedar expuestas a Internet.
 
 ### 3.2 Security Groups
 El security group del ALB permite tráfico HTTP y HTTPS desde cualquier origen (`0.0.0.0/0`) y mantiene la salida abierta para responder a los clientes. El security group de las instancias EC2 restringe el ingreso únicamente al puerto 3000 proveniente del ALB y permite conexiones SSH exclusivas desde los rangos administrativos definidos en `var.admin_ssh_cidrs`, manteniendo salida abierta para invocar Cognito, DynamoDB y otros servicios. Finalmente, los security groups asignados a Lambda y a los endpoints privados autorizan únicamente el tráfico saliente necesario para consumir servicios internos y peticiones HTTPS.
@@ -95,7 +94,7 @@ Las NACL públicas incluyen reglas explícitas que habilitan HTTP (80), HTTPS (4
 ---
 
 ## 4. Redundancia y disponibilidad
-La redundancia se logra mediante subredes públicas y privadas duplicadas en `us-east-2a` y `us-east-2b`, combinadas con un Auto Scaling Group que mantiene siempre dos instancias activas y se apoya en los health checks del ALB para garantizar que el tráfico solo rote a nodos sanos. Además, se aprovisionaron dos NAT Gateways independientes —uno por zona de disponibilidad— con tablas de rutas segregadas que garantizan que la caída de un NAT no afecte la conectividad saliente de la otra zona. Esta configuración protege no solo el flujo de onboarding, sino también el dashboard principal, los endpoints de agenda y la API de notificaciones. Se configuró un período de gracia de 600 segundos para permitir que `npm install` concluya antes de evaluar el estado de salud, y se habilitó un drenado de sesiones de treinta segundos (`deregistration_delay = 30`) que permite finalizar solicitudes en curso antes de reemplazar instancias.
+La redundancia se logra mediante subredes públicas y privadas duplicadas en `us-east-2a` y `us-east-2b`, combinadas con un Auto Scaling Group que mantiene siempre dos instancias activas y se apoya en los health checks del ALB para garantizar que el tráfico solo rote a nodos sanos. Esta configuración protege no solo el flujo de onboarding, sino también el dashboard principal, los endpoints de agenda y la API de notificaciones. Se configuró un período de gracia de 600 segundos para permitir que `npm install` concluya antes de evaluar el estado de salud, y se habilitó un drenado de sesiones de treinta segundos (`deregistration_delay = 30`) que permite finalizar solicitudes en curso antes de reemplazar instancias.
 
 ---
 

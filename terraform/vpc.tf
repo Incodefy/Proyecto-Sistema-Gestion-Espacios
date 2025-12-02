@@ -30,60 +30,32 @@ resource "aws_internet_gateway" "main" {
 }
 
 # ========================================
-# ELASTIC IPs PARA NAT GATEWAYS
+# ELASTIC IP PARA NAT GATEWAY
 # ========================================
 
-resource "aws_eip" "nat_az1" {
+resource "aws_eip" "nat" {
   domain     = "vpc"
   depends_on = [aws_internet_gateway.main]
 
   tags = {
-    Name        = "${var.project_name}-nat-eip-az1-${var.stage}"
+    Name        = "${var.project_name}-nat-eip-${var.stage}"
     Project     = var.project_name
     Environment = var.stage
-    AZ          = var.availability_zones[0]
-  }
-}
-
-resource "aws_eip" "nat_az2" {
-  domain     = "vpc"
-  depends_on = [aws_internet_gateway.main]
-
-  tags = {
-    Name        = "${var.project_name}-nat-eip-az2-${var.stage}"
-    Project     = var.project_name
-    Environment = var.stage
-    AZ          = var.availability_zones[1]
   }
 }
 
 # ========================================
-# NAT GATEWAYS (uno por AZ para redundancia)
+# NAT GATEWAY (para subred privada)
 # ========================================
 
-resource "aws_nat_gateway" "az1" {
-  allocation_id = aws_eip.nat_az1.id
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public_az1.id
 
   tags = {
-    Name        = "${var.project_name}-nat-az1-${var.stage}"
+    Name        = "${var.project_name}-nat-${var.stage}"
     Project     = var.project_name
     Environment = var.stage
-    AZ          = var.availability_zones[0]
-  }
-
-  depends_on = [aws_internet_gateway.main]
-}
-
-resource "aws_nat_gateway" "az2" {
-  allocation_id = aws_eip.nat_az2.id
-  subnet_id     = aws_subnet.public_az2.id
-
-  tags = {
-    Name        = "${var.project_name}-nat-az2-${var.stage}"
-    Project     = var.project_name
-    Environment = var.stage
-    AZ          = var.availability_zones[1]
   }
 
   depends_on = [aws_internet_gateway.main]
@@ -186,51 +158,33 @@ resource "aws_route_table_association" "public_az2" {
 }
 
 # ========================================
-# TABLAS DE RUTAS - SUBREDES PRIVADAS (una por AZ)
+# TABLAS DE RUTAS - SUBRED PRIVADA
 # ========================================
 
-resource "aws_route_table" "private_az1" {
+resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.az1.id
+    nat_gateway_id = aws_nat_gateway.main.id
   }
 
   tags = {
-    Name        = "${var.project_name}-private-rt-az1-${var.stage}"
+    Name        = "${var.project_name}-private-rt-${var.stage}"
     Type        = "Private"
     Project     = var.project_name
     Environment = var.stage
-    AZ          = var.availability_zones[0]
-  }
-}
-
-resource "aws_route_table" "private_az2" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.az2.id
-  }
-
-  tags = {
-    Name        = "${var.project_name}-private-rt-az2-${var.stage}"
-    Type        = "Private"
-    Project     = var.project_name
-    Environment = var.stage
-    AZ          = var.availability_zones[1]
   }
 }
 
 resource "aws_route_table_association" "private_az1" {
   subnet_id      = aws_subnet.private_az1.id
-  route_table_id = aws_route_table.private_az1.id
+  route_table_id = aws_route_table.private.id
 }
 
 resource "aws_route_table_association" "private_az2" {
   subnet_id      = aws_subnet.private_az2.id
-  route_table_id = aws_route_table.private_az2.id
+  route_table_id = aws_route_table.private.id
 }
 
 # ========================================

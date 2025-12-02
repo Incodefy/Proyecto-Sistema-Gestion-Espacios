@@ -114,7 +114,6 @@ resource "aws_launch_template" "app" {
     user_pool_id     = var.user_pool_id
     user_pool_client = var.user_pool_client_id
     api_base_url     = var.api_base_url
-    alb_dns_name     = aws_lb.main.dns_name
   }))
 
   monitoring {
