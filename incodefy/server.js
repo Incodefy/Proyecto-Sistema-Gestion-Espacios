@@ -29,17 +29,25 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Permitir requests sin origin (ej: Postman, curl)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'La política CORS no permite el acceso desde este origen.';
-      return callback(new Error(msg), false);
+    // Permitir orígenes configurados explícitamente
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
     }
-    return callback(null, true);
+    
+    // Permitir cualquier subdominio de amazonaws.com (ALB, CloudFront, etc)
+    if (origin.includes('.elb.amazonaws.com') || origin.includes('.cloudfront.net')) {
+      return callback(null, true);
+    }
+    
+    const msg = 'La política CORS no permite el acceso desde este origen.';
+    return callback(new Error(msg), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
 }));
 
 // ✅ Compresión gzip para optimizar respuestas (dashboard, APIs, etc)
