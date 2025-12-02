@@ -83,7 +83,9 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 					│ • S3 (almacenamiento)              │
 					│ • Parameter Store (configuración)  │
 					└────────────────────────────────────┘
-```----
+```
+
+---
 
 ## 3. Configuraciones de red
 
