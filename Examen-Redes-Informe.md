@@ -42,8 +42,8 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 									 ▼
 							┌───────────────────────────────┐
 							│ Application Load Balancer     │
-							│ (subredes públicas 10.1.1/24  │
-							│  y 10.1.2/24)                 │
+							│ (subredes públicas            │
+							│  10.1.1.0/24 y 10.1.2.0/24)   │
 							└───────────────────────────────┘
 									 │ HTTP 80
 									 ▼
@@ -70,9 +70,9 @@ El diagrama lógico ubica el ALB en las subredes públicas, recibiendo tráfico 
 │         └──────────────────┬───────────────────┘                            │
 │                            │                                                │
 │                    ┌───────▼────────┐                                       │
-│                    │ VPC Endpoints   │                                       │
-│                    │ S3 / DynamoDB   │                                       │
-│                    └────────┬────────┘                                       │
+│                    │ VPC Endpoints   │                                      │
+│                    │ S3 / DynamoDB   │                                      │
+│                    └────────┬────────┘                                      │
 └─────────────────────────────┼──────────────────────────────────────────────┘
 								│
 								▼
