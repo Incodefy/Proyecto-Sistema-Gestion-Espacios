@@ -1,4 +1,4 @@
-const { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { CognitoIdentityProviderClient, ListUsersCommand } = require("@aws-sdk/client-cognito-identity-provider");
 const { SESv2Client, SendEmailCommand } = require("@aws-sdk/client-sesv2");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
@@ -7,123 +7,237 @@ const ses = new SESv2Client({});
 const crypto = require("crypto");
 const { getInvitationEmailTemplate, getInvitationEmailText } = require("../../utils/emailTemplates");
 const { notifyMiembroInvitado } = require('../../utils/notificationHelper');
+const { getSecret } = require("../../utils/secretsManager");
 
-exports.handler = async (event) => {
-  const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [Lambda] POST /api/grupos/invitar | ${TRACE_ID} ===`);
+// ✅ MEJORAS IMPLEMENTADAS
+const { Logger } = require("../../utils/logger");
+const { validate } = require("../../utils/validator");
+const { 
+  ValidationError, 
+  NotFoundError, 
+  ConflictError, 
+  successResponse 
+} = require("../../utils/errorHandler");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { cognitoWithCircuitBreaker, sendEmailWithCircuitBreaker } = require("../../utils/circuitBreaker");
+const { retryDB, retryAWS } = require("../../utils/retry");
+const { cacheSystemConfig } = require("../../utils/cache");
+
+/**
+ * POST /groups/{group_id}/invite
+ * Invita a un usuario al grupo
+ * 
+ * MEJORAS:
+ * ✅ Logging estructurado
+ * ✅ JSON Schema validation
+ * ✅ Circuit breakers para SES y Cognito
+ * ✅ Error handling centralizado
+ * ✅ Retry logic automático
+ * ✅ Interceptors (rate limit: 20 req/min)
+ */
+async function inviteMemberHandler(event, context, logger) {
+  logger.info('Processing member invitation');
+
+  // 1️⃣ OBTENER SECRETS Y VALIDAR
+  const secrets = await cacheSystemConfig('appSecrets', async () => {
+    return await getSecret();
+  });
+
+  // 2️⃣ VALIDACIÓN CON JSON SCHEMA
+  const validationResult = validate('inviteMember', event.parsedBody, logger);
   
-  try {
-    const userSub = event.requestContext.authorizer.jwt.claims.sub;
-    const body = JSON.parse(event.body || "{}");
-    
-    console.log(`[${TRACE_ID}] 👤 User:`, userSub);
-    console.log(`[${TRACE_ID}] 📥 Body:`, body);
-    
-    const { grupo_id, email, rol } = body;
-    
-    if (!grupo_id || !email || !rol) {
-      console.warn(`[${TRACE_ID}] ⚠️ Datos incompletos`);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "grupo_id, email y rol son requeridos",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  if (!validationResult.valid) {
+    logger.warn('Validation failed', { errors: validationResult.errors });
+    throw new ValidationError('Invalid invitation data', { errors: validationResult.errors });
+  }
 
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      console.warn(`[${TRACE_ID}] ⚠️ Email inválido:`, email);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Email inválido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  const { grupo_id, email, rol } = validationResult.data;
+  const userSub = event.userContext?.sub;
+  const userEmail = event.userContext?.email;
+  const userName = event.userContext?.name || userEmail?.split('@')[0] || 'Usuario';
 
-    // Validar rol (owner no se puede asignar manualmente)
-    const rolesValidos = ['admin', 'escritor', 'lector'];
-    if (!rolesValidos.includes(rol)) {
-      console.warn(`[${TRACE_ID}] ⚠️ Rol inválido:`, rol);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: `Rol inválido. Debe ser uno de: ${rolesValidos.join(', ')}. El rol 'owner' solo puede tenerlo el creador del grupo.`,
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  logger = logger.child({ grupo_id, invitedEmail: email, role: rol });
 
-    // Verificar que el grupo existe
-    const groupResult = await db.send(new GetCommand({
+  // 3️⃣ VERIFICAR QUE EL GRUPO EXISTE
+  const groupResult = await retryDB(async () => {
+    return await db.send(new GetCommand({
       TableName: process.env.GROUPS_TABLE,
       Key: { group_id: grupo_id }
     }));
+  });
 
-    if (!groupResult.Item) {
-      console.warn(`[${TRACE_ID}] ⚠️ Grupo no encontrado`);
-      return {
-        statusCode: 404,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Grupo no encontrado",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  if (!groupResult.Item) {
+    logger.warn('Group not found');
+    throw new NotFoundError('Group', grupo_id);
+  }
 
-    // TODO: Verificar que el usuario que invita tiene permisos de admin/owner
+  const groupName = groupResult.Item.nombre || groupResult.Item.name || 'sin nombre';
+  logger.debug('Group found', { groupName });
 
-    // Buscar al usuario en Cognito por email
-    let invitedUserSub = null;
-    try {
-      // Buscar usuario por email en Cognito
-      const usersResult = await cognito.send(new ListUsersCommand({
+  // 4️⃣ BUSCAR USUARIO EN COGNITO CON CIRCUIT BREAKER
+  let invitedUserSub = null;
+  
+  try {
+    const usersResult = await cognitoWithCircuitBreaker(
+      cognito,
+      new ListUsersCommand({
         UserPoolId: process.env.USER_POOL_ID,
         Filter: `email = "${email}"`,
         Limit: 1
-      }));
-      
-      if (usersResult.Users && usersResult.Users.length > 0) {
-        invitedUserSub = usersResult.Users[0].Attributes?.find(attr => attr.Name === 'sub')?.Value;
-        console.log(`[${TRACE_ID}] ✅ Usuario encontrado en Cognito: ${invitedUserSub}`);
-      } else {
-        console.log(`[${TRACE_ID}] ℹ️ Usuario no encontrado en Cognito, se enviará invitación por email`);
-      }
-    } catch (error) {
-      console.log(`[${TRACE_ID}] ⚠️ Error buscando usuario en Cognito:`, error.message);
+      })
+    );
+    
+    if (usersResult.Users && usersResult.Users.length > 0) {
+      invitedUserSub = usersResult.Users[0].Attributes?.find(attr => attr.Name === 'sub')?.Value;
+      logger.info('User found in Cognito', { invitedUserSub });
+    } else {
+      logger.info('User not found in Cognito - will send email invitation');
     }
+  } catch (error) {
+    logger.warn('Error searching user in Cognito', error);
+    // Continuar sin el user_sub - se enviará invitación por email
+  }
 
-    // Si el usuario ya existe, verificar que no sea miembro del grupo
-    if (invitedUserSub) {
-      const existingMember = await db.send(new GetCommand({
+  // 5️⃣ VERIFICAR QUE NO SEA YA MIEMBRO
+  if (invitedUserSub) {
+    const existingMember = await retryDB(async () => {
+      return await db.send(new GetCommand({
         TableName: process.env.GROUP_MEMBERS_TABLE,
         Key: { 
           group_id: grupo_id,
           user_sub: invitedUserSub
         }
       }));
+    });
 
-      if (existingMember.Item) {
-        console.warn(`[${TRACE_ID}] ⚠️ Usuario ya es miembro del grupo`);
-        return {
-          statusCode: 400,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            ok: false, 
-            error: "El usuario ya es miembro del grupo",
-            trace_id: TRACE_ID
+    if (existingMember.Item) {
+      logger.warn('User is already a member');
+      throw new ConflictError('El usuario ya es miembro del grupo');
+    }
+  }
+
+  // 6️⃣ CREAR INVITACIÓN
+  const invitationToken = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+  const expiresAtEpoch = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // 7 días
+
+  logger.info('Creating invitation', { invitationToken });
+
+  await retryDB(async () => {
+    await db.send(new PutCommand({
+      TableName: process.env.GROUP_INVITATIONS_TABLE,
+      Item: {
+        token: invitationToken,
+        group_id: grupo_id,
+        invited_email: email,
+        invited_user_sub: invitedUserSub,
+        role: rol,
+        invited_by: userSub,
+        status: 'pending',
+        created_at: timestamp,
+        expires_at: expiresAtEpoch
+      }
+    }));
+  });
+
+  // 7️⃣ ENVIAR EMAIL CON CIRCUIT BREAKER
+  const roleNames = {
+    'admin': 'Administrador',
+    'escritor': 'Escritor',
+    'lector': 'Lector'
+  };
+  const roleName = roleNames[rol] || rol;
+  const acceptLink = `${secrets.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
+
+  try {
+    await logger.traceAsync('sendInvitationEmail', async () => {
+      await sendEmailWithCircuitBreaker(ses, {
+        FromEmailAddress: secrets.SES_FROM_EMAIL,
+        Destination: { ToAddresses: [email] },
+        Content: {
+          Simple: {
+            Subject: {
+              Data: `Invitación al grupo ${groupName}`,
+              Charset: 'UTF-8'
+            },
+            Body: {
+              Html: {
+                Data: getInvitationEmailTemplate({
+                  invitedEmail: email,
+                  groupName,
+                  inviterName: userName,
+                  roleName,
+                  acceptLink
+                }),
+                Charset: 'UTF-8'
+              },
+              Text: {
+                Data: getInvitationEmailText({
+                  invitedEmail: email,
+                  groupName,
+                  inviterName: userName,
+                  roleName,
+                  acceptLink
+                }),
+                Charset: 'UTF-8'
+              }
+            }
+          }
+        }
+      }, {
+        fallback: async () => {
+          logger.warn('Email not sent - circuit breaker open or SES failure', {
+            action: 'INVITATION_CREATED_WITHOUT_EMAIL'
+          });
+          return { MessageId: 'FALLBACK' };
+        }
+      });
+    }, { service: 'SES' });
+
+    logger.info('Invitation email sent successfully');
+  } catch (emailError) {
+    logger.error('Email sending failed but invitation created', emailError);
+    // No fallar - la invitación ya está creada
+  }
+
+  // 8️⃣ CREAR NOTIFICACIÓN (si tiene user_sub)
+  if (invitedUserSub) {
+    try {
+      await notifyMiembroInvitado({
+        invitedUserSub,
+        grupoId: grupo_id,
+        grupoNombre: groupName,
+        createdBy: userSub,
+        rol,
+        invitedEmail: email
+      });
+      logger.debug('Notification created');
+    } catch (notifError) {
+      logger.warn('Failed to create notification', notifError);
+      // No fallar
+    }
+  }
+
+  logger.info('Invitation process completed successfully');
+
+  // 9️⃣ RESPONSE
+  return successResponse({
+    message: 'Invitación enviada correctamente',
+    invitation_token: invitationToken,
+    email,
+    rol,
+    grupo_id
+  }, 201);
+}
+
+// Exportar con interceptors (rate limit: 20 req/min)
+exports.handler = createAPIHandler(inviteMemberHandler, {
+  rateLimit: {
+    limit: 20,
+    window: 60,
+    endpoint: 'inviteMember'
+  }
+});
           })
         };
       }
@@ -166,14 +280,14 @@ exports.handler = async (event) => {
     const roleName = roleNames[rol] || rol;
 
     // Construir link de aceptación
-    const acceptLink = `${process.env.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
+    const acceptLink = `${secrets.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
 
     console.log(`[${TRACE_ID}] 📧 Enviando email a ${email}...`);
 
     try {
       // Enviar email con SES
       await ses.send(new SendEmailCommand({
-        FromEmailAddress: process.env.SES_FROM_EMAIL,
+        FromEmailAddress: secrets.SES_FROM_EMAIL,
         Destination: {
           ToAddresses: [email]
         },
@@ -237,7 +351,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 201,
-      headers: { "Content-Type": "application/json" },
+      headers: getSecurityHeaders(),
       body: JSON.stringify({ 
         ok: true,
         message: 'Invitación enviada correctamente',
@@ -254,11 +368,10 @@ exports.handler = async (event) => {
     
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: getSecurityHeaders(),
       body: JSON.stringify({ 
         ok: false, 
         error: "Error al enviar la invitación",
-        details: error.message,
         trace_id: TRACE_ID
       })
     };

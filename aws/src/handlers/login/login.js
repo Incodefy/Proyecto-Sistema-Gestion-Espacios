@@ -5,67 +5,43 @@ const {
 } = require('@aws-sdk/client-cognito-identity-provider');
 
 const { validate } = require('../../utils/validation');
-const { successResponse, errorResponse, validationErrorResponse, forbiddenResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse, errorResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { createAPIHandler } = require('../../utils/interceptors');
+const { ValidationError } = require('../../utils/errors');
+const { retryCognito } = require('../../utils/cognitoWrapper');
 
 const client = new CognitoIdentityProviderClient({});
-const logger = createLogger({ handler: 'login', function: 'login' });
 
-/**
- * POST /auth/login
- * Body: { "username": "email@dominio.com", "password": "Passw0rd!" }
- * Respuesta: { success: true, data: { idToken, accessToken, refreshToken, expiresIn } }
- */
-module.exports.login = async (event) => {
-  const endTrace = logger.startTrace('login');
+async function loginHandler(event, logger) {
+  const body = JSON.parse(event.body || '{}');
+  const validation = validate(body, 'login');
+  if (!validation.valid) throw new ValidationError('Datos de login inválidos', validation.errors);
   
-  try {
-    // Parsear body
-    const body = JSON.parse(event.body || '{}');
-    
-    // Validar con AJV
-    const validation = validate(body, 'login');
-    if (!validation.valid) {
-      logger.warn('Validation failed', { errors: validation.errors });
-      endTrace({ success: false, reason: 'validation' });
-      return validationErrorResponse(validation.errors);
-    }
-    
-    const { username, password } = validation.data;
-    
-    logger.info('Login attempt', { username });
+  logger.info('Login attempt', { username });
 
-    const cmd = new InitiateAuthCommand({
-      AuthFlow: 'USER_PASSWORD_AUTH',
-      ClientId: process.env.USER_POOL_CLIENT_ID,
-      AuthParameters: {
-        USERNAME: username,
-        PASSWORD: password
-      }
-    });
+  const cmd = new InitiateAuthCommand({
+    AuthFlow: 'USER_PASSWORD_AUTH',
+    ClientId: process.env.USER_POOL_CLIENT_ID,
+    AuthParameters: { USERNAME: username, PASSWORD: password }
+  });
 
-    const out = await client.send(cmd);
+  const out = await retryCognito(() => client.send(cmd));
 
-    if (out.ChallengeName) {
-      logger.warn('Challenge required', { challenge: out.ChallengeName, username });
-      endTrace({ success: false, reason: 'challenge_required' });
-      return forbiddenResponse(`Challenge required: ${out.ChallengeName}`);
-    }
-
-    const auth = out.AuthenticationResult || {};
-    
-    logger.info('Login successful', { username });
-    endTrace({ success: true });
-    
-    return successResponse({
-      idToken: auth.IdToken,
-      accessToken: auth.AccessToken,
-      refreshToken: auth.RefreshToken,
-      expiresIn: auth.ExpiresIn
-    });
-  } catch (err) {
-    logger.error('Login failed', err, { username: body.username });
-    endTrace({ success: false, reason: 'auth_error' });
-    return errorResponse('Credenciales inválidas o usuario no confirmado', 401);
+  if (out.ChallengeName) {
+    logger.warn('Challenge required', { challenge: out.ChallengeName });
+    throw new ValidationError(`Challenge required: ${out.ChallengeName}`);
   }
-};
+
+  const auth = out.AuthenticationResult || {};
+  logger.info('Login successful', { username, expiresIn: auth.ExpiresIn });
+  
+  return successResponse({
+    idToken: auth.IdToken,
+    accessToken: auth.AccessToken,
+    refreshToken: auth.RefreshToken,
+    expiresIn: auth.ExpiresIn
+  });
+}
+
+module.exports.login = createAPIHandler(loginHandler, { rateLimit: { maxRequests: 10, windowSeconds: 300 } });

@@ -4,71 +4,111 @@ const {
   QueryCommand
 } = require("@aws-sdk/lib-dynamodb");
 
+// ✅ MEJORAS IMPLEMENTADAS
+const { Logger } = require("../../utils/logger");
+const { NotFoundError, AuthorizationError, ValidationError, successResponse } = require("../../utils/errorHandler");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { retryDB } = require("../../utils/retry");
+const { Cache } = require("../../utils/cache");
+const { decryptPII } = require("../../utils/encryption");
+
 const db = DynamoDBDocumentClient.from(
   new (require("@aws-sdk/client-dynamodb").DynamoDBClient)()
 );
 
-exports.handler = async (event) => {
+// Cache para grupos (5 minutos TTL)
+const groupCache = new Cache({ defaultTTL: 300000, maxSize: 1000 });
+
+/**
+ * GET /groups/{group_id}
+ * Obtiene información de un grupo
+ * 
+ * MEJORAS:
+ * ✅ Logging estructurado
+ * ✅ Error handling centralizado
+ * ✅ Cache para reducir queries
+ * ✅ Retry logic automático
+ * ✅ Interceptors (rate limit: 100 req/min)
+ */
+async function getGroupHandler(event, context, logger) {
+  const groupId = event.pathParameters?.group_id;
+  const userSub = event.userContext?.sub;
+
+  logger = logger.child({ groupId, userSub });
+  logger.info('Fetching group details');
+
+  // Validación básica
+  if (!groupId) {
+    throw new ValidationError('group_id is required');
+  }
+
+  // 1️⃣ BUSCAR GRUPO CON CACHE
+  const group = await groupCache.getOrFetch(
+    `group:${groupId}`,
+    async () => {
+      logger.debug('Group not in cache, fetching from DB');
+      
+      const res = await retryDB(async () => {
+        return await db.send(new GetCommand({
+          TableName: process.env.GROUPS_TABLE,
+          Key: { group_id: groupId }
+        }));
+      });
+      
+      if (!res.Item) {
+        throw new NotFoundError('Group', groupId);
+      }
+      
+      return res.Item;
+    },
+    300000 // 5 min TTL
+  );
+
+  logger.debug('Group retrieved', { 
+    cached: groupCache.has(`group:${groupId}`),
+    groupName: group.nombre 
+  });
+
+  // 2️⃣ VERIFICAR PERMISOS
+  const isOwner = group.owner_sub === userSub;
+  
+  // Verificar membership con retry
+  let isMember = false;
   try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const groupId = event.pathParameters?.group_id;
-
-    if (!userSub) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ ok: false, error: "No autenticado" })
-      };
-    }
-
-    if (!groupId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ ok: false, error: "group_id requerido" })
-      };
-    }
-
-    // Buscar el grupo
-    const res = await db.send(new GetCommand({
-      TableName: process.env.GROUPS_TABLE,
-      Key: { group_id: groupId }
-    }));
-
-    if (!res.Item) {
-      return { statusCode: 404, body: JSON.stringify({ ok: false, error: "Grupo no encontrado" }) };
-    }
-
-    // Validar que el usuario es owner o miembro del grupo
-    const isOwner = res.Item.owner_sub === userSub;
-    
-    // Verificar si es miembro del grupo
-    let isMember = false;
-    try {
-      const memberCheck = await db.send(new GetCommand({
+    const memberCheck = await retryDB(async () => {
+      return await db.send(new GetCommand({
         TableName: process.env.GROUP_MEMBERS_TABLE,
         Key: { group_id: groupId, user_sub: userSub }
       }));
-      isMember = !!memberCheck.Item;
-    } catch (memberErr) {
-      console.log("No se pudo verificar membresía:", memberErr);
-    }
-
-    if (!isOwner && !isMember) {
-      return {
-        statusCode: 403,
-        body: JSON.stringify({ ok: false, error: "No tienes acceso al grupo" })
-      };
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ ok: true, group: res.Item })
-    };
-
-  } catch (e) {
-    console.error("❌ Error getGroup:", e);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ ok: false, error: "Error interno", details: e.message })
-    };
+    });
+    isMember = !!memberCheck.Item;
+  } catch (memberErr) {
+    logger.warn('Could not verify membership', memberErr);
   }
-};
+
+  if (!isOwner && !isMember) {
+    logger.warn('Access denied - user is not member or owner');
+    throw new AuthorizationError('No tienes acceso a este grupo');
+  }
+
+  logger.info('Group access granted', { 
+    isOwner, 
+    isMember,
+    role: isOwner ? 'owner' : 'member'
+  });
+
+  // 3️⃣ DESENCRIPTAR PII (v2.1)
+  const decryptedGroup = await decryptPII(group);
+
+  // 4️⃣ RESPONSE
+  return successResponse({ group: decryptedGroup });
+}
+
+// Exportar con interceptors (rate limit: 100 req/min para lectura)
+exports.handler = createAPIHandler(getGroupHandler, {
+  rateLimit: {
+    limit: 100,
+    window: 60,
+    endpoint: 'getGroup'
+  }
+});

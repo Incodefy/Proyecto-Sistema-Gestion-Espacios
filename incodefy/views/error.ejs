@@ -2,16 +2,18 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Página de error">
   <title><%= t('common.error') %> - <%= error %></title>
   <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
 <div class="wrapper">
-  <div class="login-box">
-    <h2 class="error-title"><%= error %></h2>
-    <p class="error-mensaje"><%= message %></p>
-    <a href="/" class="btn volver"><%= t('common.back_to_home') %></a>
-  </div>
+  <main class="login-box" role="main" aria-labelledby="error-heading">
+    <h1 id="error-heading" class="error-title"><%= error %></h1>
+    <p class="error-mensaje" role="alert"><%= message %></p>
+    <a href="/" class="btn volver"><i class="fas fa-home" aria-hidden="true"></i> <%= t('common.back_to_home') %></a>
+  </main>
 </div>
 </body>
 </html>

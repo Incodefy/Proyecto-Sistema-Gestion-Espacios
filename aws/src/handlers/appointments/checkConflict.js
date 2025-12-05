@@ -1,65 +1,41 @@
 // handlers/appointments/checkConflict.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { successResponse } = require("../../utils/response");
+const { ValidationError } = require("../../utils/errors");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const APPOINTMENTS_TABLE = process.env.APPOINTMENTS_TABLE;
 
-/**
- * Verifica conflictos de horario para un espacio u ocupante
- * Body esperado:
- * {
- *   fecha: "2025-11-23",
- *   hora_inicio: "09:00",
- *   hora_fin: "10:00",
- *   espacio_id: "SUBSPACE#1",  // opcional
- *   ocupante_id: "OCCUPANT#1",  // opcional
- *   exclude_appointment_id: "uuid"  // opcional, para updates
- * }
- */
-exports.handler = async (event) => {
-  console.log('🔍 [CHECK CONFLICT] Event:', JSON.stringify(event, null, 2));
+async function checkConflictHandler(event, logger) {
+  const grupoId = event.pathParameters?.grupo_id;
+  if (!grupoId) throw new ValidationError('grupo_id es requerido');
 
-  try {
-    const grupoId = event.pathParameters?.grupo_id;
-    const body = JSON.parse(event.body || '{}');
+  const body = JSON.parse(event.body || '{}');
+  const { fecha, hora_inicio, hora_fin, espacio_id, ocupante_id, exclude_appointment_id } = body;
 
-    if (!grupoId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'grupo_id es requerido' })
-      };
-    }
+  if (!fecha || !hora_inicio || !hora_fin) {
+    throw new ValidationError('fecha, hora_inicio y hora_fin son requeridos');
+  }
 
-    const { fecha, hora_inicio, hora_fin, espacio_id, ocupante_id, exclude_appointment_id } = body;
+  if (!espacio_id && !ocupante_id) {
+    throw new ValidationError('Debe proporcionar espacio_id u ocupante_id');
+  }
 
-    if (!fecha || !hora_inicio || !hora_fin) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'fecha, hora_inicio y hora_fin son requeridos' })
-      };
-    }
+  logger.info('Verificando conflictos', { fecha, hora_inicio, hora_fin, espacio_id, ocupante_id });
 
-    if (!espacio_id && !ocupante_id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Debe proporcionar espacio_id u ocupante_id' })
-      };
-    }
+  const conflicts = [];
 
-    const conflicts = [];
+  const toMinutes = (time) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
 
-    // Convertir horas a minutos para comparación
-    const toMinutes = (time) => {
-      const [h, m] = time.split(':').map(Number);
-      return h * 60 + m;
-    };
-
-    const newStart = toMinutes(hora_inicio);
-    const newEnd = toMinutes(hora_fin);
-
-    // Verificar conflictos en espacio
+  const newStart = toMinutes(hora_inicio);
+  const newEnd = toMinutes(hora_fin);    // Verificar conflictos en espacio
     if (espacio_id) {
       const params = {
         TableName: APPOINTMENTS_TABLE,
@@ -131,33 +107,16 @@ exports.handler = async (event) => {
 
     const hasConflict = conflicts.length > 0;
 
-    console.log(`${hasConflict ? '⚠️' : '✅'} Conflictos encontrados: ${conflicts.length}`);
+    logger.info('Verificación completa', { hasConflict, conflictsCount: conflicts.length });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        ok: true,
-        hasConflict,
-        conflicts,
-        message: hasConflict 
-          ? `Se encontraron ${conflicts.length} conflicto(s)` 
-          : 'No hay conflictos'
-      })
-    };
+    return successResponse({
+      ok: true,
+      hasConflict,
+      conflicts,
+      message: hasConflict 
+        ? `Se encontraron ${conflicts.length} conflicto(s)` 
+        : 'No hay conflictos'
+    });
+}
 
-  } catch (error) {
-    console.error('❌ Error verificando conflictos:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Error interno del servidor',
-        details: error.message
-      })
-    };
-  }
-};
+module.exports.handler = createAPIHandler(checkConflictHandler, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });

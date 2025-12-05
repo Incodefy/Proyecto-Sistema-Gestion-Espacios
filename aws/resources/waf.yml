@@ -1,0 +1,348 @@
+# AWS WAF Configuration
+# Protección contra ataques comunes: DDoS, SQL Injection, XSS, Rate Limiting
+
+Resources:
+  # Web ACL principal
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: ${self:service}-${sls:stage}-waf
+      Scope: REGIONAL
+      Description: WAF para protección de API
+      
+      DefaultAction:
+        Allow: {}
+      
+      Rules:
+        # 1. RATE LIMITING GLOBAL
+        - Name: GlobalRateLimit
+          Priority: 1
+          Statement:
+            RateBasedStatement:
+              Limit: 2000  # 2000 requests cada 5 minutos por IP
+              AggregateKeyType: IP
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                CustomResponseBodyKey: RateLimitExceeded
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: GlobalRateLimit
+
+        # 2. RATE LIMITING ESPECÍFICO PARA LOGIN
+        - Name: LoginRateLimit
+          Priority: 2
+          Statement:
+            RateBasedStatement:
+              Limit: 10  # 10 intentos de login cada 5 minutos por IP
+              AggregateKeyType: IP
+              ScopeDownStatement:
+                ByteMatchStatement:
+                  SearchString: /auth/login
+                  FieldToMatch:
+                    UriPath: {}
+                  TextTransformations:
+                    - Priority: 0
+                      Type: LOWERCASE
+                  PositionalConstraint: CONTAINS
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                CustomResponseBodyKey: LoginRateLimitExceeded
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: LoginRateLimit
+
+        # 3. GEO-BLOCKING (Solo países permitidos)
+        - Name: GeoRestriction
+          Priority: 3
+          Statement:
+            NotStatement:
+              Statement:
+                GeoMatchStatement:
+                  CountryCodes:
+                    - CL  # Chile
+                    - US  # USA
+                    - AR  # Argentina
+                    - BR  # Brasil
+                    - PE  # Perú
+                    - CO  # Colombia
+                    - MX  # México
+                    - ES  # España
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: GeoBlocked
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: GeoRestriction
+
+        # 4. SQL INJECTION PROTECTION
+        - Name: SQLInjectionProtection
+          Priority: 4
+          Statement:
+            OrStatement:
+              Statements:
+                # SQL en query string
+                - SqliMatchStatement:
+                    FieldToMatch:
+                      QueryString: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: URL_DECODE
+                      - Priority: 1
+                        Type: HTML_ENTITY_DECODE
+                # SQL en body
+                - SqliMatchStatement:
+                    FieldToMatch:
+                      Body:
+                        OversizeHandling: CONTINUE
+                    TextTransformations:
+                      - Priority: 0
+                        Type: URL_DECODE
+                      - Priority: 1
+                        Type: HTML_ENTITY_DECODE
+                # SQL en headers
+                - SqliMatchStatement:
+                    FieldToMatch:
+                      Headers:
+                        MatchPattern:
+                          All: {}
+                        MatchScope: ALL
+                        OversizeHandling: CONTINUE
+                    TextTransformations:
+                      - Priority: 0
+                        Type: URL_DECODE
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: SQLInjectionDetected
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: SQLInjectionProtection
+
+        # 5. XSS PROTECTION
+        - Name: XSSProtection
+          Priority: 5
+          Statement:
+            OrStatement:
+              Statements:
+                # XSS en query string
+                - XssMatchStatement:
+                    FieldToMatch:
+                      QueryString: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: URL_DECODE
+                      - Priority: 1
+                        Type: HTML_ENTITY_DECODE
+                # XSS en body
+                - XssMatchStatement:
+                    FieldToMatch:
+                      Body:
+                        OversizeHandling: CONTINUE
+                    TextTransformations:
+                      - Priority: 0
+                        Type: URL_DECODE
+                      - Priority: 1
+                        Type: HTML_ENTITY_DECODE
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: XSSDetected
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: XSSProtection
+
+        # 6. TAMAÑO MÁXIMO DE REQUEST (prevenir DoS)
+        - Name: RequestSizeLimit
+          Priority: 6
+          Statement:
+            SizeConstraintStatement:
+              FieldToMatch:
+                Body:
+                  OversizeHandling: CONTINUE
+              ComparisonOperator: GT
+              Size: 524288  # 512KB
+              TextTransformations:
+                - Priority: 0
+                  Type: NONE
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 413
+                CustomResponseBodyKey: RequestTooLarge
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RequestSizeLimit
+
+        # 7. BAD BOT PROTECTION
+        - Name: BadBotProtection
+          Priority: 7
+          Statement:
+            OrStatement:
+              Statements:
+                # User-Agents conocidos como maliciosos
+                - ByteMatchStatement:
+                    SearchString: bot
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+                - ByteMatchStatement:
+                    SearchString: crawler
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+                - ByteMatchStatement:
+                    SearchString: spider
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: BotDetected
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: BadBotProtection
+
+        # 8. AWS MANAGED RULES - Core Rule Set
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 8
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules: []
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesCommonRuleSet
+
+        # 9. AWS MANAGED RULES - Known Bad Inputs
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 9
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesKnownBadInputsRuleSet
+
+      # Custom response bodies
+      CustomResponseBodies:
+        RateLimitExceeded:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Too many requests. Please try again later.","code":429}}'
+        
+        LoginRateLimitExceeded:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Too many login attempts. Please wait 5 minutes.","code":429}}'
+        
+        GeoBlocked:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Access from your location is not permitted.","code":403}}'
+        
+        SQLInjectionDetected:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Malicious request detected.","code":403}}'
+        
+        XSSDetected:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Malicious request detected.","code":403}}'
+        
+        RequestTooLarge:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Request body too large. Maximum 512KB.","code":413}}'
+        
+        BotDetected:
+          ContentType: APPLICATION_JSON
+          Content: '{"success":false,"error":{"message":"Automated access detected.","code":403}}'
+
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: ${self:service}-${sls:stage}-waf
+      
+      Tags:
+        - Key: Environment
+          Value: ${sls:stage}
+        - Key: Project
+          Value: Incodefy
+
+  # Asociar WAF con API Gateway
+  WebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    DependsOn:
+      - WebACL
+      - HttpApi
+    Properties:
+      ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${HttpApi}'
+      WebACLArn: !GetAtt WebACL.Arn
+
+  # CloudWatch Log Group para WAF logs
+  WAFLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/waf/${self:service}-${sls:stage}
+      RetentionInDays: 30
+
+  # Configuración de logging para WAF
+  WAFLoggingConfiguration:
+    Type: AWS::WAFv2::LoggingConfiguration
+    DependsOn:
+      - WebACL
+      - WAFLogGroup
+    Properties:
+      ResourceArn: !GetAtt WebACL.Arn
+      LogDestinationConfigs:
+        - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/waf/${self:service}-${sls:stage}'
+      RedactedFields:
+        - SingleHeader:
+            Name: authorization
+        - SingleHeader:
+            Name: cookie
+
+Outputs:
+  WebACLId:
+    Description: WAF Web ACL ID
+    Value: !GetAtt WebACL.Id
+    Export:
+      Name: ${self:service}-${sls:stage}-waf-id
+
+  WebACLArn:
+    Description: WAF Web ACL ARN
+    Value: !GetAtt WebACL.Arn
+    Export:
+      Name: ${self:service}-${sls:stage}-waf-arn

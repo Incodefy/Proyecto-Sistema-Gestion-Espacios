@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<%= i18n?.language || 'es' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Inicio de sesión - Sistema de Gestión Hospitalaria">
   <title><%= t('login.title') %></title>
   
   <meta name="csrf-token" content="<%= csrfToken %>">
@@ -20,31 +21,9 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   
-  <!-- CSS crítico inline para First Contentful Paint -->
-  <style nonce="<%= cspNonce %>">
-    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif}
-    body{margin:0;overflow-x:hidden}
-    .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden}
-    .login-box{width:100%;max-width:450px;position:relative;z-index:10;background:rgba(15,23,42,.85);backdrop-filter:blur(20px);border-radius:24px;padding:3rem;box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
-    .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
-  </style>
-  
-  <!-- CSS crítico con media print para cargar async (sin onload inline) con cache-busting -->
-  <link rel="stylesheet" href="/css/login.css?v=<%= Date.now() %>" media="print" id="login-css">
-  <noscript><link rel="stylesheet" href="/css/login.css?v=<%= Date.now() %>"></noscript>
-  
-  <!-- Font Awesome con defer (sin onload inline) con cache-busting -->
-  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>" media="print" id="fontawesome-css">
-  <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>"></noscript>
-  
-  <!-- Script para cambiar media de print a all (CSP-compliant) -->
-  <script nonce="<%= cspNonce %>">
-    // Cambiar media de print a all para cargar CSS de forma async
-    var loginCss = document.getElementById('login-css');
-    var fontawesomeCss = document.getElementById('fontawesome-css');
-    if (loginCss) loginCss.media = 'all';
-    if (fontawesomeCss) fontawesomeCss.media = 'all';
-  </script>
+  <!-- SOLUCIÓN: Cargar CSS de forma SINCRÓNICA para evitar FOUC -->
+  <link rel="stylesheet" href="/css/login.css?v=<%= Date.now() %>">
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css?v=<%= Date.now() %>">
   
   <!-- Utility classes para animaciones CSP-compliant -->
   <style nonce="<%= cspNonce %>">
@@ -69,20 +48,20 @@
       <h2><%= t('login.title') %></h2>
 
       <% if (error_msg && error_msg.length) { %>
-        <div class="messages-container">
+        <div class="messages-container" role="alert" aria-live="assertive">
           <% error_msg.forEach(msg => { %>
             <div class="alert alert-error fade-in">
-              <i class="fa-solid fa-exclamation-circle"></i>
-              <%= msg %>
+              <i class="fa-solid fa-exclamation-circle" aria-hidden="true"></i>
+              <span><%= msg %></span>
             </div>
           <% }) %>
         </div>
       <% } %>
       
-      <div id="logoutMessage" class="messages-container d-none">
+      <div id="logoutMessage" class="messages-container d-none" role="status" aria-live="polite">
         <div class="alert alert-success fade-in">
-          <i class="fa-solid fa-check-circle"></i>
-          Has cerrado sesión correctamente
+          <i class="fa-solid fa-check-circle" aria-hidden="true"></i>
+          <span>Has cerrado sesión correctamente</span>
         </div>
       </div>
 
@@ -91,11 +70,15 @@
                name="correo" 
                id="email" 
                required
+               autocomplete="email"
+               aria-required="true"
+               aria-invalid="<%= form_errors && form_errors.email ? 'true' : 'false' %>"
+               aria-describedby="<%= form_errors && form_errors.email ? 'email-error' : '' %>"
                placeholder="<%= t('login.email') %>"
                value="<%= form_data ? form_data.correo : '' %>"
                class="<%= form_errors && form_errors.email ? 'error' : '' %>">
-        <span class="icon"><i class="fa-solid fa-user"></i></span>
-        <div class="error-message" id="email-error"></div>
+        <span class="icon" aria-hidden="true"><i class="fa-solid fa-user"></i></span>
+        <div class="error-message" id="email-error" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="input-box">

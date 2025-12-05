@@ -1,18 +1,35 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const Logger = require('../../utils/logger');
+const { sanitizeEvent } = require("../../utils/sanitizer");
+const { checkRateLimit } = require("../../middleware/rateLimiter");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerRendimientoMedicos' });
 
 module.exports.handler = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerRendimientoMedicos' });
   const endTrace = logger.startTrace('obtenerRendimientoMedicos');
+  
+  // Sanitizar evento
+  const sanitized = sanitizeEvent(event);
+  const userSub = sanitized.requestContext?.authorizer?.jwt?.claims?.sub;
+  
+  // Rate limiting: 30 scans por minuto (scan completo con agregación muy costoso)
+  if (userSub) {
+    const rateLimitCheck = await checkRateLimit(userSub, 30, 60, 'obtener-rendimiento-medicos');
+    if (!rateLimitCheck.allowed) {
+      logger.warn('Rate limit exceeded', { userSub });
+      endTrace();
+      return errorResponse('Demasiadas solicitudes. Intente más tarde.', 429);
+    }
+  }
+  
   let filtros = null;
 
-  if (event.body) {
+  if (sanitized.body) {
     try {
-      filtros = JSON.parse(event.body);
+      filtros = JSON.parse(sanitized.body);
     } catch (err) {
       logger.warn('Invalid JSON body', { error: err.message });
       endTrace();

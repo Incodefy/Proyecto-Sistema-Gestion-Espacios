@@ -1,32 +1,29 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
-const logger = createLogger({ handler: 'obtenerBoxesDisponibles' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerBoxesDisponibles');
+const obtenerBoxesDisponibles = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerBoxesDisponibles' });
+  
   let body = null;
-
   if (event.body) {
     try {
       body = JSON.parse(event.body);
     } catch {
-      logger.warn("Body inválido recibido");
-      endTrace();
-      return errorResponse("El body debe ser un JSON válido", 400);
+      throw new ValidationError('El body debe ser JSON válido', 'INVALID_JSON');
     }
   }
 
   const boxes = body?.boxes;
   logger.info("Obteniendo boxes disponibles", { filterCount: boxes?.length || 0 });
 
-  const params = {
-    TableName: process.env.DB_CATALOGO
-  };
-
+  const params = { TableName: process.env.DB_CATALOGO };
   if (Array.isArray(boxes) && boxes.length > 0) {
     const placeholders = boxes.map((_, i) => `:b${i}`).join(", ");
     params.FilterExpression = `idBox IN (${placeholders})`;
@@ -36,17 +33,15 @@ module.exports.handler = async (event) => {
     }, {});
   }
 
-  try {
-    const data = await client.send(new ScanCommand(params));
-    
-    logger.info("Boxes disponibles obtenidos", { count: data.Items?.length || 0 });
-    endTrace();
-
-    return successResponse(data.Items || [], 200, { count: data.Items?.length || 0 });
-
-  } catch (err) {
-    logger.error("Error obteniendo boxes disponibles", err);
-    endTrace();
-    return errorResponse("Error obteniendo boxes disponibles", 500, { details: err.message });
-  }
+  const data = await retryDB(
+    () => client.send(new ScanCommand(params)),
+    { operation: 'obtenerBoxesDisponibles', filterCount: boxes?.length || 0 }
+  );
+  
+  const items = data.Items || [];
+  logger.info("Boxes disponibles obtenidos", { count: items.length });
+  
+  return successResponse(items, 200, { count: items.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerBoxesDisponibles, { rateLimit: { maxRequests: 80, windowSeconds: 60 } });

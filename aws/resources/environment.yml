@@ -1,0 +1,44 @@
+# ============================================
+# ENVIRONMENT VARIABLES - OPTIMIZADO
+# ============================================
+
+# === COGNITO ===
+USER_POOL_ID: { Ref: CognitoUserPool }
+USER_POOL_CLIENT_ID: { Ref: CognitoUserPoolClient }
+
+# === DYNAMODB TABLES ===
+PARAMETERS_TABLE: ${self:service}-${sls:stage}-parameters
+ACTIVITY_LOGS_TABLE: ${self:service}-${sls:stage}-activity-logs
+PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
+GROUPS_TABLE: ${self:service}-${sls:stage}-groups
+GROUP_MEMBERS_TABLE: ${self:service}-${sls:stage}-group-members
+GROUP_INVITATIONS_TABLE: ${self:service}-${sls:stage}-group-invitations
+ROLE_MAPPINGS_TABLE: ${self:service}-${sls:stage}-role-mappings
+SPACES_TABLE: ${self:service}-${sls:stage}-spaces
+OCCUPANTS_TABLE: ${self:service}-${sls:stage}-occupants
+ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades
+TIPOS_INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-tipos-instrumentos
+INSTRUMENTOS_TABLE: ${self:service}-${sls:stage}-instrumentos
+APPOINTMENTS_TABLE: ${self:service}-${sls:stage}-appointments
+NOTIFICATIONS_TABLE: ${self:service}-${sls:stage}-notifications
+CONNECTIONS_TABLE: ${self:service}-${sls:stage}-websocket-connections
+
+# === SNS TOPICS ===
+PERSONALIZATION_TOPIC_ARN: { Ref: PersonalizationTopic }
+SYSTEM_NOTIFICATIONS_TOPIC_ARN: { Ref: SystemNotificationsTopic }
+
+# === WEBSOCKET ===
+WS_ENDPOINT: 
+  Fn::Sub: 'https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
+
+# === SECRETS MANAGER ===
+SECRET_NAME: hospital/${sls:stage}/app-secrets
+
+# === SERVICE INFO ===
+SERVICE_NAME: ${self:service}
+STAGE: ${sls:stage}
+AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1  # Performance optimization
+
+# === EXTERNAL (from .env or defaults) ===
+SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
+APP_URL: ${env:APP_URL, 'http://localhost:3000'}

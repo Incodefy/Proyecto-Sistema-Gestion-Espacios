@@ -1,0 +1,167 @@
+# KMS Key Configuration for DynamoDB Encryption
+# Este archivo define las claves KMS para encriptación at-rest
+
+Resources:
+  # KMS Key principal para DynamoDB
+  DynamoDBKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for DynamoDB table encryption - Hospital System
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          # Permitir administración por IAM root
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          
+          # Permitir uso por DynamoDB
+          - Sid: Allow DynamoDB to use the key
+            Effect: Allow
+            Principal:
+              Service: dynamodb.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:CreateGrant
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:ViaService': !Sub 'dynamodb.${AWS::Region}.amazonaws.com'
+          
+          # Permitir uso por Lambda
+          - Sid: Allow Lambda to decrypt
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt IamRoleLambdaExecution.Arn
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: '*'
+          
+          # Permitir CloudWatch Logs si se usa encryption
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:DescribeKey
+            Resource: '*'
+            Condition:
+              ArnLike:
+                'kms:EncryptionContext:aws:logs:arn': !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+      
+      # Habilitar rotación automática de keys
+      EnableKeyRotation: true
+      
+      # Tiempo de retención antes de eliminar la key (7-30 días)
+      PendingWindowInDays: 30
+      
+      Tags:
+        - Key: Environment
+          Value: ${sls:stage}
+        - Key: Project
+          Value: Incodefy
+        - Key: ManagedBy
+          Value: Serverless
+        - Key: Purpose
+          Value: DynamoDBEncryption
+
+  # Alias para la key (más fácil de referenciar)
+  DynamoDBKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/${self:service}-${sls:stage}-dynamodb
+      TargetKeyId: !Ref DynamoDBKMSKey
+
+  # KMS Key para SQS (opcional, pero recomendado)
+  SQSKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for SQS encryption - Hospital System
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          
+          - Sid: Allow SQS to use the key
+            Effect: Allow
+            Principal:
+              Service: sqs.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+          
+          - Sid: Allow SNS to use the key
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+          
+          - Sid: Allow Lambda to use the key
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt IamRoleLambdaExecution.Arn
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: '*'
+      
+      EnableKeyRotation: true
+      PendingWindowInDays: 30
+      
+      Tags:
+        - Key: Environment
+          Value: ${sls:stage}
+        - Key: Project
+          Value: Incodefy
+        - Key: Purpose
+          Value: SQSEncryption
+
+  SQSKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/${self:service}-${sls:stage}-sqs
+      TargetKeyId: !Ref SQSKMSKey
+
+Outputs:
+  DynamoDBKMSKeyId:
+    Description: KMS Key ID for DynamoDB
+    Value: !Ref DynamoDBKMSKey
+    Export:
+      Name: ${self:service}-${sls:stage}-dynamodb-kms-key-id
+
+  DynamoDBKMSKeyArn:
+    Description: KMS Key ARN for DynamoDB
+    Value: !GetAtt DynamoDBKMSKey.Arn
+    Export:
+      Name: ${self:service}-${sls:stage}-dynamodb-kms-key-arn
+
+  SQSKMSKeyId:
+    Description: KMS Key ID for SQS
+    Value: !Ref SQSKMSKey
+    Export:
+      Name: ${self:service}-${sls:stage}-sqs-kms-key-id
+
+  SQSKMSKeyArn:
+    Description: KMS Key ARN for SQS
+    Value: !GetAtt SQSKMSKey.Arn
+    Export:
+      Name: ${self:service}-${sls:stage}-sqs-kms-key-arn

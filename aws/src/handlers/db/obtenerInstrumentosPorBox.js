@@ -1,38 +1,44 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerInstrumentosPorBox' });
+const cache = new Cache({ ttl: 180, maxSize: 100 });
 
-module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('obtenerInstrumentosPorBox');
-    const boxId = event.queryStringParameters?.boxId;
-
-    if (!boxId) {
-        logger.warn('Missing boxId parameter');
-        endTrace();
-        return errorResponse('boxId es requerido', 400);
-    }
-
-    const params = {
-        TableName: process.env.DB_BOX_INSTRUMENTO,
-        KeyConditionExpression: "PK = :pk",
-        ExpressionAttributeValues: {
-            ":pk": `BOX#${boxId}`
-        }
-    };
-
-    try {
-        const result = await client.send(new QueryCommand(params));
-        
-        logger.info('Instrumentos retrieved for box', { box_id: boxId, count: result.Items?.length || 0 });
-        endTrace();
-        return successResponse(result.Items || [], 200, { count: result.Items?.length || 0 });
-    } catch (err) {
-        logger.error('Error retrieving instrumentos by box', err, { box_id: boxId });
-        endTrace();
-        return errorResponse('Error obteniendo instrumentos por box', 500);
-    }
+const obtenerInstrumentosPorBox = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerInstrumentosPorBox' });
+  const { boxId } = event.queryStringParameters || {};
+  
+  if (!boxId) throw new ValidationError('boxId es requerido', 'MISSING_BOX_ID');
+  validate(schemas.id, boxId, 'boxId');
+  
+  const cacheKey = `instrumentos-box-${boxId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Instrumentos desde cache', { boxId, count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_BOX_INSTRUMENTO,
+      KeyConditionExpression: "PK = :pk",
+      ExpressionAttributeValues: { ":pk": `BOX#${boxId}` }
+    })),
+    { operation: 'obtenerInstrumentosPorBox', boxId }
+  );
+  
+  const items = data.Items || [];
+  cache.set(cacheKey, items);
+  logger.info('Instrumentos obtenidos y cacheados', { boxId, count: items.length });
+  
+  return successResponse(items, 200, { count: items.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerInstrumentosPorBox, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

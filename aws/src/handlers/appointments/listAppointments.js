@@ -1,31 +1,40 @@
 // handlers/appointments/listAppointments.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const Logger = require("../../utils/logger");
+const { validate } = require("../../utils/validator");
+const { retryDB } = require("../../utils/retry");
+const { Cache } = require("../../utils/cache");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { decryptPII } = require("../../utils/encryption");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const APPOINTMENTS_TABLE = process.env.APPOINTMENTS_TABLE;
 
+const appointmentsCache = new Cache({ ttl: 180, maxSize: 500 }); // 3 min
+
 /**
  * Lista appointments de un grupo
- * Query params:
- * - fecha (opcional): filtra por fecha específica
- * - espacio_id (opcional): filtra por espacio específico
- * - ocupante_id (opcional): filtra por ocupante
  */
-exports.handler = async (event) => {
-  console.log('📅 [LIST APPOINTMENTS] Event:', JSON.stringify(event, null, 2));
-
-  try {
-    const grupoId = event.pathParameters?.grupo_id;
-    const { fecha, espacio_id, ocupante_id } = event.queryStringParameters || {};
-
-    if (!grupoId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'grupo_id es requerido' })
-      };
-    }
+const listAppointments = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'listAppointments' });
+  
+  const grupoId = event.pathParameters?.grupo_id;
+  const { fecha, espacio_id, ocupante_id } = event.queryStringParameters || {};
+  
+  validate('listAppointments', { grupo_id: grupoId });
+  
+  const cacheKey = `appointments:${grupoId}:${fecha || 'all'}:${espacio_id || 'all'}:${ocupante_id || 'all'}`;
+  const cached = appointmentsCache.get(cacheKey);
+  
+  if (cached) {
+    logger.info('Appointments obtenidos desde cache', { count: cached.length });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ ok: true, appointments: cached, count: cached.length, cached: true })
+    };
+  }
 
     let result;
 
@@ -69,57 +78,70 @@ exports.handler = async (event) => {
 
       result = await docClient.send(new QueryCommand(params));
     }
-    // Query por grupo y fecha usando GSI3 (DateIndex)
-    else if (fecha) {
-      const params = {
-        TableName: APPOINTMENTS_TABLE,
-        IndexName: 'DateIndex',
-        KeyConditionExpression: 'GSI3PK = :grupo AND begins_with(GSI3SK, :fecha)',
-        ExpressionAttributeValues: {
-          ':grupo': grupoId,
-          ':fecha': fecha
-        }
-      };
-
-      result = await docClient.send(new QueryCommand(params));
-    }
-    // Sin filtros específicos - listar todos del grupo usando PK
-    else {
-      const params = {
-        TableName: APPOINTMENTS_TABLE,
-        KeyConditionExpression: 'PK = :grupo',
-        ExpressionAttributeValues: {
-          ':grupo': grupoId
-        }
-      };
-
-      result = await docClient.send(new QueryCommand(params));
-    }
-
-    console.log(`✅ Encontrados ${result.Items?.length || 0} appointments`);
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+  logger.info('Consultando appointments', { grupo_id: grupoId, fecha, espacio_id, ocupante_id });
+  
+  let params;
+  
+  if (ocupante_id) {
+    params = {
+      TableName: APPOINTMENTS_TABLE,
+      IndexName: 'OcupanteIndex',
+      KeyConditionExpression: 'GSI1PK = :ocupante' + (fecha ? ' AND begins_with(GSI1SK, :fecha)' : ''),
+      ExpressionAttributeValues: {
+        ':ocupante': ocupante_id.startsWith('OCCUPANT#') ? ocupante_id : `OCCUPANT#${ocupante_id}`,
+        ':grupo': grupoId,
+        ...(fecha && { ':fecha': fecha })
       },
-      body: JSON.stringify({
-        ok: true,
-        appointments: result.Items || [],
-        count: result.Items?.length || 0
-      })
+      FilterExpression: 'grupo_id = :grupo'
     };
-
-  } catch (error) {
-    console.error('❌ Error listando appointments:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Error interno del servidor',
-        details: error.message
-      })
+  } else if (espacio_id) {
+    params = {
+      TableName: APPOINTMENTS_TABLE,
+      IndexName: 'EspacioIndex',
+      KeyConditionExpression: 'GSI2PK = :espacio' + (fecha ? ' AND begins_with(GSI2SK, :fecha)' : ''),
+      ExpressionAttributeValues: {
+        ':espacio': espacio_id.startsWith('SUBSPACE#') ? espacio_id : `SUBSPACE#${espacio_id}`,
+        ':grupo': grupoId,
+        ...(fecha && { ':fecha': fecha })
+      },
+      FilterExpression: 'grupo_id = :grupo'
+    };
+  } else if (fecha) {
+    params = {
+      TableName: APPOINTMENTS_TABLE,
+      IndexName: 'DateIndex',
+      KeyConditionExpression: 'GSI3PK = :grupo AND begins_with(GSI3SK, :fecha)',
+      ExpressionAttributeValues: { ':grupo': grupoId, ':fecha': fecha }
+    };
+  } else {
+    params = {
+      TableName: APPOINTMENTS_TABLE,
+      KeyConditionExpression: 'PK = :grupo AND begins_with(SK, :prefix)',
+      ExpressionAttributeValues: { ':grupo': grupoId, ':prefix': 'APPOINTMENT#' }
     };
   }
+  
+  const result = await retryDB(
+    () => docClient.send(new QueryCommand(params)),
+    { operation: 'listAppointments' }
+  );
+  
+  // Desencriptar PII de appointments (v2.1)
+  const rawAppointments = result.Items || [];
+  const appointments = await Promise.all(
+    rawAppointments.map(async (apt) => await decryptPII(apt))
+  );
+  
+  appointmentsCache.set(cacheKey, appointments);
+  
+  logger.info('Appointments obtenidos, desencriptados y cacheados', { count: appointments.length });
+  
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ ok: true, appointments, count: appointments.length })
+  };
 };
+
+module.exports.handler = createAPIHandler(listAppointments, {
+  rateLimit: { maxRequests: 150, windowSeconds: 60 }
+});

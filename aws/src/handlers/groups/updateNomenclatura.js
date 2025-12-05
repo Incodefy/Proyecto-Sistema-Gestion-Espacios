@@ -1,66 +1,53 @@
 const { DynamoDBDocumentClient, UpdateCommand, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const { notifyNomenclaturaActualizada } = require('../../utils/notificationHelper');
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { successResponse } = require("../../utils/response");
+const { ValidationError, NotFoundError } = require("../../utils/errors");
 
-exports.handler = async (event) => {
-  const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [Lambda] PUT /groups/:groupId/nomenclatura | ${TRACE_ID} ===`);
+async function updateNomenclaturaHandler(event, logger) {
+  const userSub = event.requestContext.authorizer.jwt.claims.sub;
+  const groupId = event.pathParameters?.groupId;
+  const body = JSON.parse(event.body || "{}");
   
-  try {
-    const userSub = event.requestContext.authorizer.jwt.claims.sub;
-    const groupId = event.pathParameters.groupId;
-    const body = JSON.parse(event.body || "{}");
-    
-    console.log(`[${TRACE_ID}] 👤 User:`, userSub);
-    console.log(`[${TRACE_ID}] 📦 Group ID:`, groupId);
-    console.log(`[${TRACE_ID}] 📥 Body:`, body);
-    
-    if (!body.nomenclatura || !body.nomenclatura.general || !body.nomenclatura.especifico || !body.nomenclatura.ocupante || !body.nomenclatura.especialidad) {
-      console.warn(`[${TRACE_ID}] ⚠️ Nomenclatura incompleta`);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "La nomenclatura debe incluir 'general', 'especifico', 'ocupante' y 'especialidad'",
-          trace_id: TRACE_ID
-        })
-      };
+  logger.info('Actualizando nomenclatura', { groupId, userSub });
+  
+  if (!body.nomenclatura || !body.nomenclatura.general || !body.nomenclatura.especifico || !body.nomenclatura.ocupante || !body.nomenclatura.especialidad) {
+    throw new ValidationError("La nomenclatura debe incluir 'general', 'especifico', 'ocupante' y 'especialidad'");
+  }
+
+  const campos = ['general', 'especifico', 'ocupante', 'especialidad', 'instrumento'];
+  for (const campo of campos) {
+    const valor = body.nomenclatura[campo];
+    if (valor && valor.length > 50) {
+      throw new ValidationError(`El campo '${campo}' no puede exceder 50 caracteres`);
     }
+  }
 
-    const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString();
 
-    console.log(`[${TRACE_ID}] 🔍 Obteniendo nomenclatura actual del grupo...`);
+  logger.debug('Obteniendo nomenclatura actual del grupo', { groupId });
 
-    // Obtener la nomenclatura actual del grupo
-    const currentGroup = await db.send(new GetCommand({
-      TableName: process.env.GROUPS_TABLE,
-      Key: { group_id: groupId }
-    }));
+  const currentGroup = await db.send(new GetCommand({
+    TableName: process.env.GROUPS_TABLE,
+    Key: { group_id: groupId }
+  }));
 
-    if (!currentGroup.Item) {
-      console.warn(`[${TRACE_ID}] ⚠️ Grupo no encontrado`);
-      return {
-        statusCode: 404,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Grupo no encontrado",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  if (!currentGroup.Item) {
+    throw new NotFoundError("Grupo no encontrado");
+  }
 
-    const nomenclaturaAnterior = currentGroup.Item.nomenclatura || {
-      general: '',
-      especifico: '',
-      ocupante: '',
-      especialidad: '',
-      instrumento: ''
-    };
-    const nomenclaturaNueva = body.nomenclatura;
+  const nomenclaturaAnterior = currentGroup.Item.nomenclatura || {
+    general: '',
+    especifico: '',
+    ocupante: '',
+    especialidad: '',
+    instrumento: ''
+  };
+  const nomenclaturaNueva = body.nomenclatura;
 
-    console.log(`[${TRACE_ID}] 📊 Nomenclatura anterior:`, nomenclaturaAnterior);
+  logger.debug('Nomenclatura anterior vs nueva', { anterior: nomenclaturaAnterior, nueva: nomenclaturaNueva });
     console.log(`[${TRACE_ID}] 📊 Nomenclatura nueva:`, nomenclaturaNueva);
 
     // Detectar qué campos cambiaron
@@ -86,7 +73,7 @@ exports.handler = async (event) => {
       console.log(`[${TRACE_ID}] ℹ️ No hay cambios en la nomenclatura`);
       return {
         statusCode: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: getSecurityHeaders(),
         body: JSON.stringify({ 
           ok: true,
           message: 'No hay cambios en la nomenclatura',
@@ -138,7 +125,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: getSecurityHeaders(),
       body: JSON.stringify({ 
         ok: true,
         message: 'Nomenclatura actualizada correctamente',
@@ -153,7 +140,7 @@ exports.handler = async (event) => {
     if (error.name === 'ConditionalCheckFailedException') {
       return {
         statusCode: 404,
-        headers: { "Content-Type": "application/json" },
+        headers: getSecurityHeaders(),
         body: JSON.stringify({ 
           ok: false, 
           error: "Grupo no encontrado",
@@ -162,15 +149,17 @@ exports.handler = async (event) => {
       };
     }
     
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al actualizar la nomenclatura",
-        details: error.message,
-        trace_id: TRACE_ID
-      })
-    };
-  }
-};
+    logger.info('Nomenclatura actualizada exitosamente', { groupId, cambiosCount: cambios.length });
+    
+    return successResponse({
+      ok: true,
+      message: "Nomenclatura actualizada correctamente",
+      group_id: groupId,
+      nomenclatura: nomenclaturaNueva,
+      cambios,
+      affected_spaces: affectedSpaces,
+      notificaciones_enviadas: cambios.length > 0
+    });
+}
+
+module.exports.handler = createAPIHandler(updateNomenclaturaHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });

@@ -1,116 +1,99 @@
-const {
-  DynamoDBDocumentClient,
-  BatchWriteCommand,
-  UpdateCommand
-} = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, BatchWriteCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
+const Logger = require("../../utils/logger");
+const { validate } = require("../../utils/validator");
+const { retryDB } = require("../../utils/retry");
+const { quickBatchPut } = require("../../utils/batchHelper");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
-const db = DynamoDBDocumentClient.from(
-  new (require("@aws-sdk/client-dynamodb").DynamoDBClient)()
-);
-
-exports.handler = async (event) => {
-  const TRACE = `spaces-${Date.now()}`;
+const saveSpaces = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'saveSpaces' });
+  const body = JSON.parse(event.body || "{}");
+  const userEmail = event.requestContext.authorizer.jwt.claims.email;
   
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-
-    if (!userSub) {
-      return { statusCode: 401, body: JSON.stringify({ ok: false, error: "No autenticado" }) };
-    }
-
-    const body = JSON.parse(event.body || "{}");
-    const { grupo_id, espacios, especialidades = [], ocupantes = [], tipos_instrumentos = [], instrumentos = [] } = body;
-
-    if (!grupo_id || !espacios?.length) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ ok: false, error: "Datos incompletos: se requiere grupo_id y espacios" })
-      };
-    }
-
-    console.log('📥 Datos recibidos:');
-    console.log(`  - grupo_id: ${grupo_id}`);
-    console.log(`  - espacios: ${espacios.length}`);
-    console.log(`  - especialidades: ${especialidades.length}`);
-    console.log(`  - ocupantes: ${ocupantes.length}`);
-    console.log(`  - tipos_instrumentos: ${tipos_instrumentos.length}`);
-    console.log(`  - instrumentos: ${instrumentos.length}`);
-
-    const timestamp = new Date().toISOString();
-
-    // ⭐ Marcar el grupo como configurado
-    await db.send(new UpdateCommand({
+  validate('saveSpaces', body);
+  
+  const { grupo_id, espacios, especialidades = [], ocupantes = [], tipos_instrumentos = [], instrumentos = [] } = body;
+  
+  logger.info('Guardando configuración completa', {
+    grupo_id,
+    espacios: espacios.length,
+    especialidades: especialidades.length,
+    ocupantes: ocupantes.length,
+    tipos_instrumentos: tipos_instrumentos.length,
+    instrumentos: instrumentos.length
+  });
+  
+  const timestamp = new Date().toISOString();
+  
+  await retryDB(
+    () => db.send(new UpdateCommand({
       TableName: process.env.GROUPS_TABLE,
       Key: { group_id: grupo_id },
       UpdateExpression: "SET configured = :cfg, updated_at = :now",
-      ExpressionAttributeValues: {
-        ":cfg": true,
-        ":now": timestamp
+      ExpressionAttributeValues: { ":cfg": true, ":now": timestamp }
+    })),
+    { operation: 'markGroupConfigured' }
+  );
+  
+  let generalIdx = 0;
+  let specificIdx = 0;
+  const writes = [];
+  
+  for (const espacio of espacios) {
+    generalIdx++;
+    const generalId = `SPACE#${generalIdx}`;
+    
+    writes.push({
+      PutRequest: {
+        Item: {
+          PK: grupo_id,
+          SK: generalId,
+          tipo: "general",
+          nombre: espacio.name,
+          created_at: timestamp,
+          created_by: userEmail
+        }
       }
-    }));
-
-    // ⭐ Generar espacios
-    let generalIdx = 0;
-    let specificIdx = 0;
-
-    const writes = [];
-
-    for (const espacio of espacios) {
-      generalIdx++;
-      const generalId = `SPACE#${generalIdx}`;
-
+    });
+    
+    for (const spec of espacio.specificSpaces) {
+      specificIdx++;
+      const specId = `SUBSPACE#${specificIdx}`;
+      
       writes.push({
         PutRequest: {
           Item: {
             PK: grupo_id,
-            SK: generalId,
-            tipo: "general",
-            nombre: espacio.name,
+            SK: specId,
+            tipo: "especifico",
+            nombre: spec.name,
+            parent: generalId,
             created_at: timestamp,
             created_by: userEmail
           }
         }
       });
-
-      for (const spec of espacio.specificSpaces) {
-        specificIdx++;
-        const specId = `SUBSPACE#${specificIdx}`;
-
-        writes.push({
-          PutRequest: {
-            Item: {
-              PK: grupo_id,
-              SK: specId,
-              tipo: "especifico",
-              nombre: spec.name,
-              parent: generalId,
-              created_at: timestamp,
-              created_by: userEmail
-            }
-          }
-        });
-      }
     }
-
-    // ⭐ Generar especialidades
-    let especialidadIdx = 0;
-    const especialidadWrites = [];
-
-    for (const esp of especialidades) {
-      if (!esp.nombre || !esp.nombre.trim()) continue;
-      
-      especialidadIdx++;
-      const especialidadId = `ESP#${especialidadIdx}`;
-
-      especialidadWrites.push({
-        PutRequest: {
-          Item: {
-            PK: grupo_id,
-            SK: especialidadId,
-            especialidad_id: especialidadId,
-            nombre: esp.nombre.trim(),
-            created_at: timestamp,
+  }
+  
+  let especialidadIdx = 0;
+  const especialidadWrites = [];
+  
+  for (const esp of especialidades) {
+    if (!esp.nombre || !esp.nombre.trim()) continue;
+    
+    especialidadIdx++;
+    const especialidadId = `ESP#${especialidadIdx}`;
+    
+    especialidadWrites.push({
+      PutRequest: {
+        Item: {
+          PK: grupo_id,
+          SK: especialidadId,
+          especialidad_id: especialidadId,
+          nombre: esp.nombre.trim(),
+          created_at: timestamp,
             created_by: userEmail
           }
         }
@@ -281,6 +264,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: getSecurityHeaders(),
       body: JSON.stringify({
         ok: true,
         grupo_id,
@@ -298,7 +282,8 @@ exports.handler = async (event) => {
     console.error(`[ERROR][${TRACE}]`, e);
     return {
       statusCode: 500,
-      body: JSON.stringify({ ok: false, error: "Error guardando espacios", details: e.message })
+      headers: getSecurityHeaders(),
+      body: JSON.stringify({ ok: false, error: "Error guardando espacios" })
     };
   }
 };

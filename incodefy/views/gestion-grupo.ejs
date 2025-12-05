@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestión de grupo - Configuración de nomenclatura, espacios, recursos y miembros">
   <title>Gestión de Grupo</title>
   
   <!-- Token CSRF para peticiones AJAX -->
@@ -22,78 +24,111 @@
   
   <div class="container-fluid">
     <div class="row">
-      <div class="main">
+      <main class="main" role="main" aria-label="Contenido principal">
         <div class="management-container">
           <!-- Page Header -->
-          <div class="page-header">
+          <header class="page-header">
             <h1 class="page-title">Gestión de Grupo</h1>
-            <p class="page-subtitle" id="grupoNombre">Cargando...</p>
-          </div>
+            <p class="page-subtitle" id="grupoNombre" aria-live="polite">Cargando...</p>
+          </header>
 
           <!-- Tabs Navigation -->
-          <div class="tabs-navigation">
-            <button class="tab-button" data-tab="nomenclatura">
-              <i class="fas fa-tag"></i>
+          <nav class="tabs-navigation" role="tablist" aria-label="Opciones de gestión">
+            <button class="tab-button" 
+                    data-tab="nomenclatura" 
+                    role="tab" 
+                    aria-controls="tab-nomenclatura"
+                    aria-selected="false"
+                    id="tab-btn-nomenclatura">
+              <i class="fas fa-tag" aria-hidden="true"></i>
               Nomenclatura
             </button>
-            <button class="tab-button" data-tab="espacios">
-              <i class="fas fa-building"></i>
+            <button class="tab-button" 
+                    data-tab="espacios" 
+                    role="tab" 
+                    aria-controls="tab-espacios"
+                    aria-selected="false"
+                    id="tab-btn-espacios">
+              <i class="fas fa-building" aria-hidden="true"></i>
               Espacios
             </button>
-            <button class="tab-button" data-tab="recursos-medicos">
-              <i class="fas fa-user-doctor"></i>
+            <button class="tab-button" 
+                    data-tab="recursos-medicos" 
+                    role="tab" 
+                    aria-controls="tab-recursos-medicos"
+                    aria-selected="false"
+                    id="tab-btn-recursos-medicos">
+              <i class="fas fa-user-doctor" aria-hidden="true"></i>
               Recursos Médicos
             </button>
-            <button class="tab-button" data-tab="instrumentos">
-              <i class="fas fa-tools"></i>
+            <button class="tab-button" 
+                    data-tab="instrumentos" 
+                    role="tab" 
+                    aria-controls="tab-instrumentos"
+                    aria-selected="false"
+                    id="tab-btn-instrumentos">
+              <i class="fas fa-tools" aria-hidden="true"></i>
               Instrumentos
             </button>
-            <button class="tab-button" data-tab="miembros">
-              <i class="fas fa-users"></i>
+            <button class="tab-button" 
+                    data-tab="miembros" 
+                    role="tab" 
+                    aria-controls="tab-miembros"
+                    aria-selected="false"
+                    id="tab-btn-miembros">
+              <i class="fas fa-users" aria-hidden="true"></i>
               Miembros
             </button>
-          </div>
+          </nav>
 
           <!-- Tab 1: Nomenclatura -->
-          <div class="tab-content" id="tab-nomenclatura">
+          <section class="tab-content" 
+                   id="tab-nomenclatura" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-nomenclatura"
+                   hidden>
             <div class="section-card">
-              <div class="section-header">
+              <header class="section-header">
                 <div>
                   <h2 class="section-title">
-                    <i class="fas fa-edit"></i>
+                    <i class="fas fa-edit" aria-hidden="true"></i>
                     Editar Nomenclatura
                   </h2>
                   <p class="section-description">
                     Define cómo se llamarán los espacios generales y específicos en tu grupo
                   </p>
                 </div>
-              </div>
+              </header>
 
               <div class="nomenclatura-grid">
                 <div class="form-group">
-                  <label class="form-label">Nombre del espacio general</label>
+                  <label for="nombreGeneral" class="form-label">Nombre del espacio general</label>
                   <input 
                     type="text" 
                     class="form-input" 
                     id="nombreGeneral"
+                    name="nombreGeneral"
                     placeholder="Ej: Pasillo, Piso, Área..."
+                    aria-describedby="hint-nombreGeneral"
                   >
-                  <p class="form-hint">Este será el nombre para agrupar tus espacios</p>
+                  <p class="form-hint" id="hint-nombreGeneral">Este será el nombre para agrupar tus espacios</p>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">Nombre del espacio específico</label>
+                  <label for="nombreEspecifico" class="form-label">Nombre del espacio específico</label>
                   <input 
                     type="text" 
                     class="form-input" 
                     id="nombreEspecifico"
+                    name="nombreEspecifico"
                     placeholder="Ej: Box, Consultorio, Oficina..."
+                    aria-describedby="hint-nombreEspecifico"
                   >
-                  <p class="form-hint">Este será el nombre de los espacios dentro de cada grupo</p>
+                  <p class="form-hint" id="hint-nombreEspecifico">Este será el nombre de los espacios dentro de cada grupo</p>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">Nombre del ocupante</label>
+                  <label for="nombreOcupante" class="form-label">Nombre del ocupante</label>
                   <input 
                     type="text" 
                     class="form-input" 

@@ -1,31 +1,41 @@
-<nav class="custom-navbar">
-  <div class="navbar-toggle" data-action="toggle-navbar" aria-label="Abrir menú de navegación">
-    <i class="fas fa-bars"></i>
-  </div>
+<nav class="custom-navbar" role="navigation" aria-label="Menú principal">
+  <button class="navbar-toggle" 
+          data-action="toggle-navbar" 
+          aria-label="Abrir menú de navegación"
+          aria-expanded="false"
+          aria-controls="navbar-menu">
+    <i class="fas fa-bars" aria-hidden="true"></i>
+  </button>
   
   <div class="navbar-title">
-    <a class="logo" href="/">
-      <img src="/logos/logo_hospital.png" alt="Home">
+    <a class="logo" href="/" aria-label="Ir a página de inicio">
+      <img src="/logos/logo_hospital.png" alt="Logo Hospital Padre Hurtado">
     </a>
   </div>
 
   <!-- Overlay para cerrar el menú -->
-  <div class="navbar-overlay" data-action="close-navbar"></div>
+  <div class="navbar-overlay" data-action="close-navbar" aria-hidden="true"></div>
 
-  <ul class="navbar-menu">
+  <ul class="navbar-menu" id="navbar-menu" role="menubar">
     <% if (user) { %>
       <!-- Dashboard -->
-      <li>
-        <a href="/dashboard" class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" data-tooltip="<%= t('navbar.dashboard') %>">
-          <img src="/icons/dashboard.webp" alt="">
+      <li role="none">
+        <a href="/dashboard" 
+           class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" 
+           role="menuitem"
+           aria-current="<%= currentPath === '/dashboard' ? 'page' : 'false' %>">
+          <img src="/icons/dashboard.webp" alt="" aria-hidden="true">
           <span><%= t('navbar.dashboard') %></span>
         </a>
       </li>
       
       <!-- Agenda -->
-      <li>
-        <a href="/agenda" class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" data-tooltip="<%= t('navbar.agenda') %>">
-          <img src="/icons/calendario.webp" alt="">
+      <li role="none">
+        <a href="/agenda" 
+           class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" 
+           role="menuitem"
+           aria-current="<%= currentPath.startsWith('/agenda') ? 'page' : 'false' %>">
+          <img src="/icons/calendario.webp" alt="" aria-hidden="true">
           <span><%= t('navbar.agenda') %></span>
         </a>
       </li>

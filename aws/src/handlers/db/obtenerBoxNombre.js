@@ -1,45 +1,48 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse, notFoundResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError, NotFoundError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerBoxNombre' });
+const cache = new Cache({ ttl: 600, maxSize: 200 });
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerBoxNombre');
-  const boxId = event.queryStringParameters?.boxId;
+const obtenerBoxNombre = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerBoxNombre' });
+  const { boxId } = event.queryStringParameters || {};
+  
+  if (!boxId) throw new ValidationError('boxId es requerido', 'MISSING_BOX_ID');
+  validate(schemas.id, boxId, 'boxId');
+  
+  const cacheKey = `box-nombre-${boxId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Box nombre desde cache', { boxId });
+    return successResponse(cached);
+  }
+  
+  const data = await retryDB(
+    () => client.send(new GetCommand({
+      TableName: process.env.DB_CATALOGO,
+      Key: { PK: `BOX#${boxId}`, SK: "#" }
+    })),
+    { operation: 'obtenerBoxNombre', boxId }
+  );
 
-  if (!boxId) {
-    logger.warn('Missing boxId parameter');
-    endTrace();
-    return errorResponse('Debe enviar ?boxId=valor', 400);
+  if (!data.Item) {
+    logger.warn('Box no encontrado', { boxId });
+    throw new NotFoundError('Box', boxId);
   }
 
-  const params = {
-    TableName: process.env.DB_CATALOGO,
-    Key: {
-      PK: `BOX#${boxId}`,
-      SK: "#"
-    }
-  };
-
-  try {
-    const data = await client.send(new GetCommand(params));
-
-    if (!data.Item) {
-      logger.info('Box not found', { box_id: boxId });
-      endTrace();
-      return notFoundResponse(`Box ${boxId} no encontrado`);
-    }
-
-    logger.info('Box name retrieved', { box_id: boxId });
-    endTrace();
-    return successResponse({ nombre: data.Item.nombre || null });
-
-  } catch (err) {
-    logger.error('Error retrieving box name', err, { box_id: boxId });
-    endTrace();
-    return errorResponse('Error obteniendo box', 500);
-  }
+  const result = { nombre: data.Item.nombre || null };
+  cache.set(cacheKey, result);
+  logger.info('Box nombre obtenido y cacheado', { boxId, nombre: result.nombre });
+  
+  return successResponse(result);
 };
+
+module.exports.handler = createAPIHandler(obtenerBoxNombre, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

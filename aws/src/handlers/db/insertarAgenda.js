@@ -1,61 +1,51 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { validate } = require("../../utils/validation");
-const { successResponse, errorResponse, validationErrorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError, DuplicateError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'insertarAgenda' });
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('insert-agenda');
+const insertarAgenda = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'insertarAgenda' });
   
-  if (!event.body) {
-    logger.warn('Missing request body');
-    endTrace({ success: false, reason: 'no_body' });
-    return errorResponse('Debe enviar un body con la agenda', 400);
-  }
+  if (!event.body) throw new ValidationError('Debe enviar un body con la agenda', 'MISSING_BODY');
 
   let agendaInput;
   try {
     agendaInput = JSON.parse(event.body);
   } catch (err) {
-    logger.error('Invalid JSON in body', err);
-    endTrace({ success: false, reason: 'invalid_json' });
-    return errorResponse('El body debe ser un JSON válido', 400);
+    throw new ValidationError('El body debe ser JSON válido', 'INVALID_JSON');
   }
 
-  // Validar con AJV
-  const validation = validate(agendaInput, 'insertarAgenda');
-  if (!validation.valid) {
-    logger.warn('Validation failed', { errors: validation.errors });
-    endTrace({ success: false, reason: 'validation' });
-    return validationErrorResponse(validation.errors);
-  }
-
+  // Validar estructura con esquemas básicos
   const {
     idAgenda, idSpace, spaceName, idOccupant, occupantName,
     idEspecialidad, especialidadNombre, idEstado, estadoNombre,
     fecha, horaInicio, horaFin, tipoConsulta
-  } = validation.data;
+  } = agendaInput;
 
-  // Validación adicional: horaInicio < horaFin
-  const [hI, mI] = horaInicio.replace('HORA#', '').split(":").map(Number);
-  const [hF, mF] = horaFin.split(":").map(Number);
-  if (hI > hF || (hI === hF && mI >= mF)) {
-    logger.warn('Invalid time range', { horaInicio, horaFin });
-    endTrace({ success: false, reason: 'invalid_time_range' });
-    return errorResponse('horaInicio debe ser menor que horaFin', 400);
+  if (!idAgenda || !idSpace || !fecha || !horaInicio || !horaFin) {
+    throw new ValidationError('Faltan campos obligatorios', 'MISSING_FIELDS');
   }
 
-  // Normalizar horaInicio (eliminar prefijo HORA# si existe)
-  const skHora = String(horaInicio).startsWith("HORA#")
-    ? String(horaInicio).split("#")[1]
+  // Validar rango horario
+  const horaInicioNorm = String(horaInicio).startsWith("HORA#") 
+    ? String(horaInicio).split("#")[1] 
     : String(horaInicio);
+    
+  const [hI, mI] = horaInicioNorm.split(":").map(Number);
+  const [hF, mF] = horaFin.split(":").map(Number);
+  if (hI > hF || (hI === hF && mI >= mF)) {
+    throw new ValidationError('horaInicio debe ser menor que horaFin', 'INVALID_TIME_RANGE');
+  }
 
   const item = {
     PK: `${idSpace}#DATE#${fecha}`,
-    SK: skHora,
+    SK: horaInicioNorm,
     idAgenda: String(idAgenda),
     idSpace: String(idSpace),
     spaceName,
@@ -66,46 +56,37 @@ module.exports.handler = async (event) => {
     idEstado: Number(idEstado),
     estadoNombre,
     fecha,
-    horaInicio: skHora,
+    horaInicio: horaInicioNorm,
     horaFin,
     tipoConsulta,
     GSI1PK: `${idOccupant}#DATE#${fecha}`,
-    GSI1SK: skHora,
+    GSI1SK: horaInicioNorm,
     GSI2PK: `DATE#${fecha}`,
-    GSI2SK: skHora
-  };
-
-  const params = {
-    TableName: process.env.DB_AGENDA,
-    Item: item,
-    ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+    GSI2SK: horaInicioNorm
   };
 
   try {
-    await client.send(new PutCommand(params));
-    
-    logger.info('Agenda inserted successfully', { 
-      idAgenda, 
-      fecha, 
-      ocupante: occupantName,
-      espacio: spaceName 
-    });
-    endTrace({ success: true });
-
-    return successResponse({
-      mensaje: "Agenda insertada correctamente",
-      item
-    }, 201);
-
+    await retryDB(
+      () => client.send(new PutCommand({
+        TableName: process.env.DB_AGENDA,
+        Item: item,
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+      })),
+      { operation: 'insertarAgenda', idAgenda, fecha }
+    );
   } catch (err) {
     if (err.name === "ConditionalCheckFailedException") {
-      logger.warn('Duplicate agenda detected', { fecha, espacio: idSpace, hora: skHora });
-      endTrace({ success: false, reason: 'duplicate' });
-      return errorResponse('Ya existe una agenda en ese horario para ese espacio', 409);
+      logger.warn('Agenda duplicada detectada', { fecha, espacio: idSpace, hora: horaInicioNorm });
+      throw new DuplicateError('Agenda', `${idSpace}#${fecha}#${horaInicioNorm}`);
     }
-
-    logger.error('Failed to insert agenda', err, { idAgenda, fecha });
-    endTrace({ success: false, error: err.message });
-    return errorResponse('Error insertando agenda', 500);
+    throw err;
   }
+
+  logger.info('Agenda insertada exitosamente', { 
+    idAgenda, fecha, ocupante: occupantName, espacio: spaceName 
+  });
+
+  return successResponse({ mensaje: "Agenda insertada correctamente", item }, 201);
 };
+
+module.exports.handler = createAPIHandler(insertarAgenda, { rateLimit: { maxRequests: 40, windowSeconds: 60 } });

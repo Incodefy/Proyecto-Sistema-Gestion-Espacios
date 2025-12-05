@@ -1,61 +1,36 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse, notFoundResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { NotFoundError } = require("../../utils/errors");
+const { retryDB } = require("../../utils/retry");
 
-const logger = createLogger({ handler: 'eliminarAgenda' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('eliminarAgenda');
+async function eliminarAgendaHandler(event, logger) {
     const tableName = process.env.DB_AGENDA;
     const agendaId = event.queryStringParameters?.agendaId;
     
-    if (!agendaId) {
-        logger.warn("Intento de eliminación sin agendaId");
-        endTrace();
-        return errorResponse("agendaId es requerido", 400);
-    }
+    if (!agendaId) throw new ValidationError("agendaId es requerido");
+    
+    logger.info("Eliminando agenda", { agendaId });
+    
+    const agenda = await retryDB(() => client.send(new GetCommand({
+        TableName: tableName,
+        Key: { PK: agendaId, SK: agendaId }
+    })));
+    
+    if (!agenda.Item) throw new NotFoundError("Agenda no encontrada");
 
-    try {
-        logger.info("Eliminando agenda", { agendaId });
-        
-        const getParams = {
-            TableName: tableName,
-            Key: {
-                PK: agendaId,
-                SK: agendaId
-            }
-        };
+    await retryDB(() => client.send(new DeleteCommand({
+        TableName: tableName,
+        Key: { PK: agenda.Item.PK, SK: agenda.Item.SK }
+    })));
+    
+    logger.info("Agenda eliminada exitosamente", { agendaId });
 
-        const agenda = await client.send(new GetCommand(getParams));
-        
-        if (!agenda.Item) {
-            logger.warn("Agenda no encontrada para eliminación", { agendaId });
-            endTrace();
-            return notFoundResponse("Agenda no encontrada");
-        }
+    return successResponse({ message: "Agenda eliminada correctamente", agendaId });
+}
 
-        const deleteParams = {
-            TableName: tableName,
-            Key: {
-                PK: agenda.Item.PK,
-                SK: agenda.Item.SK
-            }
-        };
-
-        await client.send(new DeleteCommand(deleteParams));
-        
-        logger.info("Agenda eliminada exitosamente", { agendaId, pk: agenda.Item.PK });
-        endTrace();
-
-        return successResponse({ 
-            message: "Agenda eliminada correctamente",
-            agendaId
-        });
-    } catch (err) {
-        logger.error("Error eliminando agenda", err, { agendaId });
-        endTrace();
-        return errorResponse("Error eliminando agenda", 500, { details: err.message });
-    }
-};
+module.exports.handler = createAPIHandler(eliminarAgendaHandler, { rateLimit: { maxRequests: 20, windowSeconds: 60 } });

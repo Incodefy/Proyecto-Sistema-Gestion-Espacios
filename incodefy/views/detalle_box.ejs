@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Detalle de espacio - Información y gestión">
   <title><%= t('detalle_box.title') %></title>
   
   <!-- Token CSRF para peticiones AJAX -->
@@ -20,19 +22,19 @@
         <div class="row">
             <%- include("navbar") %>
             
-            <div class="main-container">
-                <div class="page-header fade-in">
-                    <h1><i class="fas fa-cube"></i> <%= nombre %></h1>
-                </div>
+            <main class="main-container" role="main" aria-label="Contenido principal">
+                <header class="page-header fade-in">
+                    <h1><i class="fas fa-cube" aria-hidden="true"></i> <%= nombre %></h1>
+                </header>
 
                 <div class="row mb-3">
                     <div class="col-12 mb-3">
-                        <div class="info-card fade-in">
+                        <section class="info-card fade-in" aria-labelledby="info-heading">
                             <div class="d-flex align-items-center">
-                                <div class="card-icon me-3">
+                                <div class="card-icon me-3" aria-hidden="true">
                                     <i class="fas fa-info-circle"></i>
                                 </div>
-                                <h3 class="card-title mb-4"> <%= t('common.info') %> <%= nomenclatura.especifico %></h3>
+                                <h2 id="info-heading" class="card-title mb-4"> <%= t('common.info') %> <%= nomenclatura.especifico %></h2>
                             </div>
                             <div class="info-grid">
                                 <div class="info-item">
@@ -64,18 +66,26 @@
                 </div>
 
                 <!-- Controles de Vista con Navegación de Fechas -->
-                <div class="view-controls-bar fade-in">
+                <nav class="view-controls-bar fade-in" aria-label="Controles de visualización">
                     <div class="view-controls-container">
                         <!-- Navegación de fechas -->
-                        <div class="date-navigation">
-                            <button class="nav-btn" data-action="navigate-date" data-offset="-1" aria-label="Anterior">
-                                <i class="fas fa-chevron-left"></i>
+                        <div class="date-navigation" role="group" aria-label="Navegación por fecha">
+                            <button class="nav-btn" 
+                                    type="button"
+                                    data-action="navigate-date" 
+                                    data-offset="-1" 
+                                    aria-label="Día anterior">
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
                             </button>
                             
-                            <div id="currentDateDisplay" class="current-date-display"></div>
+                            <div id="currentDateDisplay" class="current-date-display" role="status" aria-live="polite"></div>
                             
-                            <button class="nav-btn" data-action="navigate-date" data-offset="1" aria-label="Siguiente">
-                                <i class="fas fa-chevron-right"></i>
+                            <button class="nav-btn" 
+                                    type="button"
+                                    data-action="navigate-date" 
+                                    data-offset="1" 
+                                    aria-label="Día siguiente">
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
                             </button>
                             
                             <button class="today-btn" data-action="go-today">

@@ -5,50 +5,39 @@ const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { retryWithJitter } = require("../../utils/retry");
 const { createCircuitBreaker } = require("../../utils/circuitBreaker");
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { successResponse, errorResponse } = require("../../utils/response");
+const { AuthorizationError, ValidationError, NotFoundError } = require("../../utils/errors");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 
-/**
- * PUT /api/espacios/asignar-grupo
- * Asigna un grupo como activo para el usuario
- */
-module.exports.asignarGrupoActivo = async (event) => {
-  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [AsignarGrupoActivo] Inicio | ${TRACE_ID} ===`);
+// Helper response function (mantener compatibilidad)
+function response(statusCode, body, headers = {}) {
+  return {
+    statusCode,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body)
+  };
+}
+
+async function asignarGrupoActivoHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
   
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    
-    if (!userSub) {
-      return response(401, { 
-        ok: false, 
-        error: "Usuario no autenticado",
-        trace_id: TRACE_ID 
-      });
-    }
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
 
-    let body = {};
-    try {
-      body = JSON.parse(event.body || "{}");
-    } catch (jsonErr) {
-      return response(400, { 
-        ok: false, 
-        error: "JSON inválido en el body",
-        trace_id: TRACE_ID 
-      });
-    }
-
-    const { grupo_id } = body;
+  const body = JSON.parse(event.body || "{}");
+  const { grupo_id } = body;
 
     if (!grupo_id) {
       return response(400, {
         ok: false,
         error: "grupo_id es requerido",
         trace_id: TRACE_ID
-      });
+      }, getSecurityHeaders());
     }
 
     console.log(`[${TRACE_ID}] Verificando grupo: ${grupo_id}`);
@@ -79,7 +68,7 @@ module.exports.asignarGrupoActivo = async (event) => {
         ok: false,
         error: "Grupo no encontrado",
         trace_id: TRACE_ID
-      });
+      }, getSecurityHeaders());
     }
 
     // Verificar que el usuario es miembro o owner del grupo
@@ -104,7 +93,7 @@ module.exports.asignarGrupoActivo = async (event) => {
         ok: false,
         error: "No tienes acceso a este grupo",
         trace_id: TRACE_ID
-      });
+      }, getSecurityHeaders());
     }
 
     const timestamp = new Date().toISOString();
@@ -137,51 +126,25 @@ module.exports.asignarGrupoActivo = async (event) => {
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    console.log(`[${TRACE_ID}] ✅ Grupo ${grupo_id} asignado como activo`);
+    logger.info('Grupo asignado como activo', { grupo_id, userSub });
 
-    return response(200, {
+    return successResponse({
       ok: true,
       message: "Grupo asignado correctamente",
       grupo_activo: {
         grupo_id: grupo_id,
         nomenclatura: verificacion.Item.parameter_value
-      },
-      trace_id: TRACE_ID
+      }
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error(`[${TRACE_ID}] ❌ Error asignando grupo activo`, err);
-    
-    return response(500, {
-      ok: false,
-      error: "Error interno del servidor",
-      details: err.message,
-      trace_id: TRACE_ID
-    });
-  }
-};
+module.exports.asignarGrupoActivo = createAPIHandler(asignarGrupoActivoHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
 
-/**
- * GET /api/espacios/grupo-activo
- * Obtiene el grupo activo del usuario
- */
-module.exports.obtenerGrupoActivo = async (event) => {
-  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [ObtenerGrupoActivo] Inicio | ${TRACE_ID} ===`);
-  
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    
-    if (!userSub) {
-      return response(401, { 
-        ok: false, 
-        error: "Usuario no autenticado",
-        trace_id: TRACE_ID 
-      });
-    }
+async function obtenerGrupoActivoHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
 
-    console.log(`[${TRACE_ID}] Obteniendo grupo activo para user: ${userSub}`);
+  logger.info('Obteniendo grupo activo', { userSub });
 
     const result = await retryWithJitter(
       async () => {
@@ -209,7 +172,7 @@ module.exports.obtenerGrupoActivo = async (event) => {
         ok: false,
         error: "No hay grupo activo asignado",
         trace_id: TRACE_ID
-      });
+      }, getSecurityHeaders());
     }
 
     const grupoActivoId = result.Item.parameter_value.grupo_id;
@@ -241,7 +204,7 @@ module.exports.obtenerGrupoActivo = async (event) => {
         ok: false,
         error: "Grupo activo no encontrado",
         trace_id: TRACE_ID
-      });
+      }, getSecurityHeaders());
     }
 
     const grupo = grupoDetalles.Item;
@@ -249,6 +212,9 @@ module.exports.obtenerGrupoActivo = async (event) => {
     console.log(`[${TRACE_ID}] ✅ Grupo activo obtenido exitosamente`);
 
     return response(200, {
+    logger.info('Grupo activo obtenido', { grupo_id: grupoActivoId });
+
+    return successResponse({
       ok: true,
       grupo_activo: {
         grupo_id: grupoActivoId,
@@ -256,50 +222,20 @@ module.exports.obtenerGrupoActivo = async (event) => {
         nomenclatura: grupo.nomenclatura || null,
         configured: grupo.configured || false,
         asignado_en: result.Item.parameter_value.asignado_en
-      },
-      trace_id: TRACE_ID
+      }
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error(`[${TRACE_ID}] ❌ Error obteniendo grupo activo`, err);
-    
-    return response(500, {
-      ok: false,
-      error: "Error interno del servidor",
-      details: err.message,
-      trace_id: TRACE_ID
-    });
-  }
-};
+module.exports.obtenerGrupoActivo = createAPIHandler(obtenerGrupoActivoHandler, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });
 
-/**
- * DELETE /api/espacios/configuracion
- * Elimina una configuración completa de espacios
- */
-module.exports.eliminarConfiguracion = async (event) => {
-  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [EliminarConfiguracion] Inicio | ${TRACE_ID} ===`);
+async function eliminarConfiguracionHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const grupo_id = event.queryStringParameters?.grupo_id;
   
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const grupo_id = event.queryStringParameters?.grupo_id;
-    
-    if (!userSub) {
-      return response(401, { 
-        ok: false, 
-        error: "Usuario no autenticado",
-        trace_id: TRACE_ID 
-      });
-    }
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+  if (!grupo_id) throw new ValidationError("grupo_id es requerido");
 
-    if (!grupo_id) {
-      return response(400, {
-        ok: false,
-        error: "grupo_id es requerido",
-        trace_id: TRACE_ID
-      });
-    }
+  logger.info('Eliminando configuración', { grupo_id, userSub });
 
     // Eliminar nomenclatura
     await retryWithJitter(
@@ -335,46 +271,24 @@ module.exports.eliminarConfiguracion = async (event) => {
       { maxAttempts: 2, baseDelayMs: 300 }
     );
 
-    console.log(`[${TRACE_ID}] ✅ Configuración eliminada`);
+    logger.info('Configuración eliminada', { grupo_id });
 
-    return response(200, {
+    return successResponse({
       ok: true,
       message: "Configuración eliminada correctamente",
-      grupo_id,
-      trace_id: TRACE_ID
+      grupo_id
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error(`[${TRACE_ID}] ❌ Error eliminando configuración`, err);
-    
-    return response(500, {
-      ok: false,
-      error: "Error interno del servidor",
-      details: err.message,
-      trace_id: TRACE_ID
-    });
-  }
-};
+module.exports.eliminarConfiguracion = createAPIHandler(eliminarConfiguracionHandler, { rateLimit: { maxRequests: 20, windowSeconds: 60 } });
 
-/**
- * GET /api/espacios/configuracion
- * Obtiene la configuración de nomenclatura del usuario
- */
-module.exports.obtenerConfiguracion = async (event) => {
-  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+async function obtenerConfiguracionHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const grupo_id = event.queryStringParameters?.grupo_id;
   
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const grupo_id = event.queryStringParameters?.grupo_id;
-    
-    if (!userSub) {
-      return response(401, { 
-        ok: false, 
-        error: "Usuario no autenticado",
-        trace_id: TRACE_ID 
-      });
-    }
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+
+  logger.info('Obteniendo configuración', { grupo_id, userSub });
 
     // Buscar todas las configuraciones de nomenclatura del usuario
     const result = await retryWithJitter(
@@ -410,57 +324,30 @@ module.exports.obtenerConfiguracion = async (event) => {
     // Si se especificó un grupo_id, filtrar
     const configFiltrada = grupo_id 
       ? configuraciones.find(c => c.grupo_id === grupo_id)
-      : configuraciones[0]; // La más reciente
+      : configuraciones[0];
 
     if (grupo_id && !configFiltrada) {
-      return response(404, {
-        ok: false,
-        error: "Configuración no encontrada para el grupo especificado",
-        trace_id: TRACE_ID
-      });
+      throw new NotFoundError("Configuración no encontrada para el grupo especificado");
     }
 
-    return response(200, {
+    logger.info('Configuración obtenida', { hasConfig: !!configFiltrada, totalConfigs: configuraciones.length });
+
+    return successResponse({
       ok: true,
       configuracion: configFiltrada || null,
-      todas_configuraciones: configuraciones,
-      trace_id: TRACE_ID
+      todas_configuraciones: configuraciones
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error(`[${TRACE_ID}] ❌ Error obteniendo configuración`, err);
-    
-    return response(500, {
-      ok: false,
-      error: "Error interno del servidor",
-      details: err.message,
-      trace_id: TRACE_ID
-    });
-  }
-};
+module.exports.obtenerConfiguracion = createAPIHandler(obtenerConfiguracionHandler, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });
 
-/**
- * GET /api/espacios/lista
- * Obtiene todos los espacios de un grupo
- */
-module.exports.listarEspacios = async (event) => {
-  const TRACE_ID = `trace-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [ListarEspacios] Inicio | ${TRACE_ID} ===`);
+async function listarEspaciosHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const grupo_id = event.queryStringParameters?.grupo_id;
   
-  try {
-    const grupo_id = event.queryStringParameters?.grupo_id;
-    
-    if (!grupo_id) {
-      return response(400, {
-        ok: false,
-        error: "grupo_id es requerido",
-        trace_id: TRACE_ID
-      });
-    }
+  if (!grupo_id) throw new ValidationError("grupo_id es requerido");
 
-    console.log(`[${TRACE_ID}] Consultando espacios para grupo: ${grupo_id}`);
-    console.log(`[${TRACE_ID}] Tabla: ${process.env.SPACES_TABLE}`);
+  logger.info('Listando espacios', { grupo_id, userSub });
 
     // Obtener todos los espacios que pertenecen a este grupo
     const result = await retryWithJitter(
@@ -502,31 +389,21 @@ module.exports.listarEspacios = async (event) => {
       grupo_id,
       espacios: espaciosConHijos,
       total: espaciosGenerales.length,
-      total_especificos: espaciosEspecificos.length,
-      trace_id: TRACE_ID
+      total_especificos: espaciosEspecificos.length
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error(`[${TRACE_ID}] ❌ Error listando espacios`, err);
-    
-    return response(500, {
-      ok: false,
-      error: "Error interno del servidor",
-      details: err.message,
-      trace_id: TRACE_ID
-    });
-  }
-};
+module.exports.listarEspacios = createAPIHandler(listarEspaciosHandler, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });
 
 /**
  * Respuesta HTTP estandarizada
  */
-function response(statusCode, body) {
+function response(statusCode, body, securityHeaders = {}) {
   return {
     statusCode,
     headers: {
-      "content-type": "application/json"
+      "content-type": "application/json",
+      ...securityHeaders
     },
     body: JSON.stringify(body)
   };

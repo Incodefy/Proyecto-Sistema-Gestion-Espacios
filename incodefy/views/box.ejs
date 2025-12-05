@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestión de espacios y boxes - Visualización de estados y ocupación">
   <title><%= t('box.title') %></title>
   
   <!-- Token CSRF para peticiones AJAX -->
@@ -24,7 +26,7 @@
         <div class="row">
             <%- include('navbar') %>
 
-            <div class="main">
+            <main class="main" role="main" aria-label="Contenido principal">
                 <!--  
                 <% if (hasAnyPermission('box.write', 'admin.users')) { %>
                     <a href="/en-curso"
@@ -47,18 +49,31 @@
                     <i class="fas fa-arrow-up" aria-hidden="true"></i>
                 </button>
 
-                <div class="top-header">
+                <header class="top-header">
                     <div class="header-row">
                     <h1><%= t('box.header') %></h1>
                     </div>
-                </div>
+                </header>
 
                 <!-- Filtros -->
-                <div class="filtros">
+                <section class="filtros" aria-label="Filtros de búsqueda">
                     <div class="filtros-inputs">
-                    <input type="text" id="filtroPasillo" placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>" aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>">
-                    <input type="text" id="filtroBox" placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>" aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>">
-                    <select id="filtroEstado" aria-label="<%= t('box.filters.filter_state') %>">
+                    <label for="filtroPasillo" class="visually-hidden"><%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %></label>
+                    <input type="text" 
+                           id="filtroPasillo" 
+                           name="filtroPasillo"
+                           placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>" 
+                           aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>">
+                    <label for="filtroBox" class="visually-hidden"><%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %></label>
+                    <input type="text" 
+                           id="filtroBox" 
+                           name="filtroBox"
+                           placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>" 
+                           aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>">
+                    <label for="filtroEstado" class="visually-hidden"><%= t('box.filters.filter_state') %></label>
+                    <select id="filtroEstado" 
+                            name="filtroEstado"
+                            aria-label="<%= t('box.filters.filter_state') %>">
                         <option value=""><%= t('box.filters.show_all') %></option>
                         <option value="en-uso"><%= t('common.state_in_use') %></option>
                         <option value="en-espera"><%= t('common.state_waiting') %></option>
@@ -67,37 +82,40 @@
                     </select>
                     </div>
                     <div class="filtros-botones">
-                    <button data-action="reset-filters"><%= t('common.reset_filters') %></button>
-                    <button id="toggle-detalles" class="btn-toggle-detalles"><%= t('common.show_details') %></button>
+                    <button type="button" data-action="reset-filters"><%= t('common.reset_filters') %></button>
+                    <button type="button" id="toggle-detalles" class="btn-toggle-detalles"><%= t('common.show_details') %></button>
                     </div>
-                </div>
+                </section>
 
                 <!-- Resumen de estados -->
-                <div class="resumen-estados row align-items-stretch" id="resumenEstados">
-                    <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
+                <section class="resumen-estados row align-items-stretch" 
+                         id="resumenEstados" 
+                         aria-label="Resumen de estados de espacios"
+                         role="region">
+                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card libre">
-                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h4>
-                        <p id="count-libre"><%= contadoresEstados.libre %></p>
+                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h2>
+                        <p id="count-libre" aria-label="Cantidad de espacios libres"><%= contadoresEstados.libre %></p>
                     </div>
-                    </div>
-                    <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
+                    </article>
+                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-espera">
-                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h4>
-                        <p id="count-en-espera"><%= contadoresEstados['en-espera'] %></p>
+                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h2>
+                        <p id="count-en-espera" aria-label="Cantidad de espacios en espera"><%= contadoresEstados['en-espera'] %></p>
                     </div>
-                    </div>
-                    <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
+                    </article>
+                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card en-uso">
-                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h4>
-                        <p id="count-en-uso"><%= contadoresEstados['en-uso'] %></p>
+                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h2>
+                        <p id="count-en-uso" aria-label="Cantidad de espacios en uso"><%= contadoresEstados['en-uso'] %></p>
                     </div>
-                    </div>
-                    <div class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
+                    </article>
+                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
                     <div class="estado-card inhabilitado">
-                        <h4><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h4>
-                        <p id="count-inhabilitado"><%= contadoresEstados.inhabilitado %></p>
+                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h2>
+                        <p id="count-inhabilitado" aria-label="Cantidad de espacios inhabilitados"><%= contadoresEstados.inhabilitado %></p>
                     </div>
-                    </div>
+                    </article>
                 </div>
 
                 <!-- Mensaje sin resultados -->

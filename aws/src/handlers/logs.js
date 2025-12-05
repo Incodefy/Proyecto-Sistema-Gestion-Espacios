@@ -1,118 +1,107 @@
 // src/handlers/logs.js
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, ScanCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { retryWithJitter } = require("../../utils/retry");
-const { createCircuitBreaker } = require("../../utils/circuitBreaker");
+const { retryWithJitter } = require("../utils/retry");
+const { createCircuitBreaker } = require("../utils/circuitBreaker");
+const Logger = require("../utils/logger");
+const { createAPIHandler } = require("../utils/interceptors");
+const { successResponse } = require("../utils/response");
+const { AuthorizationError } = require("../utils/errors");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 15000 });
-
-const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
+const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
 const crypto = require('crypto');
 
-/**
- * GET /admin/activity-logs
- * Obtener logs de actividad
- */
-module.exports.getActivityLogs = async (event) => {
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    if (!userSub) return response(401, { ok: false, error: "Usuario no autenticado" });
+async function getActivityLogsHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+  
+  const queryParams = event.queryStringParameters || {};
+  const { user_sub: filterUserSub, limit = '50', last_key, action_filter } = queryParams;
 
-    const queryParams = event.queryStringParameters || {};
-    const { user_sub: filterUserSub, limit = '50', last_key, action_filter } = queryParams;
+  let command;
+  let params = {
+    TableName: process.env.ACTIVITY_LOGS_TABLE,
+    Limit: parseInt(limit),
+    ScanIndexForward: false
+  };
 
-    let command;
-    let params = {
-      TableName: process.env.ACTIVITY_LOGS_TABLE,
-      Limit: parseInt(limit),
-      ScanIndexForward: false
-    };
+  if (last_key) params.ExclusiveStartKey = JSON.parse(decodeURIComponent(last_key));
 
-    if (last_key) params.ExclusiveStartKey = JSON.parse(decodeURIComponent(last_key));
-
-    if (filterUserSub) {
-      params.IndexName = 'UserActivityIndex';
-      params.KeyConditionExpression = 'user_sub = :userSub';
-      params.ExpressionAttributeValues = { ':userSub': filterUserSub };
-      if (action_filter) {
-        params.FilterExpression = 'contains(#action, :actionFilter)';
-        params.ExpressionAttributeNames = { '#action': 'action' };
-        params.ExpressionAttributeValues[':actionFilter'] = action_filter;
-      }
-      command = new QueryCommand(params);
-    } else {
-      if (action_filter) {
-        params.FilterExpression = 'contains(#action, :actionFilter)';
-        params.ExpressionAttributeNames = { '#action': 'action' };
-        params.ExpressionAttributeValues = { ':actionFilter': action_filter };
-      }
-      command = new ScanCommand(params);
+  if (filterUserSub) {
+    params.IndexName = 'UserActivityIndex';
+    params.KeyConditionExpression = 'user_sub = :userSub';
+    params.ExpressionAttributeValues = { ':userSub': filterUserSub };
+    if (action_filter) {
+      params.FilterExpression = 'contains(#action, :actionFilter)';
+      params.ExpressionAttributeNames = { '#action': 'action' };
+      params.ExpressionAttributeValues[':actionFilter'] = action_filter;
     }
-
-    const result = await retryWithJitter(
-      async () => {
-        if (!dynamoBreaker.shouldAllow()) throw new Error("CircuitBreakerOpen");
-        const res = await docClient.send(command);
-        dynamoBreaker.reportSuccess();
-        return res;
-      },
-      { maxAttempts: 3, baseDelayMs: 300 }
-    );
-
-    const processedLogs = (result.Items || []).map(log => ({
-      id: log.id,
-      user_email: log.user_email,
-      action: log.action,
-      timestamp: log.timestamp,
-      source: log.source || 'unknown',
-      metadata: log.metadata || {},
-      formatted_time: new Date(log.timestamp).toLocaleString('es-ES', {
-        timeZone: 'America/Santiago'
-      })
-    }));
-
-    const response_data = {
-      ok: true,
-      logs: processedLogs,
-      count: processedLogs.length,
-      has_more: !!result.LastEvaluatedKey,
-      filters: { user_sub: filterUserSub, action_filter, limit: parseInt(limit) }
-    };
-
-    if (result.LastEvaluatedKey)
-      response_data.next_key = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
-
-    return response(200, response_data);
-
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error("[Logs] ❌ Error obteniendo logs de actividad:", err);
-    return response(500, { ok: false, error: "Error interno del servidor", details: err.message });
+    command = new QueryCommand(params);
+  } else {
+    if (action_filter) {
+      params.FilterExpression = 'contains(#action, :actionFilter)';
+      params.ExpressionAttributeNames = { '#action': 'action' };
+      params.ExpressionAttributeValues = { ':actionFilter': action_filter };
+    }
+    command = new ScanCommand(params);
   }
-};
 
-/**
- * GET /admin/activity-stats
- * Obtener estadísticas de actividad
- */
-module.exports.getActivityStats = async (event) => {
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    if (!userSub) return response(401, { ok: false, error: "Usuario no autenticado" });
+  const result = await retryWithJitter(
+    async () => {
+      if (!dynamoBreaker.shouldAllow()) throw new Error("CircuitBreakerOpen");
+      const res = await docClient.send(command);
+      dynamoBreaker.reportSuccess();
+      return res;
+    },
+    { maxAttempts: 3, baseDelayMs: 300 }
+  );
 
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
+  const processedLogs = (result.Items || []).map(log => ({
+    id: log.id,
+    user_email: log.user_email,
+    action: log.action,
+    timestamp: log.timestamp,
+    source: log.source || 'unknown',
+    metadata: log.metadata || {},
+    formatted_time: new Date(log.timestamp).toLocaleString('es-ES', {
+      timeZone: 'America/Santiago'
+    })
+  }));
 
-    const result = await retryWithJitter(
-      async () => {
-        if (!dynamoBreaker.shouldAllow()) throw new Error("CircuitBreakerOpen");
-        const res = await docClient.send(new ScanCommand({
-          TableName: process.env.ACTIVITY_LOGS_TABLE,
-          FilterExpression: '#timestamp > :weekAgo',
-          ExpressionAttributeNames: { '#timestamp': 'timestamp' },
-          ExpressionAttributeValues: { ':weekAgo': weekAgo.toISOString() }
+  const response_data = {
+    logs: processedLogs,
+    count: processedLogs.length,
+    has_more: !!result.LastEvaluatedKey,
+    filters: { user_sub: filterUserSub, action_filter, limit: parseInt(limit) }
+  };
+
+  if (result.LastEvaluatedKey)
+    response_data.next_key = encodeURIComponent(JSON.stringify(result.LastEvaluatedKey));
+
+  logger.info('Logs de actividad obtenidos', { count: processedLogs.length });
+  return successResponse(response_data);
+}
+
+module.exports.getActivityLogs = createAPIHandler(getActivityLogsHandler, { rateLimit: { maxRequests: 50, windowSeconds: 60 } });
+
+async function getActivityStatsHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const result = await retryWithJitter(
+    async () => {
+      if (!dynamoBreaker.shouldAllow()) throw new Error("CircuitBreakerOpen");
+      const res = await docClient.send(new ScanCommand({
+        TableName: process.env.ACTIVITY_LOGS_TABLE,
+        FilterExpression: '#timestamp > :weekAgo',
+        ExpressionAttributeNames: { '#timestamp': 'timestamp' },
+        ExpressionAttributeValues: { ':weekAgo': weekAgo.toISOString() }
         }));
         dynamoBreaker.reportSuccess();
         return res;
@@ -141,26 +130,30 @@ module.exports.getActivityStats = async (event) => {
       .slice(0, 10)
       .map(([email, count]) => ({ email, activity_count: count }));
 
-    return response(200, { ok: true, period: 'last_7_days', stats });
+    logger.info("Estadísticas de actividad calculadas", { totalActions: stats.total_actions });
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    console.error("[Logs] ❌ Error obteniendo estadísticas:", err);
-    return response(500, { ok: false, error: "Error interno del servidor", details: err.message });
-  }
-};
+    return successResponse({
+      ok: true,
+      stats: {
+        ...stats,
+        period: {
+          from: weekAgo.toISOString(),
+          to: new Date().toISOString()
+        }
+      }
+    });
+}
 
-/**
- * Función para registrar actividad
- */
+module.exports.getActivityStats = createAPIHandler(getActivityStatsHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
+
 module.exports.logActivity = async (activityData) => {
+  const logger = Logger.create({ handler: 'logActivity' });
+  
   try {
-    // ✅ Validar campos obligatorios
     if (!activityData.userSub || !activityData.action) {
-      throw new Error("userSub y action son obligatorios para logActivity");
+      throw new ValidationError("userSub y action son obligatorios para logActivity");
     }
 
-    // ✅ Generar clave de idempotencia basada en contenido
     const contentHash = crypto
       .createHash('sha256')
       .update(JSON.stringify({
@@ -214,7 +207,7 @@ module.exports.logActivity = async (activityData) => {
     // ✅ Marcar como procesado DESPUÉS de escritura exitosa
     await markAsProcessed(idempotencyKey);
 
-    console.log('[Logs] 📊 Actividad registrada:', {
+    logger.info('Actividad registrada', {
       action: logEntry.action,
       user: logEntry.user_email,
       idempotent: true
@@ -223,7 +216,7 @@ module.exports.logActivity = async (activityData) => {
     return logEntry;
   } catch (error) {
     dynamoBreaker.reportFailure();
-    console.error('[Logs] ❌ Error registrando actividad:', error);
+    logger.error('Error registrando actividad', error);
     throw error;
   }
 };

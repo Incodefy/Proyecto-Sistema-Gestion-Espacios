@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="<%= i18n.language %>">
+<html lang="<%= i18n?.language || 'es' %>">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Panel de control - Sistema de Gestión Hospitalaria">
     <meta name="csrf-token" content="<%= csrfToken %>">
     <title><%= t('dashboard.title') %></title>
     <link rel="stylesheet" href="/css/navbar.css">
@@ -22,38 +24,53 @@
         <div class="row">
             <%- include('navbar') %>
 
-            <div class="main" data-grupo-id="<%= grupoActivo.grupo_id %>">
-                <div class="header-section">
+            <main class="main" role="main" aria-label="Contenido principal" data-grupo-id="<%= grupoActivo.grupo_id %>">
+                <header class="header-section">
                     <h1>
-                        <i class="fas fa-chart-line me-2 header-icon"></i>
+                        <i class="fas fa-chart-line me-2 header-icon" aria-hidden="true"></i>
                         <%= t('dashboard.header') %>
                     </h1>
                     <p><%= t('dashboard.subheader') %></p>
-                </div>
+                </header>
 
                 <!-- Filtros -->
-                <div class="container mt-4">
+                <section class="container mt-4" aria-label="Filtros de visualización">
                     <div class="dashboard-filter-section dashboard-animate-on-load" style="animation-delay: 50ms;" nonce="<%= cspNonce %>">
                         <div class="row justify-content-center align-items-center g-3">
                             <!-- Filtro Rango Fecha -->
                             <div class="col-auto">
                                 <div class="dropdown">
-                                    <button class="btn btn-primary dropdown-toggle" type="button"
-                                            data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                                        <i class="fas fa-calendar-alt me-2"></i><%= t('dashboard.filters.date_range') %>
+                                    <button class="btn btn-primary dropdown-toggle" 
+                                            type="button"
+                                            id="filtroFechaBtn"
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false" 
+                                            aria-haspopup="true"
+                                            aria-controls="filtroFechaMenu"
+                                            data-bs-auto-close="outside">
+                                        <i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>
+                                        <%= t('dashboard.filters.date_range') %>
                                     </button>
-                                    <div class="dropdown-menu">
+                                    <div class="dropdown-menu" id="filtroFechaMenu" aria-labelledby="filtroFechaBtn">
                                         <div class="mb-3">
                                             <label for="fechaInicioFiltro" class="form-label">
-                                                <div class="nombre"> <%= t('dashboard.filters.from') %> </div>
+                                                <%= t('dashboard.filters.from') %>
                                             </label>
-                                            <input type="date" class="form-control" id="fechaInicioFiltro" name="fecha_inicio">
+                                            <input type="date" 
+                                                   class="form-control" 
+                                                   id="fechaInicioFiltro" 
+                                                   name="fecha_inicio"
+                                                   aria-label="<%= t('dashboard.filters.from') %>">
                                         </div>
                                         <div class="mb-1">
                                             <label for="fechaFinFiltro" class="form-label">
-                                                <div class="nombre"> <%= t('dashboard.filters.to') %> </div>
+                                                <%= t('dashboard.filters.to') %>
                                             </label>
-                                            <input type="date" class="form-control" id="fechaFinFiltro" name="fecha_fin">
+                                            <input type="date" 
+                                                   class="form-control" 
+                                                   id="fechaFinFiltro" 
+                                                   name="fecha_fin"
+                                                   aria-label="<%= t('dashboard.filters.to') %>">
                                         </div>
                                     </div>
                                 </div>

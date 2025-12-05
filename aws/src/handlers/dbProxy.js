@@ -1,93 +1,69 @@
 /**
  * DB Proxy Handler - Enruta peticiones a funciones Lambda específicas
- * Refactorizado para mejor mantenibilidad y separación de responsabilidades
  */
 
 const { findTargetFunction, getFullFunctionName, listAvailableRoutes } = require('./dbProxy/routeMapper');
 const { invokeLambda } = require('./dbProxy/lambdaInvoker');
+const Logger = require('../utils/logger');
 
 module.exports.handler = async (event) => {
-  console.log('=== INICIO dbProxy ===');
-  
-  // Log solo en modo debug para no saturar CloudWatch
-  if (process.env.DEBUG === 'true') {
-    console.log('Event completo:', JSON.stringify(event, null, 2));
-  }
+  const logger = Logger.fromEvent(event).child({ handler: 'dbProxy' });
+  logger.info('Iniciando dbProxy');
 
-  // Extraer información de la petición
-  const path = event.path || event.rawPath; // HTTP API v2 usa rawPath
+  const path = event.path || event.rawPath;
   const method = event.requestContext?.http?.method || event.httpMethod || 'GET';
   
-  console.log(`📍 Petición: ${method} ${path}`);
+  logger.info('Petición recibida', { method, path });
 
-  // Validar que la ruta existe
   if (!path) {
-    console.error('❌ No se recibió un path válido');
+    logger.error('Path no válido');
     return {
       statusCode: 400,
-      body: JSON.stringify({ 
-        error: "Path no válido",
-        availableRoutes: listAvailableRoutes()
-      })
+      body: JSON.stringify({ error: "Path no válido", availableRoutes: listAvailableRoutes() })
     };
   }
 
-  // Buscar la función Lambda correspondiente
   const targetFunction = findTargetFunction(path, method);
 
   if (!targetFunction) {
-    console.error(`❌ No se encontró función para: ${method} ${path}`);
+    logger.error('Función no encontrada', { method, path });
     return {
       statusCode: 404,
       body: JSON.stringify({ 
         error: "Ruta no encontrada",
-        path: path,
-        method: method,
+        path, method,
         hint: "Verifica que la ruta esté registrada en routeMapper.js",
         availableRoutes: listAvailableRoutes()
       })
     };
   }
 
-  // Obtener el nombre completo de la función Lambda
   let fullFunctionName;
   try {
     fullFunctionName = getFullFunctionName(targetFunction);
   } catch (error) {
-    console.error('❌ Error obteniendo nombre de función:', error.message);
+    logger.error('Error obteniendo nombre de función', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: "Error de configuración",
-        message: error.message
-      })
+      body: JSON.stringify({ error: "Error de configuración", message: error.message })
     };
   }
 
-  console.log(`🎯 Target: ${targetFunction} -> ${fullFunctionName}`);
+  logger.info('Invocando función', { targetFunction, fullFunctionName });
 
-  // Invocar la función Lambda
   try {
     const result = await invokeLambda(fullFunctionName, event);
-    console.log(`✅ dbProxy completado exitosamente para ${targetFunction}`);
+    logger.info('dbProxy completado exitosamente');
     return result;
-
   } catch (error) {
-    console.error(`❌ Error en dbProxy para ${targetFunction}:`, error);
-    
-    // Si el error ya tiene formato de respuesta HTTP, retornarlo
-    if (error.statusCode && error.body) {
-      return error;
-    }
-
-    // Crear respuesta de error genérica
+    logger.error('Error en dbProxy', error, { targetFunction });
+    if (error.statusCode && error.body) return error;
     return {
       statusCode: 500,
       body: JSON.stringify({
         error: "Error procesando la petición",
         message: error.message || 'Error desconocido',
-        path: path,
-        targetFunction: targetFunction
+        path, targetFunction
       })
     };
   }

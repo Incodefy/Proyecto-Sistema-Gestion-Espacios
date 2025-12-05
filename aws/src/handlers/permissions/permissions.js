@@ -10,10 +10,10 @@ const { retryWithJitter } = require("../../utils/retry");
 const { createCircuitBreaker } = require("../../utils/circuitBreaker");
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
 const { validate } = require("../../utils/validation");
-const { successResponse, errorResponse, unauthorizedResponse, forbiddenResponse, notFoundResponse, validationErrorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
-
-const logger = createLogger({ handler: 'permissions' });
+const { successResponse, errorResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { AuthorizationError, ValidationError, NotFoundError } = require("../../utils/errors");
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 
 const client = new DynamoDBClient({});
@@ -134,31 +134,20 @@ try {
   };
 }
 
-/**
- * Verifica si un usuario tiene un permiso específico en un grupo
- * Ahora verifica en GROUP_MEMBERS_TABLE en lugar de USER_ROLES_TABLE
- */
-async function verifyPermission(userSub, groupId, requiredPermission) {
-  const TRACE = `[Perms-${Date.now()}]`;
-  
+async function verifyPermission(userSub, groupId, requiredPermission, logger = Logger.create({ handler: 'verifyPermission' })) {
   try {
-    console.log(`${TRACE} 🔐 Verificando permiso '${requiredPermission}' para ${userSub} en grupo ${groupId}`);
+    logger.info('Verificando permiso', { requiredPermission, userSub, groupId });
     
     if (!dynamoBreaker.shouldAllow()) {
-      logger.warn("Circuit breaker activo - lectura DynamoDB pausada", { userSub, groupId, requiredPermission });
+      logger.warn("Circuit breaker activo", { userSub, groupId, requiredPermission });
       throw new Error("CircuitBreakerOpen");
     }
 
-    // Obtener el miembro del grupo de DynamoDB
-    console.log(`${TRACE} 📍 Buscando miembro en GROUP_MEMBERS_TABLE...`);
     const result = await retryWithJitter(
       async () => {
         const res = await docClient.send(new GetCommand({
           TableName: process.env.GROUP_MEMBERS_TABLE,
-          Key: { 
-            group_id: groupId,
-            user_sub: userSub 
-          }
+          Key: { group_id: groupId, user_sub: userSub }
         }));
         dynamoBreaker.reportSuccess();
         return res;
@@ -166,105 +155,66 @@ async function verifyPermission(userSub, groupId, requiredPermission) {
       { maxAttempts: 3, baseDelayMs: 300 }
     );
 
-    // Si existe el miembro en el grupo, verificar permisos según su rol
     if (result.Item) {
-      console.log(`${TRACE} ✅ Miembro encontrado en grupo`);
       const memberRole = result.Item.role || 'lector';
       const rolePermissions = PREDEFINED_ROLES[memberRole] || [];
-      console.log(`${TRACE} 📋 Rol: ${memberRole}, Permisos: ${rolePermissions.join(', ')}`);
+      logger.debug('Rol encontrado', { memberRole, permissionsCount: rolePermissions.length });
 
-      // Owner y admin tienen todos los permisos
       if (memberRole === 'owner' || memberRole === 'admin' || rolePermissions.includes("admin.users")) {
-        console.log(`${TRACE} ✅ Tiene rol privilegiado (${memberRole})`);
+        logger.debug('Rol privilegiado detectado', { memberRole });
         return true;
       }
       
       const hasPermission = rolePermissions.includes(requiredPermission);
-      console.log(`${TRACE} ${hasPermission ? '✅' : '❌'} Tiene permiso '${requiredPermission}': ${hasPermission}`);
+      logger.debug('Verificación de permiso', { hasPermission, requiredPermission });
       return hasPermission;
     }
 
-    console.log(`${TRACE} ❌ Usuario NO es miembro del grupo`);
+    logger.debug('Usuario no es miembro del grupo');
     return false;
 
   } catch (err) {
     dynamoBreaker.reportFailure();
-    logger.error("Error verificando permiso", err, { userEmail, requiredPermission });
+    logger.error("Error verificando permiso", err, { userSub, requiredPermission });
     return false;
   }
 }
 
-/**
- * POST /assign-role
- * Asigna un rol a un miembro de grupo con idempotencia y resiliencia
- */
-module.exports.assignRole = async (event) => {
-  const endTrace = logger.startTrace('assignRole');
+async function assignRoleHandler(event, logger) {
+  const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  if (!requesterSub) throw new AuthorizationError("Token inválido o ausente. Debes enviar Authorization: Bearer <token>");
 
-  try {
-    // 1) PARSEO Y VALIDACIÓN DEL BODY
-    let body = {};
-    try {
-      body = JSON.parse(event.body || "{}");
-    } catch (jsonErr) {
-      logger.error("Error parseando JSON", jsonErr);
-      endTrace();
-      return errorResponse("JSON inválido en el body", 400);
-    }
+  const body = JSON.parse(event.body || "{}");
+  const { valid, data, errors } = validate(body, 'assignRole');
+  if (!valid) throw new ValidationError("Validación fallida", { errors });
 
-    const { valid, data, errors } = validate(body, 'assignRole');
-    if (!valid) {
-      logger.warn("Validación fallida en assignRole", { errors });
-      endTrace();
-      return validationErrorResponse(errors);
-    }
+  const { userSub: user_sub, groupId: group_id, roleName: role } = data;
 
-    const { userSub: user_sub, groupId: group_id, roleName: role } = data;
+  if (!PREDEFINED_ROLES[role]) {
+    throw new ValidationError("Rol no válido", { available_roles: Object.keys(PREDEFINED_ROLES) });
+  }
 
-    // 2) VALIDAR ROL
-    if (!PREDEFINED_ROLES[role]) {
-      logger.warn("Rol no válido solicitado", { role, available: Object.keys(PREDEFINED_ROLES) });
-      endTrace();
-      return errorResponse("Rol no válido", 400, { available_roles: Object.keys(PREDEFINED_ROLES) });
-    }
+  logger.info("Solicitud de asignación de rol", { requesterSub, targetUser: user_sub, group_id, role });
 
-    // 3) VALIDAR TOKEN DEL SOLICITANTE
-    const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    if (!requesterSub) {
-      logger.warn("Intento sin token válido");
-      endTrace();
-      return unauthorizedResponse("Token inválido o ausente. Debes enviar Authorization: Bearer <token>");
-    }
+  const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users", logger);
+  if (!hasPermission) {
+    throw new AuthorizationError("No tienes permiso para asignar roles en este grupo", { required_permission: "admin.users" });
+  }
 
-    logger.info("Solicitud de asignación de rol", { requesterSub, targetUser: user_sub, group_id, role });
+  const timestamp = new Date().toISOString();
+  const idempotencyKey = `assignRole-${group_id}-${user_sub}-${role}-${timestamp}`;
 
-    // 4) VALIDAR PERMISO admin.users EN EL GRUPO
-    const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users");
-    if (!hasPermission) {
-      logger.warn("Usuario sin permiso admin.users en el grupo", { requester: requesterSub, group_id });
-      endTrace();
-      return forbiddenResponse("No tienes permiso para asignar roles en este grupo", { required_permission: "admin.users" });
-    }
+  if (await wasAlreadyProcessed(idempotencyKey)) {
+    logger.info("Asignación ya procesada (idempotencia)", { idempotencyKey });
+    return successResponse({ message: "Rol ya estaba asignado" });
+  }
 
-    // 5) IDEMPOTENCIA
-    const timestamp = new Date().toISOString();
-    const idempotencyKey = `assignRole-${group_id}-${user_sub}-${role}-${timestamp}`;
+  if (!dynamoBreaker.shouldAllow()) {
+    logger.warn("Circuit breaker activo - asignación pausada");
+    throw new Error("Circuit breaker activo, espere unos segundos");
+  }
 
-    if (await wasAlreadyProcessed(idempotencyKey)) {
-      logger.info("Asignación ya procesada (idempotencia)", { idempotencyKey });
-      endTrace();
-      return successResponse({ message: "Rol ya estaba asignado" });
-    }
-
-    // 6) CIRCUIT BREAKER
-    if (!dynamoBreaker.shouldAllow()) {
-      logger.warn("Circuit breaker activo - asignación pausada");
-      endTrace();
-      return errorResponse("Circuit breaker activo, espere unos segundos", 503);
-    }
-
-    // 7) ESCRITURA EN DYNAMO (GROUP_MEMBERS_TABLE)
-    logger.debug("Actualizando rol de miembro en DynamoDB", { table: process.env.GROUP_MEMBERS_TABLE, group_id, user_sub, role });
+  logger.debug("Actualizando rol de miembro en DynamoDB", { table: process.env.GROUP_MEMBERS_TABLE, group_id, user_sub, role });
 
     try {
       await retryWithJitter(
@@ -286,7 +236,15 @@ module.exports.assignRole = async (event) => {
     } catch (dynamoErr) {
       logger.error("Error guardando en DynamoDB", dynamoErr, { table: process.env.GROUP_MEMBERS_TABLE });
       endTrace();
-      return errorResponse("Error guardando en DynamoDB", 500, { details: dynamoErr.message });
+      
+      const errorResp = errorResponse("Error guardando en DynamoDB", 500, { details: dynamoErr.message });
+      return {
+        ...errorResp,
+        headers: {
+          ...errorResp.headers,
+          ...getSecurityHeaders()
+        }
+      };
     }
 
     // 8) MARCAR COMO PROCESADO
@@ -294,7 +252,6 @@ module.exports.assignRole = async (event) => {
 
     const rolePermissions = PREDEFINED_ROLES[role];
     logger.info("Rol asignado correctamente", { group_id, user_sub, role, requesterSub });
-    endTrace();
 
     return successResponse({
       message: "Rol asignado correctamente",
@@ -305,31 +262,41 @@ module.exports.assignRole = async (event) => {
       assigned_by: requesterSub,
       assigned_at: timestamp
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    logger.error("Error inesperado en assignRole", { error: err.message, stack: err.stack });
-    endTrace();
-    return errorResponse("Error interno del servidor", 500, { details: err.message });
-  }
-};
+module.exports.assignRole = createAPIHandler(assignRoleHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
 
 
 /**
  * DELETE /remove-role
  * Remueve un rol de miembro de grupo con retry + breaker
+ * 
+ * SEGURIDAD:
+ * - Input sanitization
+ * - Security headers en responses
  */
 module.exports.removeRole = async (event) => {
   const endTrace = logger.startTrace('removeRole');
 
   try {
+    // 1️⃣ INPUT SANITIZATION
+    const sanitizedEvent = sanitizeEvent(event);
+    
     const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const { user_sub, group_id } = JSON.parse(event.body || "{}");
+    const { user_sub, group_id } = JSON.parse(sanitizedEvent.body || "{}");
 
     if (!user_sub || !group_id) {
       logger.warn("Intento de remoción sin user_sub o group_id");
       endTrace();
-      return errorResponse("user_sub y group_id son obligatorios", 400);
+      
+      const errorResp = errorResponse("user_sub y group_id son obligatorios", 400);
+      return {
+        ...errorResp,
+        headers: {
+          ...errorResp.headers,
+          ...getSecurityHeaders()
+        }
+      };
     }
 
     // Verificar permiso admin.users en el grupo
@@ -337,7 +304,15 @@ module.exports.removeRole = async (event) => {
     if (!hasPermission) {
       logger.warn("Usuario sin permiso para remover miembros", { requesterSub, group_id });
       endTrace();
-      return forbiddenResponse("No tienes permiso para remover miembros en este grupo");
+      
+      const errorResp = forbiddenResponse("No tienes permiso para remover miembros en este grupo");
+      return {
+        ...errorResp,
+        headers: {
+          ...errorResp.headers,
+          ...getSecurityHeaders()
+        }
+      };
     }
 
     const userCheck = await retryWithJitter(
@@ -383,7 +358,6 @@ module.exports.removeRole = async (event) => {
     );
 
     logger.info("Rol eliminado", { group_id, user_sub, removedRole, removedBy: requesterSub });
-    endTrace();
 
     return successResponse({
       message: "Rol removido correctamente",
@@ -393,14 +367,9 @@ module.exports.removeRole = async (event) => {
       removed_by: requesterSub,
       removed_at: new Date().toISOString()
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    logger.error("Error removiendo rol", err);
-    endTrace();
-    return errorResponse("Error interno del servidor", 500);
-  }
-};
+module.exports.removeRole = createAPIHandler(removeRoleHandler, { rateLimit: { maxRequests: 20, windowSeconds: 60 } });
 
 /**
  * GET /my-permissions
@@ -411,8 +380,11 @@ module.exports.getMyPermissions = async (event) => {
   const endTrace = logger.startTrace('getMyPermissions');
 
   try {
+    // Sanitizar evento
+    const sanitized = sanitizeEvent(event);
+    
     // 1) VALIDAR TOKEN
-    const claims = event.requestContext?.authorizer?.jwt?.claims;
+    const claims = sanitized.requestContext?.authorizer?.jwt?.claims;
     if (!claims) {
       logger.warn("No se recibieron claims en JWT");
       endTrace();
@@ -424,6 +396,14 @@ module.exports.getMyPermissions = async (event) => {
       logger.warn("Token JWT sin sub");
       endTrace();
       return unauthorizedResponse("Token JWT no contiene el sub");
+    }
+    
+    // Rate limiting: 200 requests por minuto (lectura frecuente)
+    const rateLimitCheck = await checkRateLimit(userSub, 200, 60, 'get-my-permissions');
+    if (!rateLimitCheck.allowed) {
+      logger.warn('Rate limit exceeded', { userSub });
+      endTrace();
+      return errorResponse('Demasiadas solicitudes. Intente más tarde.', 429);
     }
 
     logger.info("Usuario autenticado solicitando información de membresías", { userSub });
@@ -521,7 +501,6 @@ module.exports.getMyPermissions = async (event) => {
       groupsCount: groups.length,
       hasAdminPermissions
     });
-    endTrace();
 
     return successResponse({
       user_sub: userSub,
@@ -530,43 +509,26 @@ module.exports.getMyPermissions = async (event) => {
       permissions_by_group: permissionsByGroup,
       message: "Permisos calculados para todos los grupos"
     });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    logger.error("Error inesperado en getMyPermissions", err);
-    endTrace();
-    return errorResponse("Error interno del servidor", 500, { details: err.message });
+module.exports.getMyPermissions = createAPIHandler(getMyPermissionsHandler, { rateLimit: { maxRequests: 200, windowSeconds: 60 } });
+
+
+async function checkPermissionHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const { permission, group_id } = JSON.parse(event.body || "{}");
+
+  if (!permission || !group_id) {
+    throw new ValidationError("permission y group_id son obligatorios");
   }
-};
+  if (!userSub) {
+    throw new AuthorizationError("Usuario no autenticado");
+  }
 
+  const hasAccess = await verifyPermission(userSub, group_id, permission, logger);
+  logger.info("Verificación de permiso", { userSub, group_id, permission, hasAccess });
 
-/**
- * POST /check-permission
- * Verifica si el usuario tiene un permiso en un grupo específico
- */
-module.exports.checkPermission = async (event) => {
-  const endTrace = logger.startTrace('checkPermission');
-
-  try {
-    const { permission, group_id } = JSON.parse(event.body || "{}");
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-
-    if (!permission || !group_id) {
-      logger.warn("Verificación sin especificar permission o group_id");
-      endTrace();
-      return errorResponse("permission y group_id son obligatorios", 400);
-    }
-    if (!userSub) {
-      logger.warn("Verificación sin usuario autenticado");
-      endTrace();
-      return unauthorizedResponse("Usuario no autenticado");
-    }
-
-    const hasAccess = await verifyPermission(userSub, group_id, permission);
-    logger.info("Verificación de permiso", { userSub, group_id, permission, hasAccess });
-    endTrace();
-
-    return successResponse({
+  return successResponse({
       user_sub: userSub,
       group_id,
       permission,
@@ -581,54 +543,31 @@ module.exports.checkPermission = async (event) => {
   }
 };
 
-/**
- * GET /admin/available-permissions
- * Lista los permisos disponibles
- */
-module.exports.listAvailablePermissions = async () => {
-  const endTrace = logger.startTrace('listAvailablePermissions');
+async function listAvailablePermissionsHandler(event, logger) {
+  logger.info("Listando permisos disponibles", { total: Object.keys(AVAILABLE_PERMISSIONS).length });
 
-  try {
-    logger.info("Listando permisos disponibles", { total: Object.keys(AVAILABLE_PERMISSIONS).length });
-    endTrace();
+  return successResponse({
+    permissions: AVAILABLE_PERMISSIONS,
+    roles: PREDEFINED_ROLES,
+    total_permissions: Object.keys(AVAILABLE_PERMISSIONS).length
+  });
+}
 
-    return successResponse({
-      permissions: AVAILABLE_PERMISSIONS,
-      roles: PREDEFINED_ROLES,
-      total_permissions: Object.keys(AVAILABLE_PERMISSIONS).length
-    });
-  } catch (err) {
-    logger.error("Error listando permisos", err);
-    endTrace();
-    return errorResponse("Error interno del servidor", 500);
+module.exports.listAvailablePermissions = createAPIHandler(listAvailablePermissionsHandler, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });
+
+async function listUsersWithRolesHandler(event, logger) {
+  const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const group_id = event.queryStringParameters?.group_id;
+  const role = event.queryStringParameters?.role;
+
+  if (!group_id) {
+    throw new ValidationError("Debe especificar un group_id para consultar");
   }
-};
 
-/**
- * GET /users-with-roles
- * Lista miembros de un grupo con un rol específico
- */
-module.exports.listUsersWithRoles = async (event) => {
-  const endTrace = logger.startTrace('listUsersWithRoles');
-
-  try {
-    const requesterSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const group_id = event.queryStringParameters?.group_id;
-    const role = event.queryStringParameters?.role;
-    
-    if (!group_id) {
-      logger.warn("Listado sin especificar group_id");
-      endTrace();
-      return errorResponse("Debe especificar un group_id para consultar", 400);
-    }
-
-    // Verificar que el usuario tiene permiso para ver miembros
-    const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users");
-    if (!hasPermission) {
-      logger.warn("Usuario sin permiso para listar miembros", { requesterSub, group_id });
-      endTrace();
-      return forbiddenResponse("No tienes permiso para listar miembros de este grupo");
-    }
+  const hasPermission = await verifyPermission(requesterSub, group_id, "admin.users", logger);
+  if (!hasPermission) {
+    throw new AuthorizationError("No tienes permiso para listar miembros de este grupo");
+  }
 
     if (!dynamoBreaker.shouldAllow()) {
       logger.warn("Circuit breaker activo - listado pausado");
@@ -665,17 +604,11 @@ module.exports.listUsersWithRoles = async (event) => {
     }));
 
     logger.info("Listado de miembros", { group_id, role, count: members.length, requestedBy: requesterSub });
-    endTrace();
 
     return successResponse({ group_id, role: role || 'all', members, total: members.length, requested_by: requesterSub });
+}
 
-  } catch (err) {
-    dynamoBreaker.reportFailure();
-    logger.error("Error listando usuarios con roles", err, { role: event.queryStringParameters?.role });
-    endTrace();
-    return errorResponse("Error interno del servidor", 500, { details: err.message });
-  }
-};
+module.exports.listUsersWithRoles = createAPIHandler(listUsersWithRolesHandler, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });
 
 /**
  * Genera configuración de interfaz según permisos

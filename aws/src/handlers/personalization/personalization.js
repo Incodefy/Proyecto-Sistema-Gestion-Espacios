@@ -7,10 +7,10 @@ const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
 const { validate } = require("../../utils/validation");
-const { successResponse, errorResponse, unauthorizedResponse, validationErrorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
-
-const logger = createLogger({ handler: 'personalization' });
+const { successResponse, errorResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { createAPIHandler } = require("../../utils/interceptors");
+const { AuthorizationError, ValidationError } = require("../../utils/errors");
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const snsClient = new SNSClient({});
@@ -70,24 +70,13 @@ async function publishPersonalizationEvent(eventType, data) {
   }
 }
 
-/**
- * GET /personalization
- * Obtener parámetros globales y específicos del usuario
- */
-module.exports.getPersonalization = async (event) => {
-  const endTrace = logger.startTrace('getPersonalization');
-
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    
-    if (!userSub) {
-      logger.warn("Intento sin usuario autenticado");
-      endTrace();
-      return unauthorizedResponse("Usuario no autenticado");
-    }
-
-    logger.info("Obteniendo personalización", { userSub, userEmail });
+async function getPersonalizationHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+  
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+  
+  logger.info("Obteniendo personalización", { userSub, userEmail });
 
     const result = await docClient.send(new QueryCommand({
       TableName: process.env.PARAMETERS_TABLE,
@@ -125,55 +114,37 @@ module.exports.getPersonalization = async (event) => {
       parametersCount: Object.keys(userParameters).length
     });
 
-    logger.info("Personalización obtenida", { 
-      userSub, 
-      userParamsCount: Object.keys(userParameters).length,
-      totalParams: Object.keys(finalParameters).length
-    });
-    endTrace();
+  logger.info("Personalización obtenida", { 
+    userSub, 
+    userParamsCount: Object.keys(userParameters).length,
+    totalParams: Object.keys(finalParameters).length
+  });
 
-    return successResponse({
-      user_sub: userSub,
-      email: userEmail,
-      global_parameters: globalParameters,
-      user_parameters: userParameters,
-      final_parameters: finalParameters,
-      available_parameters: PERSONALIZATION_PARAMETERS
-    });
+  return successResponse({
+    user_sub: userSub,
+    email: userEmail,
+    global_parameters: globalParameters,
+    user_parameters: userParameters,
+    final_parameters: finalParameters,
+    available_parameters: PERSONALIZATION_PARAMETERS
+  });
+}
 
-  } catch (err) {
-    logger.error("Error obteniendo personalización", err);
-    endTrace();
-    return errorResponse("Error interno del servidor", 500, { details: err.message });
-  }
-};
+module.exports.getPersonalization = createAPIHandler(getPersonalizationHandler, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });
 
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 
-/**
- * POST /personalization
- * Establecer parámetros específicos del usuario
- */
-module.exports.setPersonalization = async (event) => {
-  const endTrace = logger.startTrace('setPersonalization');
+async function setPersonalizationHandler(event, logger) {
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
+  const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
+  
+  if (!userSub) throw new AuthorizationError("Usuario no autenticado");
+  
+  const { parameters } = JSON.parse(event.body || "{}");
 
-  try {
-    const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
-    const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
-    
-    if (!userSub) {
-      logger.warn("Intento sin usuario autenticado");
-      endTrace();
-      return unauthorizedResponse("Usuario no autenticado");
-    }
-
-    const { parameters } = JSON.parse(event.body || "{}");
-
-    if (!parameters || typeof parameters !== 'object') {
-      logger.warn("Parámetros inválidos en setPersonalization", { received: typeof parameters });
-      endTrace();
-      return errorResponse("parameters es obligatorio y debe ser un objeto", 400);
-    }
+  if (!parameters || typeof parameters !== 'object') {
+    throw new ValidationError("parameters es obligatorio y debe ser un objeto");
+  }
 
     const paramsHash = require('crypto')
       .createHash('sha256')
@@ -237,7 +208,10 @@ module.exports.setPersonalization = async (event) => {
     if (errors.length > 0) {
       logger.warn("Validación fallida en parámetros", { errors });
       endTrace();
-      return validationErrorResponse(errors);
+      return {
+        ...validationErrorResponse(errors),
+        headers: { ...validationErrorResponse(errors).headers, ...getSecurityHeaders() }
+      };
     }
 
     const previousResult = await retryWithJitter(
@@ -310,20 +284,15 @@ module.exports.setPersonalization = async (event) => {
       userSub, 
       updatedCount: savedParameters.length 
     });
-    endTrace();
 
     return successResponse({
       message: "Parámetros de personalización actualizados",
       saved_parameters: savedParameters,
       final_parameters: updatedBody.data.final_parameters
     });
+}
 
-  } catch (err) {
-    logger.error("Error en setPersonalization", err);
-    endTrace();
-    return errorResponse("Error interno del servidor", 500, { details: err.message });
-  }
-};
+module.exports.setPersonalization = createAPIHandler(setPersonalizationHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
 
 /**
  * Validación de valor del parámetro

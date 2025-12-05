@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crear Cuenta - Incodefy</title>
+  <meta name="description" content="Crear cuenta en el Sistema de Gestión Hospitalaria">
+  <title>Crear Cuenta - Sistema de Gestión Hospitalaria</title>
   
   <meta name="csrf-token" content="<%= csrfToken %>">
   
@@ -22,11 +23,65 @@
   
   <!-- CSS crítico inline para First Contentful Paint -->
   <style nonce="<%= cspNonce %>">
-    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Helvetica Neue',sans-serif}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif}
     body{margin:0;overflow-x:hidden}
-    .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden}
-    .login-box{width:100%;max-width:450px;position:relative;z-index:10;background:rgba(15,23,42,.85);backdrop-filter:blur(20px);border-radius:24px;padding:3rem;box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
-    .login-box h2{font-size:2rem;color:#fff;margin-bottom:2rem;text-align:center;font-weight:700}
+    .wrapper{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:2rem;position:relative;background:#0a1628;overflow:hidden;background-image:radial-gradient(circle at 20% 50%,rgba(30,58,138,.4) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(59,130,246,.3) 0%,transparent 50%),radial-gradient(rgba(96,165,250,.03) 1px,transparent 1px);background-size:100% 100%,100% 100%,50px 50px;background-position:0 0,0 0,0 0}
+    .wrapper::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 50%,rgba(30,58,138,.4) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(59,130,246,.3) 0%,transparent 50%),radial-gradient(circle at 40% 20%,rgba(96,165,250,.2) 0%,transparent 50%);animation:gradientShift 20s ease infinite;z-index:1}
+    .wrapper::after{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(59,130,246,.15) 0%,transparent 70%);border-radius:40% 60% 70% 30%/40% 50% 60% 50%;top:-200px;right:-200px;filter:blur(60px);animation:blob1 25s ease-in-out infinite;z-index:1}
+    @keyframes gradientShift{0%,100%{opacity:1;transform:scale(1) rotate(0deg)}50%{opacity:.8;transform:scale(1.1) rotate(5deg)}}
+    @keyframes blob1{0%,100%{transform:translate(0,0) scale(1);border-radius:40% 60% 70% 30%/40% 50% 60% 50%}33%{transform:translate(30px,-50px) scale(1.1);border-radius:60% 40% 30% 70%/50% 60% 40% 50%}66%{transform:translate(-20px,20px) scale(.9);border-radius:50% 60% 40% 60%/60% 30% 70% 40%}}
+    .login-box{width:100%;max-width:480px;position:relative;z-index:10;background:rgba(15,23,42,.7);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-radius:24px;border:1px solid rgba(96,165,250,.15);padding:3rem 2.5rem 2rem 2.5rem!important;box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05);transition:transform .3s ease,box-shadow .3s ease;max-height:92vh;overflow-y:auto}
+    .login-box:hover{box-shadow:0 12px 48px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05)}
+    .login-box::-webkit-scrollbar{width:4px}
+    .login-box::-webkit-scrollbar-track{background:rgba(255,255,255,.03);border-radius:2px}
+    .login-box::-webkit-scrollbar-thumb{background:rgba(96,165,250,.2);border-radius:2px}
+    .login-box::-webkit-scrollbar-thumb:hover{background:rgba(96,165,250,.3)}
+    form{width:100%}
+    h2{font-size:2rem;font-weight:700;color:#fff;text-align:center;margin:0 0 2.4rem 0!important;letter-spacing:-.02em}
+    .messages-container{margin-bottom:1.5rem;max-height:120px;overflow-y:auto}
+    .alert{padding:.875rem 1rem;margin-bottom:.75rem;border-radius:12px;font-size:.875rem;display:flex;align-items:center;gap:.625rem;animation:slideDown .3s ease-out;backdrop-filter:blur(10px);font-weight:500}
+    .alert.alert-error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+    .alert.alert-success{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#86efac}
+    .alert.alert-warning{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fcd34d}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+    .input-box{width:100%;margin:1.5rem 0;position:relative}
+    .input-box input{width:100%;height:3.25rem;background:rgba(15,23,42,.5);border:1.5px solid rgba(96,165,250,.2);border-radius:12px;color:#fff;font-size:.9375rem;font-weight:500;padding:0 3rem 0 1rem;outline:none;transition:all .3s cubic-bezier(.4,0,.2,1)}
+    .input-box input::placeholder{color:rgba(226,232,240,.5);opacity:1;transition:opacity .2s ease}
+    .input-box input:focus{background:rgba(15,23,42,.7);border-color:#60a5fa;box-shadow:0 0 0 4px rgba(96,165,250,.1),0 2px 6px rgba(96,165,250,.15)}
+    .input-box input:focus::placeholder{opacity:.3}
+    .input-box input:hover:not(:focus){border-color:rgba(96,165,250,.3)}
+    .input-box.has-error input{border-color:rgba(239,68,68,.5);background:rgba(15,23,42,.6)}
+    .input-box.has-error input:focus{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.1),0 4px 12px rgba(239,68,68,.15)}
+    .input-box.has-success input{border-color:rgba(34,197,94,.5)}
+    .input-box.has-success input:focus{border-color:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.1),0 4px 12px rgba(34,197,94,.15)}
+    .input-box .icon{position:absolute;right:1rem;top:.9rem;color:rgba(226,232,240,.4);font-size:1.125rem;transition:all .3s ease;pointer-events:none}
+    .input-box .icon button{background:none;border:none;color:rgba(226,232,240,.4);cursor:pointer;padding:0;font-size:1.125rem;transition:color .2s ease,transform .2s ease;pointer-events:all}
+    #togglePassword:hover,#toggleConfirmPassword:hover{color:#60a5fa;transform:scale(1.1)}
+    .input-box input:focus~.icon{color:#60a5fa}
+    .input-box.has-error .icon{color:#ef4444}
+    .input-box.has-success .icon{color:#22c55e}
+    .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
+    .error-message{color:#fca5a5;font-size:.75rem;font-weight:500;margin-top:.5rem;display:flex;align-items:center;gap:.375rem;opacity:0;max-height:0;overflow:hidden;transition:opacity .2s ease,max-height .3s ease,margin-top .3s ease}
+    .error-message:not(:empty){opacity:1;max-height:2rem}
+    .password-requirements{background:rgba(15,23,42,.6);border:1px solid rgba(96,165,250,.15);border-radius:12px;padding:1rem 1.25rem;margin:1.5rem 0 2.5rem 0!important;backdrop-filter:blur(10px)}
+    .password-requirements strong{color:#e2e8f0;display:block;margin-bottom:.75rem;font-size:.875rem;font-weight:600}
+    .password-requirements ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem}
+    .password-requirements li{color:rgba(226,232,240,.5);font-size:.8125rem;display:flex;align-items:center;gap:.625rem;transition:all .3s cubic-bezier(.4,0,.2,1);font-weight:500}
+    .password-requirements li i{width:1rem;transition:all .3s ease}
+    .password-requirements li i.fa-circle{font-size:.375rem;opacity:.4}
+    .password-requirements li i.fa-check-circle{font-size:.875rem}
+    .password-requirements li.valid{color:#86efac}
+    .password-requirements li.valid i{color:#22c55e}
+    .password-requirements li.invalid{color:rgba(226,232,240,.4)}
+    button{width:100%;height:3.25rem;background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);border:none;border-radius:12px;cursor:pointer;font-size:.9375rem;font-weight:600;color:#fff;margin-top:1.5rem;transition:all .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 4px 12px rgba(59,130,246,.3);letter-spacing:.01em}
+    button:hover:not(:disabled){background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);box-shadow:0 8px 20px rgba(59,130,246,.4)}
+    button:active:not(:disabled){box-shadow:0 4px 12px rgba(59,130,246,.3)}
+    button:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .spinner{display:inline-block}
+    .back-to-login{text-align:center;margin-top:1.5rem;font-size:.875rem;color:rgba(226,232,240,.7);font-weight:500}
+    .back-to-login a{color:#60a5fa;text-decoration:none;font-weight:600;transition:all .2s ease;border-bottom:1px solid transparent}
+    .back-to-login a:hover{color:#93c5fd;border-bottom-color:#93c5fd}
+    input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 1000px rgba(15,23,42,.9) inset!important;-webkit-text-fill-color:#fff!important;transition:background-color 5000s ease-in-out 0s;border-color:rgba(96,165,250,.3)!important}
   </style>
   
   <!-- CSS principal - carga directa -->
@@ -48,27 +103,27 @@
 <body>
 <div class="wrapper">
   <div class="login-box">
-    <form method="POST" action="/auth/signup" id="signupForm">
+    <form method="POST" action="/auth/signup" id="signupForm" aria-labelledby="signup-heading">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <h2>Crear Cuenta</h2>
+      <h2 id="signup-heading">Crear Cuenta</h2>
       
       <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length) { %>
-        <div class="messages-container">
+        <div class="messages-container" role="alert" aria-live="assertive">
           <% error_msg.forEach(msg => { %>
             <div class="alert alert-error fade-in">
-              <i class="fa-solid fa-exclamation-circle"></i>
-              <%= msg %>
+              <i class="fa-solid fa-exclamation-circle" aria-hidden="true"></i>
+              <span><%= msg %></span>
             </div>
           <% }) %>
         </div>
       <% } %>
 
       <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length) { %>
-        <div class="messages-container">
+        <div class="messages-container" role="status" aria-live="polite">
           <% success_msg.forEach(msg => { %>
             <div class="alert alert-success fade-in">
-              <i class="fa-solid fa-check-circle"></i>
-              <%= msg %>
+              <i class="fa-solid fa-check-circle" aria-hidden="true"></i>
+              <span><%= msg %></span>
             </div>
           <% }) %>
         </div>
@@ -79,10 +134,13 @@
                name="nombre" 
                id="nombre" 
                required
+               autocomplete="name"
+               aria-required="true"
+               aria-describedby="nombre-error"
                placeholder="Nombre completo"
                value="<%= typeof form_data !== 'undefined' && form_data ? form_data.nombre : '' %>">
-        <span class="icon"><i class="fa-solid fa-user"></i></span>
-        <div class="error-message" id="nombre-error"></div>
+        <span class="icon" aria-hidden="true"><i class="fa-solid fa-user"></i></span>
+        <div class="error-message" id="nombre-error" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="input-box">
@@ -90,10 +148,13 @@
                name="email" 
                id="email" 
                required
+               autocomplete="email"
+               aria-required="true"
+               aria-describedby="email-error"
                placeholder="Correo electrónico"
                value="<%= typeof form_data !== 'undefined' && form_data ? form_data.email : '' %>">
-        <span class="icon"><i class="fa-solid fa-envelope"></i></span>
-        <div class="error-message" id="email-error"></div>
+        <span class="icon" aria-hidden="true"><i class="fa-solid fa-envelope"></i></span>
+        <div class="error-message" id="email-error" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="input-box">
@@ -101,11 +162,14 @@
                name="password" 
                id="password" 
                required
+               autocomplete="new-password"
+               aria-required="true"
+               aria-describedby="password-error password-requirements"
                placeholder="Contraseña">
         <span class="icon">
           <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
         </span>
-        <div class="error-message" id="password-error"></div>
+        <div class="error-message" id="password-error" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="input-box">
@@ -113,27 +177,30 @@
                name="confirm_password" 
                id="confirm_password" 
                required
+               autocomplete="new-password"
+               aria-required="true"
+               aria-describedby="confirm-password-error"
                placeholder="Confirmar contraseña">
         <span class="icon">
-          <i class="fa-solid fa-eye" id="toggleConfirmPassword" title="Mostrar contraseña"></i>
+          <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
         </span>
-        <div class="error-message" id="confirm-password-error"></div>
+        <div class="error-message" id="confirm-password-error" role="alert" aria-live="polite"></div>
       </div>
 
-      <div class="password-requirements">
+      <div class="password-requirements" id="password-requirements" role="status" aria-live="polite">
         <strong>La contraseña debe contener:</strong>
         <ul id="password-checklist">
-          <li id="length-check"><i class="fas fa-circle"></i> Al menos 8 caracteres</li>
-          <li id="uppercase-check"><i class="fas fa-circle"></i> Una letra mayúscula</li>
-          <li id="lowercase-check"><i class="fas fa-circle"></i> Una letra minúscula</li>
-          <li id="number-check"><i class="fas fa-circle"></i> Un número</li>
-          <li id="special-check"><i class="fas fa-circle"></i> Un carácter especial</li>
+          <li id="length-check"><i class="fas fa-circle" aria-hidden="true"></i> <span>Al menos 8 caracteres</span></li>
+          <li id="uppercase-check"><i class="fas fa-circle" aria-hidden="true"></i> <span>Una letra mayúscula</span></li>
+          <li id="lowercase-check"><i class="fas fa-circle" aria-hidden="true"></i> <span>Una letra minúscula</span></li>
+          <li id="number-check"><i class="fas fa-circle" aria-hidden="true"></i> <span>Un número</span></li>
+          <li id="special-check"><i class="fas fa-circle" aria-hidden="true"></i> <span>Un carácter especial</span></li>
         </ul>
       </div>
 
-      <button type="submit" id="signupButton">
+      <button type="submit" id="signupButton" aria-busy="false">
         <span class="button-text">Crear Cuenta</span>
-        <div class="spinner d-none" id="spinner">
+        <div class="spinner d-none" id="spinner" aria-hidden="true">
           <i class="fa-solid fa-spinner fa-spin"></i>
         </div>
       </button>

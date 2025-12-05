@@ -2,8 +2,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
-
-// === Utils ===
+const Logger = require("../utils/logger");
 const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
 const { retryWithJitter } = require("../utils/retry");
 const { createCircuitBreaker } = require("../utils/circuitBreaker");
@@ -12,70 +11,54 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const snsClient = new SNSClient({});
 
-// === Circuit Breakers ===
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 const snsBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 15000 });
 
-/**
- * ============================================================
- * 🔹 HANDLER: PERSONALIZATION EVENTS
- * ============================================================
- * Procesa mensajes provenientes del tópico de personalización.
- * Usa SQS como cola intermedia, con DLQ, Idempotencia, Retry y Circuit Breaker.
- */
 module.exports.handlePersonalizationEvents = async (event) => {
-  console.log("📥 Evento SQS de personalización recibido:", JSON.stringify(event, null, 2));
+  const logger = Logger.fromEvent(event).child({ handler: 'personalizationEvents' });
+  logger.info('Procesando eventos de personalización', { recordCount: event.Records.length });
 
   const processedRecords = [];
   const failedRecords = [];
 
   for (const record of event.Records) {
     try {
-      // 1. Parsear mensaje SNS dentro del body SQS
       const envelope = JSON.parse(record.body);
       const snsMessage = JSON.parse(envelope.Message);
       const { eventType, eventId, timestamp, data } = snsMessage;
 
-      console.log(`🔹 Procesando evento: ${eventType} (ID: ${eventId})`);
+      logger.info('Procesando evento', { eventType, eventId });
 
-      // 2. Idempotencia
       if (await wasAlreadyProcessed(eventId)) {
-        console.log(`⏭️ Evento duplicado detectado, se omite: ${eventId}`);
+        logger.info('Evento duplicado detectado, omitiendo', { eventId });
         processedRecords.push({ eventType, eventId, status: "duplicate" });
         continue;
       }
 
-      // 3. Seleccionar handler según tipo
       const handlerFn =
-        eventType === "PERSONALIZATION_REQUESTED"
-          ? handlePersonalizationRequested
-          : eventType === "PERSONALIZATION_UPDATED"
-          ? handlePersonalizationUpdated
-          : null;
+        eventType === "PERSONALIZATION_REQUESTED" ? handlePersonalizationRequested :
+        eventType === "PERSONALIZATION_UPDATED" ? handlePersonalizationUpdated : null;
 
       if (!handlerFn) {
-        console.warn(`⚠️ Tipo de evento no reconocido: ${eventType}`);
+        logger.warn('Tipo de evento no reconocido', { eventType });
         failedRecords.push({ eventType, reason: "unknown_event_type" });
         continue;
       }
 
-      // 4. Circuit breaker activo?
       if (!dynamoBreaker.shouldAllow() || !snsBreaker.shouldAllow()) {
-        console.warn("⚠️ Circuit breaker abierto. Evento pospuesto.");
+        logger.warn('Circuit breaker abierto, evento pospuesto');
         throw new Error("CircuitBreakerOpen");
       }
 
-      // 5. Retry + jitter
       await retryWithJitter(
         async () => {
-          await handlerFn(data, timestamp);
+          await handlerFn(data, timestamp, logger);
           dynamoBreaker.reportSuccess();
           snsBreaker.reportSuccess();
         },
         { maxAttempts: 3, baseDelayMs: 300 }
       );
 
-      // 6. Marcar como procesado
       await markAsProcessed(eventId);
 
       processedRecords.push({ eventType, eventId, status: "success" });
@@ -203,14 +186,17 @@ module.exports.handleSystemNotifications = async (event) => {
       await markAsProcessed(eventId);
       processedNotifications.push({ eventId, type, status: "success" });
     } catch (notifError) {
-      console.error("❌ Error procesando notificación individual:", notifError.message);
+      logger.error('Error procesando notificación individual', notifError);
       dynamoBreaker.reportFailure();
       failedNotifications.push({ error: notifError.message, recordId: record.messageId });
       throw notifError;
     }
   }
 
-  console.log(`📊 Notificaciones procesadas: ✅${processedNotifications.length} / ❌${failedNotifications.length}`);
+  logger.info('Notificaciones procesadas', { 
+    processed: processedNotifications.length, 
+    failed: failedNotifications.length 
+  });
 
   return {
     statusCode: 200,

@@ -1,49 +1,50 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerAgendaPorBoxYFecha' });
+const cache = new Cache({ ttl: 60, maxSize: 500 });
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerAgendaPorBoxYFecha');
-  const boxId = event.queryStringParameters?.boxId;
-  const fecha = event.queryStringParameters?.fecha;
-
+const obtenerAgendaPorBoxYFecha = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerAgendaPorBoxYFecha' });
+  const { boxId, fecha } = event.queryStringParameters || {};
+  
   if (!boxId || !fecha) {
-    logger.warn('Missing required parameters', { has_boxId: !!boxId, has_fecha: !!fecha });
-    endTrace();
-    return errorResponse('Debe enviar ?boxId=<valor>&fecha=<YYYY-MM-DD>', 400);
+    throw new ValidationError('boxId y fecha son requeridos', 'MISSING_PARAMS');
   }
-
-  const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!fechaRegex.test(fecha)) {
-    logger.warn('Invalid date format', { fecha });
-    endTrace();
-    return errorResponse('La fecha debe tener formato YYYY-MM-DD.', 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new ValidationError('Fecha debe tener formato YYYY-MM-DD', 'INVALID_DATE_FORMAT');
   }
-
+  validate(schemas.id, boxId, 'boxId');
+  
   const pk = `BOX#${boxId}#DATE#${fecha}`;
-
-  const params = {
-    TableName: process.env.DB_AGENDA,
-    KeyConditionExpression: "PK = :pk",
-    ExpressionAttributeValues: {
-      ":pk": pk
-    }
-  };
-
-  try {
-    const data = await client.send(new QueryCommand(params));
-
-    logger.info('Agenda items retrieved', { box_id: boxId, fecha, count: data.Items?.length || 0 });
-    endTrace();
-    return successResponse(data.Items || [], 200, { count: data.Items?.length || 0 });
-
-  } catch (err) {
-    logger.error('Error retrieving agenda by box and date', err, { box_id: boxId, fecha });
-    endTrace();
-    return errorResponse('Error obteniendo agendas por box y fecha.', 500);
+  const cacheKey = `agenda-box-fecha-${boxId}-${fecha}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Agenda desde cache', { boxId, fecha, count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
   }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_AGENDA,
+      KeyConditionExpression: "PK = :pk",
+      ExpressionAttributeValues: { ":pk": pk }
+    })),
+    { operation: 'obtenerAgendaPorBoxYFecha', boxId, fecha }
+  );
+  
+  const items = data.Items || [];
+  cache.set(cacheKey, items);
+  logger.info('Agenda obtenida', { boxId, fecha, count: items.length });
+  
+  return successResponse(items, 200, { count: items.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerAgendaPorBoxYFecha, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

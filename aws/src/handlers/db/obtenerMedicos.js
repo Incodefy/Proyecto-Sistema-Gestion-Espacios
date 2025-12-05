@@ -1,39 +1,38 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { Cache } = require("../../utils/cache");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerMedicos' });
+const cache = new Cache({ ttl: 300, maxSize: 150 });
 
-module.exports.handler = async () => {
-    const endTrace = logger.startTrace('query-medicos');
-    
-    // ✅ Query con índice GSI - 100x más rápido que Scan
-    const params = {
-        TableName: process.env.DB_CATALOGO,
-        IndexName: "TipoEntidadIndex",
-        KeyConditionExpression: "GSI1PK = :tipo",
-        ExpressionAttributeValues: {
-            ":tipo": "TIPO#MEDICO"
-        }
-    };
-
-    try {
-        const data = await client.send(new QueryCommand(params));
-        const count = data.Items?.length || 0;
-        
-        logger.info('Doctors fetched successfully', { count });
-        endTrace({ success: true, count });
-        
-        return successResponse(data.Items, 200, { count });
-    } catch (err) {
-        logger.error('Failed to fetch doctors', err, { 
-            table: process.env.DB_CATALOGO,
-            index: 'TipoEntidadIndex'
-        });
-        endTrace({ success: false, error: err.message });
-        
-        return errorResponse('Error obteniendo médicos', 500);
-    }
+const obtenerMedicos = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerMedicos' });
+  
+  const cached = cache.get('all-medicos');
+  if (cached) {
+    logger.info('Médicos desde cache', { count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_CATALOGO,
+      IndexName: "TipoEntidadIndex",
+      KeyConditionExpression: "GSI1PK = :tipo",
+      ExpressionAttributeValues: { ":tipo": "TIPO#MEDICO" }
+    })),
+    { operation: 'obtenerMedicos' }
+  );
+  
+  const items = data.Items || [];
+  cache.set('all-medicos', items);
+  logger.info('Médicos obtenidos y cacheados', { count: items.length });
+  
+  return successResponse(items, 200, { count: items.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerMedicos, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

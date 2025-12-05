@@ -1,50 +1,52 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerEspaciosGenerales' });
+const cache = new Cache({ ttl: 120, maxSize: 100 });
 
-/**
- * Obtiene todos los espacios generales (SPACE) de un grupo
- * Reemplazo de: obtenerPasillos.js
- */
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerEspaciosGenerales');
-
-  try {
-    const grupoId = event.queryStringParameters?.grupo_id;
-    
-    if (!grupoId) {
-      logger.warn("Missing grupo_id parameter");
-      endTrace();
-      return errorResponse("grupo_id es requerido", 400);
-    }
-
-    const params = {
+const obtenerEspaciosGenerales = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerEspaciosGenerales' });
+  const { grupo_id } = event.queryStringParameters || {};
+  
+  if (!grupo_id) throw new ValidationError('grupo_id es requerido', 'MISSING_GRUPO_ID');
+  validate(schemas.groupId, grupo_id, 'grupo_id');
+  
+  const cacheKey = `espacios-generales-${grupo_id}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Espacios generales desde cache', { grupo_id, count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
       TableName: process.env.SPACES_TABLE,
       KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
       ExpressionAttributeValues: {
-        ":pk": grupoId,
+        ":pk": grupo_id,
         ":sk": "SPACE#"
       }
-    };
+    })),
+    { operation: 'obtenerEspaciosGenerales', grupo_id }
+  );
 
-    const data = await client.send(new QueryCommand(params));
+  const itemsOrdenados = (data.Items || []).sort((a, b) => {
+    const numA = parseInt(a.SK.replace('SPACE#', ''));
+    const numB = parseInt(b.SK.replace('SPACE#', ''));
+    return numA - numB;
+  });
 
-    const itemsOrdenados = (data.Items || []).sort((a, b) => {
-      const numA = parseInt(a.SK.replace('SPACE#', ''));
-      const numB = parseInt(b.SK.replace('SPACE#', ''));
-      return numA - numB;
-    });
-
-    logger.info('Espacios generales obtenidos', { count: itemsOrdenados.length });
-    endTrace();
-    return successResponse(itemsOrdenados, 200, { count: itemsOrdenados.length });
-  } catch (err) {
-    logger.error('Error obteniendo espacios generales', err);
-    endTrace();
-    return errorResponse('Error obteniendo espacios generales', 500);
-  }
+  cache.set(cacheKey, itemsOrdenados);
+  logger.info('Espacios generales obtenidos y cacheados', { grupo_id, count: itemsOrdenados.length });
+  
+  return successResponse(itemsOrdenados, 200, { count: itemsOrdenados.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerEspaciosGenerales, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

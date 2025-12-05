@@ -1,6 +1,9 @@
 // handlers/websocket/disconnect.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const Logger = require('../../utils/logger');
+const { retryDB } = require('../../utils/retry');
+const { getSecurityHeaders } = require('../../middleware/securityHeaders');
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -11,27 +14,33 @@ const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE;
  * Elimina el connectionId de DynamoDB
  */
 exports.handler = async (event) => {
-  console.log('🔌 [WS DISCONNECT] Event:', JSON.stringify(event, null, 2));
+  const logger = Logger.fromEvent(event).child({ handler: 'wsDisconnect' });
+  const connectionId = event.requestContext?.connectionId;
+  
+  logger.info('Desconectando WebSocket', { connectionId });
 
   try {
-    const connectionId = event.requestContext.connectionId;
+    await retryDB(
+      () => docClient.send(new DeleteCommand({
+        TableName: CONNECTIONS_TABLE,
+        Key: { connectionId }
+      })),
+      { operation: 'wsDisconnect', connectionId }
+    );
 
-    await docClient.send(new DeleteCommand({
-      TableName: CONNECTIONS_TABLE,
-      Key: { connectionId }
-    }));
-
-    console.log(`✅ Conexión eliminada: ${connectionId}`);
+    logger.info('Conexión eliminada exitosamente', { connectionId });
 
     return {
       statusCode: 200,
-      body: 'Desconectado'
+      headers: getSecurityHeaders(),
+      body: JSON.stringify({ message: 'Desconectado' })
     };
   } catch (error) {
-    console.error('❌ Error en disconnect:', error);
+    logger.error('Error en disconnect', error, { connectionId });
     return {
       statusCode: 500,
-      body: 'Error al desconectar'
+      headers: getSecurityHeaders(),
+      body: JSON.stringify({ error: 'Error al desconectar' })
     };
   }
 };

@@ -1,49 +1,50 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse, notFoundResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError, NotFoundError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
-const logger = createLogger({ handler: 'obtenerAgendaPorId' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const cache = new Cache({ ttl: 120, maxSize: 500 });
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerAgendaPorId');
-  const idAgenda = event.queryStringParameters?.idAgenda;
+const obtenerAgendaPorId = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerAgendaPorId' });
+  const { idAgenda } = event.queryStringParameters || {};
+  
+  if (!idAgenda) throw new ValidationError('idAgenda es requerido', 'MISSING_ID_AGENDA');
+  validate(schemas.id, idAgenda, 'idAgenda');
+  
+  const cacheKey = `agenda-id-${idAgenda}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Agenda desde cache', { idAgenda });
+    return successResponse(cached);
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_AGENDA,
+      IndexName: "GSI3_IdAgenda",
+      KeyConditionExpression: "GSI3PK = :pk",
+      ExpressionAttributeValues: { ":pk": `IDAGENDA#${idAgenda}` }
+    })),
+    { operation: 'obtenerAgendaPorId', idAgenda }
+  );
 
-  if (!idAgenda) {
-    logger.warn("Consulta sin idAgenda");
-    endTrace();
-    return errorResponse("Debe enviar ?idAgenda=valor", 400);
+  if (!data.Items || data.Items.length === 0) {
+    logger.warn('Agenda no encontrada', { idAgenda });
+    throw new NotFoundError('Agenda', idAgenda);
   }
 
-  logger.info("Obteniendo agenda por ID", { idAgenda });
-
-  const params = {
-    TableName: process.env.DB_AGENDA,
-    IndexName: "GSI3_IdAgenda",
-    KeyConditionExpression: "GSI3PK = :pk",
-    ExpressionAttributeValues: {
-      ":pk": `IDAGENDA#${idAgenda}`
-    }
-  };
-
-  try {
-    const data = await client.send(new QueryCommand(params));
-
-    if (!data.Items || data.Items.length === 0) {
-      logger.warn("Agenda no encontrada", { idAgenda });
-      endTrace();
-      return notFoundResponse("Agenda no encontrada");
-    }
-
-    logger.info("Agenda obtenida por ID", { idAgenda });
-    endTrace();
-
-    return successResponse(data.Items[0]);
-
-  } catch (err) {
-    logger.error("Error obteniendo agenda por ID", err, { idAgenda });
-    endTrace();
-    return errorResponse("Error interno obteniendo agenda", 500, { details: err.message });
-  }
+  const item = data.Items[0];
+  cache.set(cacheKey, item);
+  logger.info('Agenda obtenida por ID', { idAgenda });
+  
+  return successResponse(item);
 };
+
+module.exports.handler = createAPIHandler(obtenerAgendaPorId, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

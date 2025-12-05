@@ -189,6 +189,11 @@ app.use(conditionalCsrfProtection);
 // Hacer el token CSRF disponible en todas las vistas
 app.use(attachCsrfToken);
 
+// === CORRELATION ID MIDDLEWARE (v2.1) ===
+// Debe ir ANTES de los routers para tracking end-to-end
+const { correlationIdMiddleware } = require('./middleware/correlationId');
+app.use(correlationIdMiddleware);
+
 app.use((req, res, next) => {
   res.locals.error_msg = req.flash('error');
   res.locals.success_msg = req.flash('success');
@@ -203,6 +208,7 @@ const setLanguage = require('./middleware/setLanguage');
 const checkPermission = require('./middleware/checkPermission');
 const checkGrupoActivo = require('./middleware/checkGrupoActivo');
 const attachApiClient = require('./middleware/apiClient');
+const attachApiClientV2 = require('./middleware/apiClientV2'); // ← NUEVO v2.1
 const nomenclaturaMiddleware = require('./middleware/nomenclatura');
 
 // === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
@@ -329,7 +335,7 @@ app.use('/aceptar-invitacion', aceptarInvitacionRoutes);
 
 // Onboarding espacios (requiere auth pero NO grupo activo)
 const onboardingEspaciosRouter = require('./routes/onboarding-espacios');
-app.use('/onboarding-espacios', requireAuth, attachApiClient, onboardingEspaciosRouter);
+app.use('/onboarding-espacios', requireAuth, attachApiClientV2, onboardingEspaciosRouter);
 
 // === RUTAS PROTEGIDAS CON GRUPO ACTIVO ===
 // Middleware de nomenclatura solo para rutas con grupo activo
@@ -357,7 +363,7 @@ function userHasPermission(req, permission) {
 }
 
 // Agenda - protegida
-app.get('/agenda', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
+app.get('/agenda', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('agenda.read'), (req, res) => {
   res.render('agenda', {
     currentPath: req.path,
     canViewAgenda: userHasPermission(req, 'agenda.read'),
@@ -371,33 +377,33 @@ app.get('/agenda', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaM
 });
 
 // Rutas de importar y exportar
-app.get('/importar', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.import'), (req, res) => {
+app.get('/importar', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.import'), (req, res) => {
   res.render('importar', { currentPath: req.path });
 });
 
-app.get('/exportar', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.export'), (req, res) => {
+app.get('/exportar', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.export'), (req, res) => {
   res.render('exportar', { currentPath: req.path });
 });
 
 // Box routes
 const boxRoutes = require('./routes/box');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, boxRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, boxRoutes);
 
 // Detalle de box
 const detalleBoxRoutes = require('./routes/detalle_box');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, detalleBoxRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, detalleBoxRoutes);
 
 // Consultas en curso
 const consultasRoutes = require('./routes/consultas');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, consultasRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, consultasRoutes);
 
 // Dashboard
 const dashboardRoutes = require('./routes/dashboard');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, dashboardRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, dashboardRoutes);
 
 // Historial notificaciones
 const notificacionesRoutes = require('./routes/notificaciones');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, notificacionesRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, notificacionesRoutes);
 
 // Test notificaciones (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -407,11 +413,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Calendario agenda
 const agendaGestionRoutes = require('./routes/agenda-gestion');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, agendaGestionRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, agendaGestionRoutes);
 
 // Gestión de grupos
 const gestionGrupoRoutes = require('./routes/gestionGrupo');
-app.use('/', requireAuth, attachApiClient, checkGrupoActivo, nomenclaturaMiddleware, gestionGrupoRoutes);
+app.use('/', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, gestionGrupoRoutes);
 
 // Ruta de test para instrumentos
 const testInstrumentosRoutes = require('./routes/test-instrumentos');
@@ -424,7 +430,7 @@ app.use('/', instrumentosProxyRoutes);
 // Configuración espacios (NO requiere grupo activo - es el onboarding)
 
 // Perfil (NO requiere grupo activo)
-app.get('/perfil', requireAuth, attachApiClient, (req, res) => {
+app.get('/perfil', requireAuth, attachApiClientV2, (req, res) => {
   console.log('📄 GET /perfil - Usuario:', req.session.user?.email);
   console.log('📄 req.session.user.personalization:', req.session.user?.personalization);
   console.log('📄 res.locals.personalization:', res.locals.personalization);

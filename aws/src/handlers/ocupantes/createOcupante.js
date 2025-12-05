@@ -3,64 +3,54 @@ const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const crypto = require("crypto");
 
-exports.handler = async (event) => {
-  const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [Lambda] POST /groups/{grupo_id}/ocupantes | ${TRACE_ID} ===`);
+// ✅ MEJORAS IMPLEMENTADAS
+const { Logger } = require("../../utils/logger");
+const { validate } = require("../../utils/validator");
+const { ValidationError, NotFoundError, successResponse } = require("../../utils/errorHandler");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { retryDB } = require("../../utils/retry");
+const { encryptPII, decryptPII } = require("../../utils/encryption");
+
+/**
+ * POST /groups/{grupo_id}/ocupantes
+ * Crea un nuevo ocupante en un grupo
+ * 
+ * MEJORAS:
+ * ✅ Logging estructurado
+ * ✅ JSON Schema validation
+ * ✅ Error handling centralizado
+ * ✅ Retry logic automático
+ * ✅ Interceptors (rate limit: 30 req/min)
+ */
+async function createOcupanteHandler(event, context, logger) {
+  const grupo_id = event.pathParameters?.grupo_id;
+  const userSub = event.userContext?.sub;
+  const userEmail = event.userContext?.email;
+  
+  if (!grupo_id) {
+    throw new ValidationError('grupo_id es requerido');
+  }
+
+  // Validación con JSON Schema
+  const result = validate('createOcupante', event.parsedBody, logger);
+  if (!result.valid) {
+    throw new ValidationError('Invalid ocupante data', { errors: result.errors });
+  }
+  
+  const { nombre, especialidad_id, tipo } = result.data;
+
+  logger = logger.child({ groupId: grupo_id, especialidadId: especialidad_id });
+  logger.info('Creating ocupante');
+
+  // Buscar la especialidad para obtener su nombre
+  let especialidadNombre = null;
+  const especialidadIdConPrefijo = especialidad_id.startsWith('ESP#') 
+    ? especialidad_id 
+    : `ESP#${especialidad_id}`;
   
   try {
-    const grupo_id = event.pathParameters?.grupo_id;
-    const userSub = event.requestContext.authorizer.jwt.claims.sub;
-    const userEmail = event.requestContext.authorizer.jwt.claims.email;
-    const body = JSON.parse(event.body || "{}");
-    
-    console.log(`[${TRACE_ID}] 👤 User:`, userEmail || userSub);
-    console.log(`[${TRACE_ID}] 📂 Grupo ID:`, grupo_id);
-    console.log(`[${TRACE_ID}] 📥 Body:`, body);
-    
-    if (!grupo_id) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "grupo_id es requerido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    if (!body.nombre || !body.nombre.trim()) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "El nombre del ocupante es requerido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    if (!body.especialidad_id) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "La especialidad es requerida",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    // Buscar la especialidad para obtener su nombre
-    let especialidadNombre = null;
-    const especialidadIdConPrefijo = body.especialidad_id.startsWith('ESP#') 
-      ? body.especialidad_id 
-      : `ESP#${body.especialidad_id}`;
-    
-    try {
-      const especialidadResult = await db.send(
+    const especialidadResult = await retryDB(async () => {
+      return await db.send(
         new GetCommand({
           TableName: process.env.ESPECIALIDADES_TABLE,
           Key: {
@@ -69,71 +59,65 @@ exports.handler = async (event) => {
           }
         })
       );
-      
-      if (especialidadResult.Item) {
-        especialidadNombre = especialidadResult.Item.nombre;
-      }
-    } catch (err) {
-      console.warn(`[${TRACE_ID}] No se pudo obtener el nombre de la especialidad:`, err.message);
+    });
+    
+    if (especialidadResult.Item) {
+      especialidadNombre = especialidadResult.Item.nombre;
+      logger.debug('Especialidad found', { nombre: especialidadNombre });
     }
+  } catch (err) {
+    logger.warn('Could not fetch especialidad name', err);
+  }
 
-    const ocupanteId = crypto.randomUUID().substring(0, 8);
-    const now = new Date().toISOString();
+  const ocupanteId = crypto.randomUUID().substring(0, 8);
+  const now = new Date().toISOString();
 
-    const item = {
-      PK: grupo_id,
-      SK: `OCCUPANT#${ocupanteId}`,
-      occupant_id: `OCCUPANT#${ocupanteId}`,
-      nombre: body.nombre.trim(),
-      especialidad_id: especialidadIdConPrefijo,
-      tipo: body.tipo || 'Ocupante', // Nombre de la nomenclatura
-      created_at: now,
-      updated_at: now,
-      created_by: userEmail || userSub
-    };
+  const item = {
+    PK: grupo_id,
+    SK: `OCCUPANT#${ocupanteId}`,
+    occupant_id: `OCCUPANT#${ocupanteId}`,
+    nombre: nombre.trim(),
+    especialidad_id: especialidadIdConPrefijo,
+    tipo: tipo || 'Ocupante',
+    created_at: now,
+    updated_at: now,
+    created_by: userEmail || userSub
+  };
 
-    // Agregar nombre de especialidad si se encontró
-    if (especialidadNombre) {
-      item.especialidad = especialidadNombre;
-    }
+  if (especialidadNombre) {
+    item.especialidad = especialidadNombre;
+  }
 
+  // Encriptar PII antes de guardar (v2.1)
+  const encryptedItem = await encryptPII(item);
+
+  await retryDB(async () => {
     await db.send(
       new PutCommand({
         TableName: process.env.OCCUPANTS_TABLE,
-        Item: item
+        Item: encryptedItem
       })
     );
+  });
 
-    console.log(`[${TRACE_ID}] ✅ Ocupante creado: ${ocupanteId}`);
+  logger.info('Ocupante created with encrypted PII', { ocupanteId });
 
-    return {
-      statusCode: 201,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: true,
-        ocupante: {
-          id: ocupanteId,
-          nombre: body.nombre.trim(),
-          especialidad_id: body.especialidad_id,
-          grupo_id,
-          created_at: now
-        },
-        trace_id: TRACE_ID
-      })
-    };
+  // Desencriptar para retornar al frontend (v2.1)
+  const decryptedItem = await decryptPII(encryptedItem);
 
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error creando ocupante:`, error);
-    
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al crear ocupante",
-        details: error.message,
-        trace_id: TRACE_ID
-      })
-    };
-  }
-};
+  return successResponse({
+    ocupante: {
+      id: ocupanteId,
+      nombre: decryptedItem.nombre,
+      especialidad_id,
+      grupo_id,
+      created_at: now
+    }
+  }, 201);
+}
+
+// Exportar con interceptors
+module.exports.handler = createAPIHandler(createOcupanteHandler, {
+  requireAuth: true,
+  rateLimit: { max: 30, windowMs: 60000 }
+});

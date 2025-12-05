@@ -1,33 +1,37 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, ScanCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerNotificaciones' });
+const cache = new Cache({ ttl: 30, maxSize: 20 });
 
-module.exports.handler = async () => {
-  const endTrace = logger.startTrace('obtenerNotificaciones');
-
-  const params = {
-    TableName: process.env.DB_NOTIFICACION,
-    Limit: 50
-  };
-
-  try {
-    const data = await client.send(new ScanCommand(params));
-
-    const items = data.Items || [];
-
-    items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-    logger.info('Notificaciones retrieved', { count: items.length });
-    endTrace();
-    return successResponse(items, 200, { count: items.length });
-
-  } catch (err) {
-    logger.error('Error retrieving notificaciones', err);
-    endTrace();
-    return errorResponse('Error obteniendo notificaciones', 500);
+const obtenerNotificaciones = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerNotificaciones' });
+  
+  const cached = cache.get('recent-notificaciones');
+  if (cached) {
+    logger.info('Notificaciones desde cache', { count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
   }
+  
+  const data = await retryDB(
+    () => client.send(new ScanCommand({
+      TableName: process.env.DB_NOTIFICACION,
+      Limit: 50
+    })),
+    { operation: 'obtenerNotificaciones' }
+  );
+
+  const items = (data.Items || []).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  
+  cache.set('recent-notificaciones', items);
+  logger.info('Notificaciones obtenidas y ordenadas', { count: items.length });
+  
+  return successResponse(items, 200, { count: items.length });
 };
+
+module.exports.handler = createAPIHandler(obtenerNotificaciones, { rateLimit: { maxRequests: 100, windowSeconds: 60 } });

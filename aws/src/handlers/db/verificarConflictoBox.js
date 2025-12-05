@@ -1,77 +1,70 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
-const logger = createLogger({ handler: 'verificarConflictoEspacio' });
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('verificarConflictoEspacio');
-    const { space_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
+const verificarConflictoBox = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'verificarConflictoBox' });
+  const { space_id, fecha, hora_inicio, hora_fin } = event.queryStringParameters || {};
+  
+  if (!space_id || !fecha || !hora_inicio || !hora_fin) {
+    throw new ValidationError('Faltan parámetros: space_id, fecha, hora_inicio, hora_fin', 'MISSING_PARAMS');
+  }
 
-    if (!space_id || !fecha || !hora_inicio || !hora_fin) {
-        logger.warn("Parámetros faltantes", { space_id, fecha, hora_inicio, hora_fin });
-        endTrace();
-        return errorResponse("Faltan parámetros obligatorios: space_id, fecha, hora_inicio, hora_fin", 400);
-    }
+  // Validar formato fecha YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new ValidationError('Fecha debe tener formato YYYY-MM-DD', 'INVALID_DATE_FORMAT');
+  }
 
-    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!fechaRegex.test(fecha)) {
-        logger.warn("Formato de fecha inválido", { fecha });
-        endTrace();
-        return errorResponse("Fecha debe tener formato YYYY-MM-DD", 400);
-    }
+  // Validar formato hora HH:mm
+  if (!/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(hora_inicio) || 
+      !/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(hora_fin)) {
+    throw new ValidationError('Las horas deben tener formato HH:mm', 'INVALID_TIME_FORMAT');
+  }
 
-    const horaRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-    if (!horaRegex.test(hora_inicio) || !horaRegex.test(hora_fin)) {
-        logger.warn("Formato de hora inválido", { hora_inicio, hora_fin });
-        endTrace();
-        return errorResponse("Las horas deben tener el formato HH:mm", 400);
-    }
+  // Validar rango horario
+  const [hI, mI] = hora_inicio.split(":").map(Number);
+  const [hF, mF] = hora_fin.split(":").map(Number);
+  if (hI > hF || (hI === hF && mI >= mF)) {
+    throw new ValidationError('hora_inicio debe ser menor que hora_fin', 'INVALID_TIME_RANGE');
+  }
 
-    const [horaInicioH, horaInicioM] = hora_inicio.split(":").map(Number);
-    const [horaFinH, horaFinM] = hora_fin.split(":").map(Number);
-    if (horaInicioH > horaFinH || (horaInicioH === horaFinH && horaInicioM >= horaFinM)) {
-        logger.warn("Hora de inicio mayor o igual a hora de fin", { hora_inicio, hora_fin });
-        endTrace();
-        return errorResponse("La hora de inicio no puede ser mayor o igual a la hora de fin", 400);
-    }
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_AGENDA,
+      KeyConditionExpression: 'PK = :pk AND SK BETWEEN :hora_inicio AND :hora_fin',
+      ExpressionAttributeValues: {
+        ':pk': `${space_id}#DATE#${fecha}`,
+        ':hora_inicio': hora_inicio,
+        ':hora_fin': hora_fin
+      }
+    })),
+    { operation: 'verificarConflictoBox', space_id, fecha }
+  );
 
-    try {
-        logger.info("Verificando conflicto de espacio", { space_id, fecha, hora_inicio, hora_fin });
-        
-        const params = {
-            TableName: process.env.DB_AGENDA,
-            KeyConditionExpression: 'PK = :pk AND SK BETWEEN :hora_inicio AND :hora_fin',
-            ExpressionAttributeValues: {
-                ':pk': `${space_id}#DATE#${fecha}`,
-                ':hora_inicio': hora_inicio,
-                ':hora_fin': hora_fin
-            }
-        };
+  const conflictos = data.Items.filter(agenda => {
+    const agendaHoraInicio = agenda.horaInicio;
+    const agendaHoraFin = agenda.horaFin;
+    return (hora_inicio < agendaHoraFin && hora_fin > agendaHoraInicio);
+  });
 
-        const data = await client.send(new QueryCommand(params));
+  const hasConflicto = conflictos.length > 0;
+  logger.info('Verificación de conflicto completada', { 
+    space_id, fecha, conflicto: hasConflicto, conflictosCount: conflictos.length 
+  });
 
-        const conflictos = data.Items.filter(agenda => {
-            const agendaHoraInicio = agenda.horaInicio;
-            const agendaHoraFin = agenda.horaFin;
-            return (hora_inicio < agendaHoraFin && hora_fin > agendaHoraInicio);
-        });
+  return successResponse({ 
+    conflicto: hasConflicto, 
+    conflictos: hasConflicto ? conflictos : undefined 
+  });
+};
 
-        const hasConflicto = conflictos.length > 0;
-        
-        logger.info("Verificación de conflicto completada", { 
-            space_id, 
-            fecha, 
-            conflicto: hasConflicto,
-            conflictosCount: conflictos.length
-        });
-        endTrace();
-
-        return successResponse({ 
-            conflicto: hasConflicto, 
-            conflictos: hasConflicto ? conflictos : undefined 
+module.exports.handler = createAPIHandler(verificarConflictoBox, { rateLimit: { maxRequests: 100, windowSeconds: 60 } }); 
         });
         
     } catch (err) {

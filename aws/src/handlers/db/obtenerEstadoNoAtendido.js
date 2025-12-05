@@ -1,32 +1,39 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerEstadoNoAtendido' });
+const cache = new Cache({ ttl: 3600, maxSize: 5 });
 
-module.exports.handler = async () => {
-    const endTrace = logger.startTrace('obtenerEstadoNoAtendido');
-
-    const params = {
-        TableName: process.env.DB_CATALOGO,
-        KeyConditionExpression: "PK = :pk",
-        ExpressionAttributeValues: {
-            ":pk": "ESTADO#2"
-        }
-    };
-
-    try {
-        const data = await client.send(new QueryCommand(params));
-        const estadoId = data.Items?.[0]?.idEstado || null;
-        
-        logger.info('Estado no atendido retrieved', { estado_id: estadoId });
-        endTrace();
-        return successResponse({ idEstado: estadoId });
-    } catch (err) {
-        logger.error('Error retrieving estado no atendido', err);
-        endTrace();
-        return errorResponse('Error obteniendo estado \'no atendido\'', 500);
-    }
+const obtenerEstadoNoAtendido = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerEstadoNoAtendido' });
+  
+  const cached = cache.get('estado-no-atendido');
+  if (cached) {
+    logger.info('Estado desde cache', { idEstado: cached.idEstado });
+    return successResponse(cached);
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_CATALOGO,
+      KeyConditionExpression: "PK = :pk",
+      ExpressionAttributeValues: { ":pk": "ESTADO#2" }
+    })),
+    { operation: 'obtenerEstadoNoAtendido' }
+  );
+  
+  const estadoId = data.Items?.[0]?.idEstado || null;
+  const result = { idEstado: estadoId };
+  
+  cache.set('estado-no-atendido', result);
+  logger.info('Estado no atendido obtenido', { estadoId });
+  
+  return successResponse(result);
 };
+
+module.exports.handler = createAPIHandler(obtenerEstadoNoAtendido, { rateLimit: { maxRequests: 200, windowSeconds: 60 } });

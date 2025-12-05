@@ -12,6 +12,17 @@ const requireAuth = (req, res, next) => {
     return res.redirect('/login');
   }
   
+  // Poblar req.user con datos de sesión para compatibilidad con middlewares
+  // Esto permite que attachApiClientV2 y otros middlewares accedan al usuario y token
+  req.user = {
+    sub: req.session.user.sub,
+    email: req.session.user.email,
+    email_verified: req.session.user.email_verified,
+    groups: req.session.user.groups || [],
+    token: req.session.user.idToken, // Token para ApiClientV2
+    username: req.session.user.username
+  };
+  
   // Headers anti-cache para prevenir acceso después de logout
   // Estas cabeceras previenen que el navegador guarde la página en cache
   res.set({

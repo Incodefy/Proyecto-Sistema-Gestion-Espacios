@@ -1,45 +1,46 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { validate } = require("../../utils/validation");
-const { successResponse, errorResponse, validationErrorResponse } = require("../../utils/response");
-const { createLogger } = require("../../utils/logger");
+const { successResponse } = require("../../utils/response");
+const Logger = require("../../utils/logger");
+const { retryDB } = require("../../utils/retry");
+const { ValidationError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerAgendaPorFecha' });
+const cache = new Cache({ ttl: 60, maxSize: 300 });
 
-module.exports.handler = async (event) => {
-    const endTrace = logger.startTrace('query-agenda-by-date');
-    const fecha = event.queryStringParameters?.fecha;
-
-    // Validar parámetros
-    const validation = validate({ fecha }, 'consultaPorFecha');
-    if (!validation.valid) {
-        logger.warn('Invalid date parameter', { errors: validation.errors });
-        endTrace({ success: false, reason: 'validation' });
-        return validationErrorResponse(validation.errors);
-    }
-
-    const params = {
-        TableName: process.env.DB_AGENDA,
-        IndexName: "FechaIndex",
-        KeyConditionExpression: "GSI2PK = :fecha",
-        ExpressionAttributeValues: {
-            ":fecha": `DATE#${fecha}`
-        }
-    };
-
-    try {
-        const result = await client.send(new QueryCommand(params));
-        const count = result.Items?.length || 0;
-        
-        logger.info('Agenda fetched by date', { fecha, count });
-        endTrace({ success: true, count });
-        
-        return successResponse(result.Items || [], 200, { count, fecha });
-    } catch (err) {
-        logger.error('Failed to fetch agenda by date', err, { fecha });
-        endTrace({ success: false, error: err.message });
-        
-        return errorResponse('Error obteniendo agenda', 500);
-    }
+const obtenerAgendaPorFecha = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerAgendaPorFecha' });
+  const { fecha } = event.queryStringParameters || {};
+  
+  if (!fecha) throw new ValidationError('fecha es requerida', 'MISSING_FECHA');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    throw new ValidationError('Fecha debe tener formato YYYY-MM-DD', 'INVALID_DATE_FORMAT');
+  }
+  
+  const cacheKey = `agenda-fecha-${fecha}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Agenda desde cache', { fecha, count: cached.length });
+    return successResponse(cached, 200, { count: cached.length, cached: true });
+  }
+  
+  const data = await retryDB(
+    () => client.send(new QueryCommand({
+      TableName: process.env.DB_AGENDA,
+      IndexName: "FechaIndex",
+      KeyConditionExpression: "GSI2PK = :fecha",
+      ExpressionAttributeValues: { ":fecha": `DATE#${fecha}` }
+    })),
+    { operation: 'obtenerAgendaPorFecha', fecha }
+  );
+  
+  const items = data.Items || [];
+  cache.set(cacheKey, items);
+  logger.info('Agenda obtenida por fecha', { fecha, count: items.length });
+  
+  return successResponse(items, 200, { count: items.length, fecha });
 };
+
+module.exports.handler = createAPIHandler(obtenerAgendaPorFecha, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

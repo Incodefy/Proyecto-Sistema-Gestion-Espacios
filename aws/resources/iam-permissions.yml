@@ -1,0 +1,113 @@
+# ============================================
+# IAM PERMISSIONS CONSOLIDADAS
+# ============================================
+
+# === DYNAMODB TABLES - CONSOLIDADO ===
+- Effect: Allow
+  Action:
+    - dynamodb:PutItem
+    - dynamodb:GetItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+    - dynamodb:BatchWriteItem
+    - dynamodb:BatchGetItem
+  Resource:
+    # Core tables
+    - Fn::GetAtt: [GroupsTable, Arn]
+    - Fn::GetAtt: [GroupMembersTable, Arn]
+    - Fn::GetAtt: [GroupInvitationsTable, Arn]
+    - Fn::GetAtt: [RoleMappingsTable, Arn]
+    - Fn::GetAtt: [ParametersTable, Arn]
+    - Fn::GetAtt: [ActivityLogsTable, Arn]
+    - Fn::GetAtt: [ProcessedMessagesTable, Arn]
+    # Feature tables
+    - Fn::GetAtt: [SpacesTable, Arn]
+    - Fn::GetAtt: [OccupantsTable, Arn]
+    - Fn::GetAtt: [EspecialidadesTable, Arn]
+    - Fn::GetAtt: [TiposInstrumentosTable, Arn]
+    - Fn::GetAtt: [InstrumentosTable, Arn]
+    - Fn::GetAtt: [AppointmentsTable, Arn]
+    - Fn::GetAtt: [NotificationsTable, Arn]
+    - Fn::GetAtt: [WebSocketConnectionsTable, Arn]
+    # Global Secondary Indexes
+    - Fn::Sub: '${GroupMembersTable.Arn}/index/*'
+    - Fn::Sub: '${ActivityLogsTable.Arn}/index/*'
+    - Fn::Sub: '${SpacesTable.Arn}/index/*'
+    - Fn::Sub: '${OccupantsTable.Arn}/index/*'
+    - Fn::Sub: '${AppointmentsTable.Arn}/index/*'
+    - Fn::Sub: '${NotificationsTable.Arn}/index/*'
+    - Fn::Sub: '${WebSocketConnectionsTable.Arn}/index/*'
+
+# === DYNAMODB STREAMS ===
+- Effect: Allow
+  Action:
+    - dynamodb:GetRecords
+    - dynamodb:GetShardIterator
+    - dynamodb:DescribeStream
+    - dynamodb:ListStreams
+  Resource:
+    - Fn::GetAtt: [AppointmentsTable, StreamArn]
+    - Fn::GetAtt: [SpacesTable, StreamArn]
+    - Fn::GetAtt: [OccupantsTable, StreamArn]
+    - Fn::GetAtt: [GroupMembersTable, StreamArn]
+
+# === SECRETS MANAGER ===
+- Effect: Allow
+  Action:
+    - secretsmanager:GetSecretValue
+    - secretsmanager:DescribeSecret
+  Resource:
+    - Fn::Sub: 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:hospital/${sls:stage}/*'
+
+# === KMS ENCRYPTION ===
+- Effect: Allow
+  Action:
+    - kms:Decrypt
+    - kms:DescribeKey
+  Resource:
+    - Fn::GetAtt: [HospitalKMSKey, Arn]
+
+# === SNS PUBLISHING ===
+- Effect: Allow
+  Action:
+    - sns:Publish
+  Resource:
+    - Ref: PersonalizationTopic
+    - Ref: SystemNotificationsTopic
+
+# === SES EMAIL ===
+- Effect: Allow
+  Action:
+    - ses:SendEmail
+    - ses:SendRawEmail
+  Resource: '*'
+
+# === COGNITO USER POOL ===
+- Effect: Allow
+  Action:
+    - cognito-idp:ListUsers
+    - cognito-idp:AdminGetUser
+    - cognito-idp:InitiateAuth
+    - cognito-idp:AdminInitiateAuth
+  Resource:
+    - Fn::GetAtt: [CognitoUserPool, Arn]
+
+# === SQS QUEUES ===
+- Effect: Allow
+  Action:
+    - sqs:ReceiveMessage
+    - sqs:DeleteMessage
+    - sqs:GetQueueAttributes
+    - sqs:ChangeMessageVisibility
+  Resource:
+    - Fn::GetAtt: [PersonalizationQueue, Arn]
+    - Fn::GetAtt: [SystemNotificationsQueue, Arn]
+
+# === API GATEWAY WEBSOCKET ===
+- Effect: Allow
+  Action:
+    - execute-api:ManageConnections
+  Resource:
+    - Fn::Sub: 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebsocketsApi}/*'

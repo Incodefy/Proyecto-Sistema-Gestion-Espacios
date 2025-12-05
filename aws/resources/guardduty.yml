@@ -1,0 +1,192 @@
+# GuardDuty Configuration
+# Detección inteligente de amenazas y actividad maliciosa
+
+Resources:
+  # GuardDuty Detector
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: true
+      # Frecuencia de publicación de findings
+      # FIFTEEN_MINUTES, ONE_HOUR, SIX_HOURS
+      FindingPublishingFrequency: FIFTEEN_MINUTES
+      
+      DataSources:
+        S3Logs:
+          Enable: true
+        
+        # Kubernetes audit logs (no aplica si no usas EKS)
+        Kubernetes:
+          AuditLogs:
+            Enable: false
+        
+        # Malware protection para EC2 (no aplica si solo usas Lambda)
+        MalwareProtection:
+          ScanEc2InstanceWithFindings:
+            EbsVolumes:
+              Enable: false
+      
+      Tags:
+        - Key: Environment
+          Value: ${sls:stage}
+        - Key: Project
+          Value: Incodefy
+
+  # SNS Topic para notificaciones de GuardDuty
+  GuardDutyNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ${self:service}-${sls:stage}-guardduty-alerts
+      DisplayName: GuardDuty Security Alerts
+      Subscription:
+        # Agregar email de admin (cambiar por el real)
+        - Endpoint: admin@hospital.com  # CAMBIAR ESTO
+          Protocol: email
+      Tags:
+        - Key: Environment
+          Value: ${sls:stage}
+        - Key: Project
+          Value: Incodefy
+
+  # EventBridge Rule para capturar findings de GuardDuty
+  GuardDutyEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: ${self:service}-${sls:stage}-guardduty-findings
+      Description: Capture GuardDuty findings
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          severity:
+            # Solo alertar sobre severidad media y alta
+            - 4  # Low (comentado)
+            - 5
+            - 6
+            - 7  # Medium
+            - 8
+            - 9  # High
+      Targets:
+        # Enviar a SNS
+        - Arn: !Ref GuardDutyNotificationTopic
+          Id: SNSTarget
+          InputTransformer:
+            InputPathsMap:
+              severity: $.detail.severity
+              type: $.detail.type
+              accountId: $.detail.accountId
+              region: $.detail.region
+              description: $.detail.description
+              time: $.time
+            InputTemplate: |
+              "🚨 GuardDuty Alert"
+              "Severity: <severity>"
+              "Type: <type>"
+              "Account: <accountId>"
+              "Region: <region>"
+              "Time: <time>"
+              "Description: <description>"
+        
+        # Log a CloudWatch
+        - Arn: !GetAtt GuardDutyLogGroup.Arn
+          Id: CloudWatchTarget
+
+  # CloudWatch Log Group para findings
+  GuardDutyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/guardduty/${self:service}-${sls:stage}
+      RetentionInDays: 90
+
+  # SNS Topic Policy
+  GuardDutyTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref GuardDutyNotificationTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgeToPublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref GuardDutyNotificationTopic
+
+  # CloudWatch Log Resource Policy para EventBridge
+  GuardDutyLogPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: ${self:service}-${sls:stage}-guardduty-log-policy
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["events.amazonaws.com", "delivery.logs.amazonaws.com"]
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "${GuardDutyLogGroup.Arn}"
+            }
+          ]
+        }
+
+  # Filter común de findings por tipo
+  # Crea métricas para monitorear tipos específicos de amenazas
+  UnauthorizedAccessMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: '{ $.detail.type = "*UnauthorizedAccess*" }'
+      LogGroupName: !Ref GuardDutyLogGroup
+      MetricTransformations:
+        - MetricName: UnauthorizedAccessAttempts
+          MetricNamespace: ${self:service}/${sls:stage}/GuardDuty
+          MetricValue: '1'
+
+  MalwareDetectedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: '{ $.detail.type = "*Malware*" }'
+      LogGroupName: !Ref GuardDutyLogGroup
+      MetricTransformations:
+        - MetricName: MalwareDetected
+          MetricNamespace: ${self:service}/${sls:stage}/GuardDuty
+          MetricValue: '1'
+
+  CryptoCurrencyMiningMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: '{ $.detail.type = "*CryptoCurrency*" }'
+      LogGroupName: !Ref GuardDutyLogGroup
+      MetricTransformations:
+        - MetricName: CryptoCurrencyMining
+          MetricNamespace: ${self:service}/${sls:stage}/GuardDuty
+          MetricValue: '1'
+
+Outputs:
+  GuardDutyDetectorId:
+    Description: GuardDuty Detector ID
+    Value: !Ref GuardDutyDetector
+    Export:
+      Name: ${self:service}-${sls:stage}-guardduty-detector-id
+
+  GuardDutyNotificationTopicArn:
+    Description: SNS Topic for GuardDuty alerts
+    Value: !Ref GuardDutyNotificationTopic
+    Export:
+      Name: ${self:service}-${sls:stage}-guardduty-topic-arn
+
+  GuardDutyLogGroupName:
+    Description: CloudWatch Log Group for GuardDuty findings
+    Value: !Ref GuardDutyLogGroup
+    Export:
+      Name: ${self:service}-${sls:stage}-guardduty-log-group

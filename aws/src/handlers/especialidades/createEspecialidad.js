@@ -2,48 +2,33 @@
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const crypto = require("crypto");
+const Logger = require("../../utils/logger");
+const { validate } = require("../../utils/validator");
+const { ValidationError } = require("../../utils/errorHandler");
+const { retryDB } = require("../../utils/retry");
+const { createAPIHandler } = require("../../middleware/interceptors");
 
-exports.handler = async (event) => {
-  const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [Lambda] POST /groups/{grupo_id}/especialidades | ${TRACE_ID} ===`);
+const createEspecialidad = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'createEspecialidad' });
   
-  try {
-    const grupo_id = event.pathParameters?.grupo_id;
-    const userSub = event.requestContext.authorizer.jwt.claims.sub;
-    const body = JSON.parse(event.body || "{}");
-    
-    console.log(`[${TRACE_ID}] 👤 User:`, userSub);
-    console.log(`[${TRACE_ID}] 📂 Grupo ID:`, grupo_id);
-    console.log(`[${TRACE_ID}] 📥 Body:`, body);
-    
-    if (!grupo_id) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "grupo_id es requerido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    if (!body.nombre || !body.nombre.trim()) {
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "El nombre de la especialidad es requerido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    const especialidadId = crypto.randomUUID().substring(0, 8);
-    const now = new Date().toISOString();
-
-    await db.send(
+  // Validar input
+  const body = JSON.parse(event.body || "{}");
+  const grupo_id = event.pathParameters?.grupo_id;
+  
+  validate('createEspecialidad', { ...body, grupo_id });
+  
+  const userSub = event.requestContext.authorizer.jwt.claims.sub;
+  const especialidadId = crypto.randomUUID().substring(0, 8);
+  const now = new Date().toISOString();
+  
+  logger.info('Creando especialidad', { 
+    grupo_id, 
+    especialidadId,
+    nombre: body.nombre.trim()
+  });
+  
+  await retryDB(
+    () => db.send(
       new PutCommand({
         TableName: process.env.ESPECIALIDADES_TABLE,
         Item: {
@@ -55,37 +40,26 @@ exports.handler = async (event) => {
           created_by: userSub
         }
       })
-    );
-
-    console.log(`[${TRACE_ID}] ✅ Especialidad creada: ${especialidadId}`);
-
-    return {
-      statusCode: 201,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: true,
-        especialidad: {
-          id: especialidadId,
-          nombre: body.nombre.trim(),
-          grupo_id,
-          created_at: now
-        },
-        trace_id: TRACE_ID
-      })
-    };
-
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error creando especialidad:`, error);
-    
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al crear especialidad",
-        details: error.message,
-        trace_id: TRACE_ID
-      })
-    };
-  }
+    ),
+    { operation: 'createEspecialidad' }
+  );
+  
+  logger.info('Especialidad creada exitosamente', { especialidadId });
+  
+  return {
+    statusCode: 201,
+    body: JSON.stringify({ 
+      ok: true,
+      especialidad: {
+        id: especialidadId,
+        nombre: body.nombre.trim(),
+        grupo_id,
+        created_at: now
+      }
+    })
+  };
 };
+
+module.exports.handler = createAPIHandler(createEspecialidad, {
+  rateLimit: { maxRequests: 20, windowSeconds: 60 }
+});

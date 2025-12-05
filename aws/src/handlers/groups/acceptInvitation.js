@@ -9,141 +9,109 @@ const {
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const { notifyInvitacionAceptada } = require('../../utils/notificationHelper');
 
-exports.handler = async (event) => {
-  const TRACE_ID = `lambda-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(`\n=== [Lambda] POST /api/invitaciones/aceptar | ${TRACE_ID} ===`);
+// ✅ MEJORAS IMPLEMENTADAS
+const { Logger } = require("../../utils/logger");
+const { ValidationError, NotFoundError, ConflictError, AuthorizationError, successResponse } = require("../../utils/errorHandler");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { retryDB, retryAWS } = require("../../utils/retry");
+const { invalidateUserPermissions } = require("../../utils/cache");
 
+/**
+ * POST /api/invitaciones/aceptar
+ * Acepta una invitación a un grupo
+ * 
+ * MEJORAS:
+ * ✅ Logging estructurado
+ * ✅ Error handling centralizado
+ * ✅ Retry logic automático
+ * ✅ Cache invalidation
+ * ✅ Interceptors (rate limit: 30 req/min)
+ */
+async function acceptInvitationHandler(event, context, logger) {
+  const { token } = event.parsedBody;
+  
+  if (!token) {
+    throw new ValidationError('Token de invitación requerido');
+  }
+
+  const userSub = event.userContext?.sub;
+  const userEmail = event.userContext?.email;
+  let userName = event.userContext?.name || userEmail?.split('@')[0] || 'Usuario';
+
+  logger = logger.child({ token: token.substring(0, 8), userSub });
+  logger.info('Accepting invitation');
+
+  // Intentar obtener nombre de USERS_TABLE
   try {
-    const { token } = JSON.parse(event.body || "{}");
-
-    if (!token) {
-      console.warn(`[${TRACE_ID}] ⚠️ Token no proporcionado`);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Token de invitación requerido",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    // Obtener datos del usuario autenticado
-    const userSub = event?.requestContext?.authorizer?.jwt?.claims?.sub;
-    const userEmail = event?.requestContext?.authorizer?.jwt?.claims?.email;
-    let userName = event?.requestContext?.authorizer?.jwt?.claims?.name || 
-                   event?.requestContext?.authorizer?.jwt?.claims?.['cognito:username'] || 
-                   userEmail?.split('@')[0] || 
-                   'Usuario';
-
-    // Intentar obtener el nombre desde la tabla de usuarios
-    try {
-      const userResult = await db.send(new GetCommand({
+    const userResult = await retryDB(async () => {
+      return await db.send(new GetCommand({
         TableName: process.env.USERS_TABLE,
         Key: { user_sub: userSub }
       }));
-      
-      if (userResult.Item?.name) {
-        userName = userResult.Item.name;
-        console.log(`[${TRACE_ID}] 👤 Nombre obtenido de USERS_TABLE: ${userName}`);
-      }
-    } catch (err) {
-      console.warn(`[${TRACE_ID}] ⚠️ No se pudo obtener nombre de USERS_TABLE:`, err.message);
+    });
+    
+    if (userResult.Item?.name) {
+      userName = userResult.Item.name;
+      logger.debug('User name retrieved from USERS_TABLE', { userName });
     }
+  } catch (err) {
+    logger.warn('Could not fetch user name from USERS_TABLE', err);
+  }
 
-    if (!userSub || !userEmail) {
-      console.warn(`[${TRACE_ID}] ⚠️ Usuario no autenticado`);
-      return {
-        statusCode: 401,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Debes iniciar sesión para aceptar la invitación",
-          trace_id: TRACE_ID
-        })
-      };
-    }
-
-    console.log(`[${TRACE_ID}] 👤 Usuario: ${userEmail} (${userSub})`);
-    console.log(`[${TRACE_ID}] 🔍 Verificando token:`, token.substring(0, 8) + '...');
-
-    // Buscar invitación
-    const invite = await db.send(new GetCommand({
+  // Buscar invitación con retry
+  const invite = await retryDB(async () => {
+    return await db.send(new GetCommand({
       TableName: process.env.GROUP_INVITATIONS_TABLE,
       Key: { token }
     }));
+  });
 
-    if (!invite.Item) {
-      console.warn(`[${TRACE_ID}] ⚠️ Invitación no encontrada`);
-      return {
-        statusCode: 404,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Invitación no encontrada o ha expirado",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  if (!invite.Item) {
+    throw new NotFoundError('Invitación', token);
+  }
 
-    const invitation = invite.Item;
+  const invitation = invite.Item;
+  logger = logger.child({ groupId: invitation.group_id, invitedEmail: invitation.invited_email });
 
-    // Validar que la invitación esté pendiente
-    if (invitation.status !== 'pending') {
-      console.warn(`[${TRACE_ID}] ⚠️ Invitación ya ${invitation.status}`);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: invitation.status === 'ACCEPTED' 
-            ? 'Esta invitación ya fue aceptada' 
-            : 'Esta invitación no está disponible',
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  // Validar estado
+  if (invitation.status !== 'pending') {
+    const message = invitation.status === 'ACCEPTED' 
+      ? 'Esta invitación ya fue aceptada' 
+      : 'Esta invitación no está disponible';
+    throw new ConflictError(message);
+  }
 
-    // Validar que el email coincida (importante para seguridad)
-    if (invitation.invited_email.toLowerCase() !== userEmail.toLowerCase()) {
-      console.warn(`[${TRACE_ID}] ⚠️ Email no coincide. Invitado: ${invitation.invited_email}, Usuario: ${userEmail}`);
-      return {
-        statusCode: 403,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Esta invitación fue enviada a otro correo electrónico",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  // Validar email
+  if (invitation.invited_email.toLowerCase() !== userEmail.toLowerCase()) {
+    logger.warn('Email mismatch', { 
+      invited: invitation.invited_email, 
+      current: userEmail 
+    });
+    throw new AuthorizationError('Esta invitación fue enviada a otro correo electrónico');
+  }
 
-    // Verificar que el usuario no sea ya miembro del grupo
-    const existingMember = await db.send(new GetCommand({
+  // Verificar membership existente
+  const existingMember = await retryDB(async () => {
+    return await db.send(new GetCommand({
       TableName: process.env.GROUP_MEMBERS_TABLE,
       Key: { 
         group_id: invitation.group_id,
         user_sub: userSub
       }
     }));
+  });
 
-    if (existingMember.Item) {
-      console.warn(`[${TRACE_ID}] ⚠️ Usuario ya es miembro del grupo`);
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          ok: false, 
-          error: "Ya eres miembro de este grupo",
-          trace_id: TRACE_ID
-        })
-      };
-    }
+  if (existingMember.Item) {
+    logger.warn('User is already a member');
+    throw new ConflictError('Ya eres miembro de este grupo');
+  }
 
-    console.log(`[${TRACE_ID}] ✅ Todas las validaciones pasaron, agregando miembro...`);
+  logger.debug('All validations passed, adding member');
 
-    // Agregar al usuario como miembro del grupo
+  // Agregar miembro y actualizar invitación
+  const timestamp = new Date().toISOString();
+
+  await retryDB(async () => {
     await db.send(new PutCommand({
       TableName: process.env.GROUP_MEMBERS_TABLE,
       Item: {
@@ -152,79 +120,68 @@ exports.handler = async (event) => {
         user_email: userEmail,
         user_name: userName,
         role: invitation.role,
-        added_at: new Date().toISOString(),
+        added_at: timestamp,
         updated_by: userSub,
         joined_via: 'invitation'
       }
     }));
+  });
 
-    // Marcar invitación como aceptada
+  await retryDB(async () => {
     await db.send(new UpdateCommand({
       TableName: process.env.GROUP_INVITATIONS_TABLE,
       Key: { token },
       UpdateExpression: "SET #status = :accepted, accepted_at = :acceptedAt, accepted_by = :acceptedBy",
-      ExpressionAttributeNames: {
-        "#status": "status"
-      },
+      ExpressionAttributeNames: { "#status": "status" },
       ExpressionAttributeValues: { 
         ":accepted": "ACCEPTED",
-        ":acceptedAt": new Date().toISOString(),
+        ":acceptedAt": timestamp,
         ":acceptedBy": userSub
       }
     }));
+  });
 
-    console.log(`[${TRACE_ID}] ✅ Invitación aceptada exitosamente`);
+  logger.info('Invitation accepted successfully');
 
-    // Notificar a todos los miembros del grupo (excepto al nuevo miembro)
-    try {
-      const membersResult = await db.send(new QueryCommand({
+  // Invalidar cache de permisos
+  await invalidateUserPermissions(userSub);
+
+  // Notificar a miembros existentes
+  try {
+    const membersResult = await retryAWS(async () => {
+      return await db.send(new QueryCommand({
         TableName: process.env.GROUP_MEMBERS_TABLE,
         KeyConditionExpression: 'group_id = :gid',
         ExpressionAttributeValues: { ':gid': invitation.group_id }
       }));
+    });
 
-      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
-      
-      if (userSubs.length > 0) {
-        await notifyInvitacionAceptada({
-          userSubs,
-          grupoId: invitation.group_id,
-          newMemberSub: userSub,
-          newMemberName: userName,
-          newMemberEmail: userEmail,
-          rol: invitation.role
-        });
-        console.log(`[${TRACE_ID}] 📬 Notificaciones enviadas a ${userSubs.length} miembros`);
-      }
-    } catch (notifError) {
-      console.error(`[${TRACE_ID}] ⚠️ Error enviando notificaciones:`, notifError);
-      // No fallar si las notificaciones fallan
-    }
-
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: true,
-        message: "Invitación aceptada exitosamente",
-        group_id: invitation.group_id,
-        role: invitation.role,
-        trace_id: TRACE_ID
-      })
-    };
-
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error aceptando invitación:`, error);
+    const userSubs = (membersResult.Items || []).map(m => m.user_sub);
     
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al aceptar la invitación",
-        details: error.message,
-        trace_id: TRACE_ID
-      })
-    };
+    if (userSubs.length > 0) {
+      await notifyInvitacionAceptada({
+        userSubs,
+        grupoId: invitation.group_id,
+        newMemberSub: userSub,
+        newMemberName: userName,
+        newMemberEmail: userEmail,
+        rol: invitation.role
+      });
+      logger.debug('Notifications sent', { recipients: userSubs.length });
+    }
+  } catch (notifError) {
+    logger.warn('Failed to send notifications', notifError);
   }
-};
+
+  return successResponse({
+    message: "Invitación aceptada exitosamente",
+    group_id: invitation.group_id,
+    role: invitation.role
+  });
+}
+
+// Exportar con interceptors
+module.exports.handler = createAPIHandler(acceptInvitationHandler, {
+  requireAuth: true,
+  rateLimit: { max: 30, windowMs: 60000 }
+});

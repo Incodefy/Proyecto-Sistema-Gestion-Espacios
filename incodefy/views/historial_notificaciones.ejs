@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Historial y preferencias de notificaciones del sistema">
   <title><%= t('notifications.history_title') %></title>
   
   <!-- Token CSRF para peticiones AJAX -->
@@ -22,80 +24,118 @@
     <div class="row">
       <%- include("navbar") %>
 
-      <div class="main">
-        <div class="page-header">
+      <main class="main" role="main" aria-label="Contenido principal">
+        <header class="page-header">
           <div class="header-content">
             <div class="header-text">
               <h1 class="page-title">
-                <i class="fas fa-bell me-2"></i>
+                <i class="fas fa-bell me-2" aria-hidden="true"></i>
                 <%= t('notifications.history_header') %>
               </h1>
               <p class="page-subtitle"><%= t('notifications.history_subheader') %></p>
             </div>
             
             <!-- Tabs de navegación en el header -->
-            <div class="header-tabs">
-              <button class="tab-btn active" data-tab="historial">
-                <i class="fas fa-history me-2"></i>
+            <nav class="header-tabs" role="tablist" aria-label="Opciones de notificaciones">
+              <button class="tab-btn active" 
+                      data-tab="historial" 
+                      role="tab" 
+                      aria-controls="tab-historial" 
+                      aria-selected="true"
+                      id="tab-btn-historial">
+                <i class="fas fa-history me-2" aria-hidden="true"></i>
                 <span>Historial</span>
               </button>
-              <button class="tab-btn" data-tab="preferencias">
-                <i class="fas fa-sliders-h me-2"></i>
+              <button class="tab-btn" 
+                      data-tab="preferencias" 
+                      role="tab" 
+                      aria-controls="tab-preferencias" 
+                      aria-selected="false"
+                      id="tab-btn-preferencias">
+                <i class="fas fa-sliders-h me-2" aria-hidden="true"></i>
                 <span>Preferencias</span>
               </button>
-            </div>
+            </nav>
           </div>
-        </div>
+        </header>
 
         <!-- Contenido de las tabs -->
         <div class="tabs-container">
           <!-- Tab Historial -->
-          <div class="tab-panel active" id="tab-historial">
-            <div class="loading-spinner" id="loadingSpinner">
-              <div class="spinner"></div>
+          <section class="tab-panel active" 
+                   id="tab-historial" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-historial">
+            <div class="loading-spinner" id="loadingSpinner" role="status" aria-live="polite">
+              <div class="spinner" aria-hidden="true"></div>
               <p class="mt-3">Cargando notificaciones...</p>
             </div>
-            <div class="notificaciones-lista d-none" id="notificacionesLista"></div>
-          </div>
+            <div class="notificaciones-lista d-none" id="notificacionesLista" role="feed" aria-label="Lista de notificaciones"></div>
+          </section>
 
           <!-- Tab Preferencias -->
-          <div class="tab-panel" id="tab-preferencias">
+          <section class="tab-panel" 
+                   id="tab-preferencias" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-preferencias"
+                   hidden>
             <div class="preferences-intro">
-              <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
+              <div class="alert alert-info" role="status">
+                <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
                 Configura qué tipos de notificaciones deseas recibir en tiempo real. Tus preferencias se guardarán automáticamente.
               </div>
             </div>
 
-            <div class="preferences-grid">
+            <div class="preferences-grid" role="group" aria-label="Configuración de preferencias">
               <!-- Citas/Appointments -->
-              <div class="preference-card">
-                <div class="preference-card-header">
-                  <div class="preference-icon appointments-icon">
+              <fieldset class="preference-card">
+                <legend class="preference-card-header">
+                  <div class="preference-icon appointments-icon" aria-hidden="true">
                     <i class="fas fa-calendar-check"></i>
                   </div>
                   <div class="preference-header-text">
-                    <h5>Citas y Agendamientos</h5>
+                    <h2>Citas y Agendamientos</h2>
                     <small>Notificaciones sobre el sistema de agenda médica</small>
                   </div>
-                </div>
+                </legend>
                 <div class="preference-card-body">
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="pref-INSERT" data-category="appointments" data-type="INSERT" checked>
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           role="switch"
+                           id="pref-INSERT" 
+                           data-category="appointments" 
+                           data-type="INSERT" 
+                           checked
+                           aria-checked="true">
                     <label class="form-check-label" for="pref-INSERT">
                       <strong>Nueva cita agendada</strong>
                       <small class="d-block">Cuando se crea una nueva cita en el sistema</small>
                     </label>
                   </div>
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="pref-MODIFY" data-category="appointments" data-type="MODIFY" checked>
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           role="switch"
+                           id="pref-MODIFY" 
+                           data-category="appointments" 
+                           data-type="MODIFY" 
+                           checked
+                           aria-checked="true">
                     <label class="form-check-label" for="pref-MODIFY">
                       <strong>Cita modificada</strong>
                       <small class="d-block">Cuando se modifica una cita existente</small>
                     </label>
                   </div>
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="pref-REMOVE" data-category="appointments" data-type="REMOVE" checked>
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           role="switch"
+                           id="pref-REMOVE" 
+                           data-category="appointments" 
+                           data-type="REMOVE" 
+                           checked
+                           aria-checked="true">
                     <label class="form-check-label" for="pref-REMOVE">
                       <strong>Cita cancelada</strong>
                       <small class="d-block">Cuando se cancela una cita</small>

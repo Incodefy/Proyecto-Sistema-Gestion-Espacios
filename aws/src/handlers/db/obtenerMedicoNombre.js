@@ -1,45 +1,48 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse, errorResponse, notFoundResponse } = require('../../utils/response');
-const { createLogger } = require('../../utils/logger');
+const { successResponse } = require('../../utils/response');
+const Logger = require('../../utils/logger');
+const { retryDB } = require("../../utils/retry");
+const { validate, schemas } = require("../../utils/validator");
+const { ValidationError, NotFoundError } = require("../../utils/errors");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { Cache } = require("../../utils/cache");
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const logger = createLogger({ handler: 'obtenerMedicoNombre' });
+const cache = new Cache({ ttl: 600, maxSize: 300 });
 
-module.exports.handler = async (event) => {
-  const endTrace = logger.startTrace('obtenerMedicoNombre');
-  const medicoId = event.queryStringParameters?.medicoId;
+const obtenerMedicoNombre = async (event) => {
+  const logger = Logger.fromEvent(event).child({ handler: 'obtenerMedicoNombre' });
+  const { medicoId } = event.queryStringParameters || {};
+  
+  if (!medicoId) throw new ValidationError('medicoId es requerido', 'MISSING_MEDICO_ID');
+  validate(schemas.id, medicoId, 'medicoId');
+  
+  const cacheKey = `medico-nombre-${medicoId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info('Médico nombre desde cache', { medicoId });
+    return successResponse(cached);
+  }
+  
+  const data = await retryDB(
+    () => client.send(new GetCommand({
+      TableName: process.env.DB_CATALOGO,
+      Key: { PK: `MEDICO#${medicoId}`, SK: "#" }
+    })),
+    { operation: 'obtenerMedicoNombre', medicoId }
+  );
 
-  if (!medicoId) {
-    logger.warn('Missing medicoId parameter');
-    endTrace();
-    return errorResponse('Debe enviar ?medicoId=valor', 400);
+  if (!data.Item) {
+    logger.warn('Médico no encontrado', { medicoId });
+    throw new NotFoundError('Médico', medicoId);
   }
 
-  const params = {
-    TableName: process.env.DB_CATALOGO,
-    Key: {
-      PK: `MEDICO#${medicoId}`,
-      SK: "#"
-    }
-  };
-
-  try {
-    const data = await client.send(new GetCommand(params));
-
-    if (!data.Item) {
-      logger.info('Medico not found', { medico_id: medicoId });
-      endTrace();
-      return notFoundResponse(`Médico ${medicoId} no encontrado`);
-    }
-
-    logger.info('Medico name retrieved', { medico_id: medicoId });
-    endTrace();
-    return successResponse({ nombre: data.Item.nombre || null });
-
-  } catch (err) {
-    logger.error('Error retrieving medico name', err, { medico_id: medicoId });
-    endTrace();
-    return errorResponse('Error obteniendo médico', 500);
-  }
+  const result = { nombre: data.Item.nombre || null };
+  cache.set(cacheKey, result);
+  logger.info('Médico nombre obtenido y cacheado', { medicoId, nombre: result.nombre });
+  
+  return successResponse(result);
 };
+
+module.exports.handler = createAPIHandler(obtenerMedicoNombre, { rateLimit: { maxRequests: 150, windowSeconds: 60 } });

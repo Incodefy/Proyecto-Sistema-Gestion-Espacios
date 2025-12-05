@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestión de agenda y citas médicas">
   <title><%= t('agenda.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css">
   <link rel="stylesheet" href="/css/agenda.css">
@@ -32,72 +34,72 @@
 
   <div class="container-fluid">
     <div class="row">
-      <div class="main">
-        <div class="top-header">
+      <main class="main" role="main" aria-label="Contenido principal">
+        <header class="top-header">
           <h1 class="page-title"><%= t('agenda.main_title') %></h1>
           <p class="page-subtitle"><%= t('agenda.main_subtitle') %></p>
-        </div>
+        </header>
 
-        <div class="options-grid">
+        <section class="options-grid" aria-label="Opciones de agenda">
           
           <!-- Opción: Agendar - Requiere agenda.read -->
           <% if (canViewAgenda) { %>
-            <div class="option-item">
-              <a href="/agenda/gestion" class="option-card-new">
-                <div class="option-icon calendar-icon">
+            <article class="option-item">
+              <a href="/agenda/gestion" class="option-card-new" aria-label="Agendar - Crea y gestiona citas médicas de forma rápida">
+                <div class="option-icon calendar-icon" aria-hidden="true">
                   <i class="fas fa-calendar-plus"></i>
                 </div>
                 <div class="option-content">
-                  <h3 class="option-title"><%= t('agenda.data.agendar') %></h3>
+                  <h2 class="option-title"><%= t('agenda.data.agendar') %></h2>
                   <p class="option-description">Crea y gestiona citas médicas de forma rápida</p>
                 </div>
-                <div class="option-arrow">
+                <div class="option-arrow" aria-hidden="true">
                   <i class="fas fa-chevron-right"></i>
                 </div>
               </a>
-            </div>
+            </article>
           <% } %>
 
           <!-- Opción: Importar - Requiere data.import -->
           <% if (canImport) { %>
-            <div class="option-item">
-              <a href="#" class="option-card-new" data-action="show-dev-toast">
-                <div class="option-icon import-icon">
+            <article class="option-item">
+              <a href="#" class="option-card-new" data-action="show-dev-toast" aria-label="Importar - Importa datos desde archivos externos">
+                <div class="option-icon import-icon" aria-hidden="true">
                   <i class="fas fa-file-import"></i>
                 </div>
                 <div class="option-content">
-                  <h3 class="option-title"><%= t('agenda.data.import') %></h3>
+                  <h2 class="option-title"><%= t('agenda.data.import') %></h2>
                   <p class="option-description">Importa datos desde archivos externos</p>
                 </div>
-                <div class="option-arrow">
+                <div class="option-arrow" aria-hidden="true">
                   <i class="fas fa-chevron-right"></i>
                 </div>
               </a>
-            </div>
+            </article>
           <% } %>
           
           <!-- Opción: Exportar - Requiere data.export -->
           <% if (canExport) { %>
-            <div class="option-item">
-              <a href="#" class="option-card-new" data-action="show-dev-toast">
-                <div class="option-icon export-icon">
+            <article class="option-item">
+              <a href="#" class="option-card-new" data-action="show-dev-toast" aria-label="Exportar - Exporta información de consultas y citas">
+                <div class="option-icon export-icon" aria-hidden="true">
                   <i class="fas fa-file-export"></i>
                 </div>
                 <div class="option-content">
-                  <h3 class="option-title"><%= t('agenda.data.export') %></h3>
+                  <h2 class="option-title"><%= t('agenda.data.export') %></h2>
                   <p class="option-description">Exporta información de consultas y citas</p>
                 </div>
-                <div class="option-arrow">
+                <div class="option-arrow" aria-hidden="true">
                   <i class="fas fa-chevron-right"></i>
                 </div>
               </a>
-            </div>
+            </article>
           <% } %>
 
           <!-- Mensaje si no tiene permisos para ninguna opción -->
           <% if (!canViewAgenda && !canImport && !canExport) { %>
             <div class="col-12 text-center no-permissions-container">
-              <div class="alert alert-warning">
+              <div class="alert alert-warning" role="alert">
                 <i class="fas fa-exclamation-triangle mb-3"></i>
                 <h4><%= t('agenda.no_permissions.title') %></h4>
                 <p><%= t('agenda.no_permissions.description') %></p>

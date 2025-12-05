@@ -2,6 +2,8 @@
 <html lang="<%= i18n.language %>">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Consultas médicas en curso - Gestión de citas activas">
   <title><%= t('in_progress.title') %></title>
   <link rel="stylesheet" href="/css/navbar.css?v=<%= Date.now() %>">
   <link rel="stylesheet" href="/css/consultas_en_curso.css?v=<%= Date.now() %>">
@@ -44,60 +46,60 @@
     <div class="row">
       <%- include("navbar") %>
 
-      <div class="main">
+      <main class="main" role="main" aria-label="Contenido principal">
 
         <!-- Header -->
-        <div class="header-section">
+        <header class="header-section">
           <h1>
-            <i class="fas fa-stethoscope me-2 header-icon"></i>
+            <i class="fas fa-stethoscope me-2 header-icon" aria-hidden="true"></i>
             <%= t('in_progress.header') %>
           </h1>
           <p><%= t('in_progress.subheader') %></p>
-        </div>
+        </header>
 
         <!-- Estadísticas -->
-        <div class="stats-container">
+        <section class="stats-container" aria-label="Estadísticas de consultas" role="region">
           <div class="row g-3">
-            <div class="col-md-4">
+            <article class="col-md-4">
               <div class="card stat-card stat-pendientes">
                 <div class="card-body text-center">
-                  <div class="stat-number" id="stat-pendientes">—</div>
+                  <div class="stat-number" id="stat-pendientes" aria-live="polite">—</div>
                   <p class="stat-label"><%= t('common.pending_appointments') %></p>
                 </div>
               </div>
-            </div>
-            <div class="col-md-4">
+            </article>
+            <article class="col-md-4">
               <div class="card stat-card stat-confirmadas">
                 <div class="card-body text-center">
-                  <div class="stat-number" id="stat-confirmadas">—</div>
+                  <div class="stat-number" id="stat-confirmadas" aria-live="polite">—</div>
                   <p class="stat-label"><%= t('common.confirmed_appointments') %></p>
                 </div>
               </div>
-            </div>
-            <div class="col-md-4">
+            </article>
+            <article class="col-md-4">
               <div class="card stat-card stat-total">
                 <div class="card-body text-center">
-                  <div class="stat-number" id="stat-total">—</div>
+                  <div class="stat-number" id="stat-total" aria-live="polite">—</div>
                   <p class="stat-label"><%= t('common.total_in_progress') %></p>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
-        </div>
+        </section>
 
         <!-- Tabla -->
-        <div class="card consultas-card">
-          <div class="leyenda" id="leyendaEstado" hidden>
+        <section class="card consultas-card" aria-label="Lista de consultas en curso">
+          <div class="leyenda" id="leyendaEstado" hidden role="status" aria-label="Leyenda de estados">
             <div class="caja">
                 <span class="estado-badge estado-pendiente"><%= t('common.pending') %></span> 
-                <div class="detalle"><%= t('in_progress.legend.pending') %></div>
+                <p class="detalle"><%= t('in_progress.legend.pending') %></p>
             </div>
             <div class="caja">
                 <span class="estado-badge estado-confirmada"><%= t('common.confirmed') %></span> 
-                <div class="detalle"><%= t('in_progress.legend.confirmed') %></div>
+                <p class="detalle"><%= t('in_progress.legend.confirmed') %></p>
             </div>
           </div>
-          <div class="table-container" id="contenedor_en_curso">
+          <div class="table-container" id="contenedor_en_curso" role="region" aria-live="polite">
             <div class="loading-container">
               <div class="spinner"></div>
               <p><%= t('in_progress.loading') %></p>

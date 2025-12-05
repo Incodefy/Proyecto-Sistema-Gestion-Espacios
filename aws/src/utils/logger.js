@@ -4,6 +4,8 @@
  * Implementa mejores prácticas de logging seguro
  */
 
+const crypto = require('crypto');
+
 class Logger {
   constructor(context = {}) {
     this.context = {
@@ -11,67 +13,135 @@ class Logger {
       stage: process.env.STAGE || 'dev',
       ...context
     };
+    this.correlationId = this.generateCorrelationId();
+    this.startTime = Date.now();
+  }
+
+  /**
+   * Genera correlation ID único para tracking
+   */
+  generateCorrelationId() {
+    return `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  }
+
+  /**
+   * Crea logger desde evento de API Gateway con correlation ID
+   */
+  static fromEvent(event) {
+    const correlationId = event?.requestContext?.requestId || 
+                         event?.headers?.['x-correlation-id'] ||
+                         `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    
+    const context = {
+      correlationId,
+      requestId: event?.requestContext?.requestId,
+      userSub: event?.requestContext?.authorizer?.jwt?.claims?.sub,
+      sourceIp: event?.requestContext?.http?.sourceIp,
+      path: event?.requestContext?.http?.path,
+      method: event?.requestContext?.http?.method
+    };
+
+    const logger = new Logger(context);
+    logger.correlationId = correlationId;
+    return logger;
+  }
+
+  /**
+   * Obtiene correlation ID para headers de respuesta
+   */
+  getCorrelationId() {
+    return this.correlationId;
+  }
+
+  /**
+   * Crea child logger con contexto adicional
+   */
+  child(additionalContext) {
+    const childLogger = new Logger({
+      ...this.context,
+      ...additionalContext
+    });
+    childLogger.correlationId = this.correlationId;
+    childLogger.startTime = this.startTime;
+    return childLogger;
   }
 
   /**
    * Log interno - genera JSON estructurado
    */
   _log(level, message, data = {}) {
+    const duration = Date.now() - this.startTime;
     const logEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
+      correlationId: this.correlationId,
+      duration,
       ...this.context,
       ...this._sanitize(data)
     };
 
-    console.log(JSON.stringify(logEntry));
+    const logFn = level === 'ERROR' ? console.error : console.log;
+    logFn(JSON.stringify(logEntry));
   }
 
   /**
-   * Sanitiza datos sensibles antes de loggear
+   * Sanitiza datos sensibles antes de loggear (recursivo para objetos anidados)
    */
   _sanitize(data) {
-    const sanitized = { ...data };
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    if (Array.isArray(data)) {
+      return data.map(item => this._sanitize(item));
+    }
+
+    const sanitized = {};
 
     // Campos sensibles a redactar
     const sensitiveFields = [
       'token', 'password', 'authorization', 'secret', 
       'apiKey', 'api_key', 'accessToken', 'refreshToken',
-      'idToken', 'ACCESS_KEY', 'SECRET_KEY'
+      'idToken', 'ACCESS_KEY', 'SECRET_KEY', 'sessionId',
+      'cookie', 'creditCard', 'ssn', 'phone'
     ];
     
-    for (const field of sensitiveFields) {
-      if (sanitized[field]) {
-        sanitized[field] = '***REDACTED***';
+    for (const [key, value] of Object.entries(data)) {
+      const lowerKey = key.toLowerCase();
+      const isSensitive = sensitiveFields.some(field => 
+        lowerKey.includes(field.toLowerCase())
+      );
+
+      if (isSensitive) {
+        sanitized[key] = '***REDACTED***';
+      } else if (key === 'email' && !data._allowEmail) {
+        sanitized[key] = this._maskEmail(value);
+      } else if (key === 'claims' && typeof value === 'object') {
+        sanitized[key] = { sub: value?.sub || '***REDACTED***' };
+      } else if (key === 'headers' && typeof value === 'object') {
+        sanitized[key] = this._sanitizeHeaders(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = this._sanitize(value);
+      } else {
+        sanitized[key] = value;
       }
     }
 
-    // Enmascarar emails si no está explícitamente permitido
-    if (sanitized.email && !sanitized._allowEmail) {
-      sanitized.email = this._maskEmail(sanitized.email);
-    }
     delete sanitized._allowEmail;
-
-    // Redactar claims JWT completos
-    if (sanitized.claims && typeof sanitized.claims === 'object') {
-      sanitized.claims = {
-        sub: sanitized.claims.sub || '***REDACTED***'
-        // Omitir otros campos como email, groups, etc
-      };
-    }
-
-    // Sanitizar headers HTTP
-    if (sanitized.headers && typeof sanitized.headers === 'object') {
-      const cleanHeaders = { ...sanitized.headers };
-      if (cleanHeaders.Authorization || cleanHeaders.authorization) {
-        cleanHeaders.Authorization = '***REDACTED***';
-        cleanHeaders.authorization = '***REDACTED***';
-      }
-      sanitized.headers = cleanHeaders;
-    }
-
     return sanitized;
+  }
+
+  /**
+   * Sanitizar headers HTTP específicamente
+   */
+  _sanitizeHeaders(headers) {
+    const cleanHeaders = { ...headers };
+    if (cleanHeaders.Authorization) cleanHeaders.Authorization = '***REDACTED***';
+    if (cleanHeaders.authorization) cleanHeaders.authorization = '***REDACTED***';
+    if (cleanHeaders.Cookie) cleanHeaders.Cookie = '***REDACTED***';
+    if (cleanHeaders.cookie) cleanHeaders.cookie = '***REDACTED***';
+    return cleanHeaders;
   }
 
   /**
@@ -158,12 +228,29 @@ class Logger {
   /**
    * Log de inicio de operación (retorna función para medir duración)
    */
-  startTrace(operation) {
+  startTrace(operation, metadata = {}) {
     const startTime = Date.now();
-    return (metadata = {}) => {
+    this.debug(`Starting: ${operation}`, metadata);
+    return (endMetadata = {}) => {
       const duration = Date.now() - startTime;
-      this.trace(operation, duration, metadata);
+      this.trace(operation, duration, { ...metadata, ...endMetadata });
+      return duration;
     };
+  }
+
+  /**
+   * Wrapper para operaciones async con auto-tracing
+   */
+  async traceAsync(operation, fn, metadata = {}) {
+    const endTrace = this.startTrace(operation, metadata);
+    try {
+      const result = await fn();
+      endTrace({ success: true });
+      return result;
+    } catch (error) {
+      endTrace({ success: false, error: error.message });
+      throw error;
+    }
   }
 }
 
