@@ -61,10 +61,21 @@ class OnboardingEspacios {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        this.gruposDisponibles = data.grupos || [];
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          console.error('Error del servidor:', error);
+        } else {
+          const text = await response.text();
+          console.error('Error HTML recibido (probablemente 500):', text.substring(0, 200));
+        }
+        this.gruposDisponibles = [];
+        return;
       }
+
+      const data = await response.json();
+      this.gruposDisponibles = data.grupos || [];
     } catch (error) {
       console.error('Error cargando grupos:', error);
       this.gruposDisponibles = [];
@@ -168,9 +179,25 @@ class OnboardingEspacios {
         body: JSON.stringify({ nombre: this.groupName })
       });
 
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Error creando grupo';
+        
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+        } else {
+          const text = await response.text();
+          console.error('Error HTML recibido:', text.substring(0, 200));
+          errorMessage = `Error del servidor (${response.status})`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
 
-      if (!response.ok || !data.ok) {
+      if (!data.ok) {
         throw new Error(data.error || 'Error creando grupo');
       }
 

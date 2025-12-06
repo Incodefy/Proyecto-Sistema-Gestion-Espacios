@@ -55,7 +55,8 @@
     .input-box.has-success input{border-color:rgba(34,197,94,.5)}
     .input-box.has-success input:focus{border-color:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.1),0 4px 12px rgba(34,197,94,.15)}
     .input-box .icon{position:absolute;right:1rem;top:.9rem;color:rgba(226,232,240,.4);font-size:1.125rem;transition:all .3s ease;pointer-events:none}
-    .input-box .icon button{background:none;border:none;color:rgba(226,232,240,.4);cursor:pointer;padding:0;font-size:1.125rem;transition:color .2s ease,transform .2s ease;pointer-events:all}
+    .input-box .icon i{pointer-events:all}
+    #togglePassword,#toggleConfirmPassword{cursor:pointer;pointer-events:all;transition:color .2s ease,transform .2s ease}
     #togglePassword:hover,#toggleConfirmPassword:hover{color:#60a5fa;transform:scale(1.1)}
     .input-box input:focus~.icon{color:#60a5fa}
     .input-box.has-error .icon{color:#ef4444}
@@ -182,7 +183,7 @@
                aria-describedby="confirm-password-error"
                placeholder="Confirmar contraseña">
         <span class="icon">
-          <i class="fa-solid fa-eye" id="togglePassword" title="Mostrar contraseña"></i>
+          <i class="fa-solid fa-eye" id="toggleConfirmPassword" title="Mostrar contraseña"></i>
         </span>
         <div class="error-message" id="confirm-password-error" role="alert" aria-live="polite"></div>
       </div>

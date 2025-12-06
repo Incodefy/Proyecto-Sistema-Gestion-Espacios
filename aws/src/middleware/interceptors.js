@@ -102,7 +102,22 @@ async function parseBodyMiddleware(event, context, logger) {
 
 /**
  * Sanitización automática
+ * Función simple para sanitizar el evento (remover datos sensibles de logs)
  */
+function sanitizeEvent(event) {
+  // Clonar evento para no mutar el original
+  const sanitized = { ...event };
+  
+  // Remover headers sensibles
+  if (sanitized.headers) {
+    sanitized.headers = { ...sanitized.headers };
+    delete sanitized.headers.authorization;
+    delete sanitized.headers.Authorization;
+  }
+  
+  return sanitized;
+}
+
 async function sanitizeMiddleware(event, context, logger) {
   const sanitized = sanitizeEvent(event);
   logger.debug('Event sanitized');

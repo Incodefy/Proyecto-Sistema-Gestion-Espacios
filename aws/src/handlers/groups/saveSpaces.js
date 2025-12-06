@@ -1,15 +1,13 @@
 const { DynamoDBDocumentClient, BatchWriteCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-const Logger = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
-const { quickBatchPut } = require("../../utils/batchHelper");
 const { createAPIHandler } = require("../../middleware/interceptors");
+const { ValidationError, successResponse } = require("../../utils/errorHandler");
 
-const saveSpaces = async (event) => {
-  const logger = Logger.fromEvent(event).child({ handler: 'saveSpaces' });
-  const body = JSON.parse(event.body || "{}");
-  const userEmail = event.requestContext.authorizer.jwt.claims.email;
+const saveSpaces = async (event, context, logger) => {
+  const body = event.parsedBody;
+  const userEmail = event.userContext.email;
   
   validate('saveSpaces', body);
   
@@ -26,6 +24,7 @@ const saveSpaces = async (event) => {
   
   const timestamp = new Date().toISOString();
   
+  // Marcar grupo como configurado
   await retryDB(
     () => db.send(new UpdateCommand({
       TableName: process.env.GROUPS_TABLE,
@@ -35,11 +34,13 @@ const saveSpaces = async (event) => {
     })),
     { operation: 'markGroupConfigured' }
   );
+  logger.info('Grupo marcado como configurado', { grupo_id });
   
   let generalIdx = 0;
   let specificIdx = 0;
   const writes = [];
   
+  // Generar espacios generales y específicos
   for (const espacio of espacios) {
     generalIdx++;
     const generalId = `SPACE#${generalIdx}`;
@@ -77,6 +78,25 @@ const saveSpaces = async (event) => {
     }
   }
   
+  // Batch write espacios (25 por lote)
+  const chunks = [];
+  const writesCopy = [...writes];
+  while (writesCopy.length) chunks.push(writesCopy.splice(0, 25));
+
+  for (const chunk of chunks) {
+    await db.send(new BatchWriteCommand({
+      RequestItems: {
+        [process.env.SPACES_TABLE]: chunk
+      }
+    }));
+  }
+
+  logger.info('Espacios guardados', { 
+    generales: generalIdx, 
+    especificos: specificIdx 
+  });
+  
+  // Generar especialidades
   let especialidadIdx = 0;
   const especialidadWrites = [];
   
@@ -94,196 +114,181 @@ const saveSpaces = async (event) => {
           especialidad_id: especialidadId,
           nombre: esp.nombre.trim(),
           created_at: timestamp,
-            created_by: userEmail
-          }
+          created_by: userEmail
         }
-      });
-    }
+      }
+    });
+  }
 
-    // ⭐ Generar ocupantes
-    let occupantIdx = 0;
-    const occupantWrites = [];
+  // Batch write especialidades (25 por lote)
+  if (especialidadWrites.length > 0) {
+    const especialidadChunks = [];
+    const especialidadWritesCopy = [...especialidadWrites];
+    while (especialidadWritesCopy.length) especialidadChunks.push(especialidadWritesCopy.splice(0, 25));
 
-    for (const ocupante of ocupantes) {
-      if (!ocupante.nombre || !ocupante.nombre.trim()) continue;
-      
-      occupantIdx++;
-      const occupantId = `OCCUPANT#${occupantIdx}`;
-
-      occupantWrites.push({
-        PutRequest: {
-          Item: {
-            PK: grupo_id,
-            SK: occupantId,
-            occupant_id: occupantId,
-            nombre: ocupante.nombre.trim(),
-            tipo: ocupante.tipo || "General",
-            email: ocupante.email || null,
-            especialidad_id: ocupante.especialidad_id || null,
-            especialidad: ocupante.especialidad || null,
-            created_at: timestamp,
-            created_by: userEmail
-          }
-        }
-      });
-    }
-
-    // ⭐ Batch write espacios (25 por lote)
-    const chunks = [];
-    while (writes.length) chunks.push(writes.splice(0, 25));
-
-    for (const chunk of chunks) {
+    for (const chunk of especialidadChunks) {
       await db.send(new BatchWriteCommand({
         RequestItems: {
-          [process.env.SPACES_TABLE]: chunk
+          [process.env.ESPECIALIDADES_TABLE]: chunk
         }
       }));
     }
-
-    console.log(`✅ Espacios guardados: ${generalIdx} generales, ${specificIdx} específicos`);
-
-    // ⭐ Batch write especialidades (25 por lote)
-    if (especialidadWrites.length > 0) {
-      const especialidadChunks = [];
-      while (especialidadWrites.length) especialidadChunks.push(especialidadWrites.splice(0, 25));
-
-      for (const chunk of especialidadChunks) {
-        await db.send(new BatchWriteCommand({
-          RequestItems: {
-            [process.env.ESPECIALIDADES_TABLE]: chunk
-          }
-        }));
-      }
-      
-      console.log(`✅ Especialidades guardadas: ${especialidadIdx}`);
-    }
-
-    // ⭐ Batch write ocupantes (25 por lote)
-    if (occupantWrites.length > 0) {
-      const occupantChunks = [];
-      while (occupantWrites.length) occupantChunks.push(occupantWrites.splice(0, 25));
-
-      for (const chunk of occupantChunks) {
-        await db.send(new BatchWriteCommand({
-          RequestItems: {
-            [process.env.OCCUPANTS_TABLE]: chunk
-          }
-        }));
-      }
-      
-      console.log(`✅ Ocupantes guardados: ${occupantIdx}`);
-    }
-
-    // ⭐ Generar tipos de instrumentos
-    let tipoInstrumentoIdx = 0;
-    const tipoInstrumentoWrites = [];
-    const tipoIdMapping = {}; // Mapeo de IDs temporales del frontend a IDs reales
-
-    for (const tipo of tipos_instrumentos) {
-      if (!tipo.nombre || !tipo.nombre.trim()) continue;
-      
-      tipoInstrumentoIdx++;
-      const tipoId = `TIPO_INST#${tipoInstrumentoIdx}`;
-
-      // Guardar mapeo si el frontend envió un ID temporal
-      if (tipo.id) {
-        tipoIdMapping[tipo.id] = tipoId;
-      }
-
-      tipoInstrumentoWrites.push({
-        PutRequest: {
-          Item: {
-            PK: grupo_id,
-            SK: tipoId,
-            nombre: tipo.nombre.trim(),
-            created_at: timestamp,
-            created_by: userEmail
-          }
-        }
-      });
-    }
-
-    // ⭐ Batch write tipos de instrumentos (25 por lote)
-    if (tipoInstrumentoWrites.length > 0) {
-      const tipoChunks = [];
-      while (tipoInstrumentoWrites.length) tipoChunks.push(tipoInstrumentoWrites.splice(0, 25));
-
-      for (const chunk of tipoChunks) {
-        await db.send(new BatchWriteCommand({
-          RequestItems: {
-            [process.env.TIPOS_INSTRUMENTOS_TABLE]: chunk
-          }
-        }));
-      }
-      
-      console.log(`✅ Tipos de instrumentos guardados: ${tipoInstrumentoIdx}`);
-    }
-
-    // ⭐ Generar instrumentos
-    let instrumentoIdx = 0;
-    const instrumentoWrites = [];
-
-    for (const inst of instrumentos) {
-      if (!inst.nombre || !inst.nombre.trim()) continue;
-      
-      instrumentoIdx++;
-      const instrumentoId = `INST#${instrumentoIdx}`;
-
-      // Mapear el tipo_id temporal al ID real
-      const tipoIdReal = inst.tipo_id ? tipoIdMapping[inst.tipo_id] : null;
-
-      instrumentoWrites.push({
-        PutRequest: {
-          Item: {
-            PK: grupo_id,
-            SK: instrumentoId,
-            nombre: inst.nombre.trim(),
-            tipo_instrumento_id: tipoIdReal,
-            created_at: timestamp,
-            created_by: userEmail
-          }
-        }
-      });
-    }
-
-    // ⭐ Batch write instrumentos (25 por lote)
-    if (instrumentoWrites.length > 0) {
-      const instrumentoChunks = [];
-      while (instrumentoWrites.length) instrumentoChunks.push(instrumentoWrites.splice(0, 25));
-
-      for (const chunk of instrumentoChunks) {
-        await db.send(new BatchWriteCommand({
-          RequestItems: {
-            [process.env.INSTRUMENTOS_TABLE]: chunk
-          }
-        }));
-      }
-      
-      console.log(`✅ Instrumentos guardados: ${instrumentoIdx}`);
-    }
-
-    return {
-      statusCode: 200,
-      headers: getSecurityHeaders(),
-      body: JSON.stringify({
-        ok: true,
-        grupo_id,
-        total_generales: generalIdx,
-        total_especificos: specificIdx,
-        total_especialidades: especialidadIdx,
-        total_ocupantes: occupantIdx,
-        total_tipos_instrumentos: tipoInstrumentoIdx,
-        total_instrumentos: instrumentoIdx,
-        trace: TRACE
-      })
-    };
-
-  } catch (e) {
-    console.error(`[ERROR][${TRACE}]`, e);
-    return {
-      statusCode: 500,
-      headers: getSecurityHeaders(),
-      body: JSON.stringify({ ok: false, error: "Error guardando espacios" })
-    };
+    
+    logger.info('Especialidades guardadas', { total: especialidadIdx });
   }
+
+  // Generar ocupantes
+  let occupantIdx = 0;
+  const occupantWrites = [];
+
+  for (const ocupante of ocupantes) {
+    if (!ocupante.nombre || !ocupante.nombre.trim()) continue;
+    
+    occupantIdx++;
+    const occupantId = `OCCUPANT#${occupantIdx}`;
+
+    occupantWrites.push({
+      PutRequest: {
+        Item: {
+          PK: grupo_id,
+          SK: occupantId,
+          occupant_id: occupantId,
+          nombre: ocupante.nombre.trim(),
+          tipo: ocupante.tipo || "General",
+          email: ocupante.email || null,
+          especialidad_id: ocupante.especialidad_id || null,
+          especialidad: ocupante.especialidad || null,
+          created_at: timestamp,
+          created_by: userEmail
+        }
+      }
+    });
+  }
+
+  // Batch write ocupantes (25 por lote)
+  if (occupantWrites.length > 0) {
+    const occupantChunks = [];
+    const occupantWritesCopy = [...occupantWrites];
+    while (occupantWritesCopy.length) occupantChunks.push(occupantWritesCopy.splice(0, 25));
+
+    for (const chunk of occupantChunks) {
+      await db.send(new BatchWriteCommand({
+        RequestItems: {
+          [process.env.OCCUPANTS_TABLE]: chunk
+        }
+      }));
+    }
+    
+    logger.info('Ocupantes guardados', { total: occupantIdx });
+  }
+
+  // Generar tipos de instrumentos
+  let tipoInstrumentoIdx = 0;
+  const tipoInstrumentoWrites = [];
+  const tipoIdMapping = {}; // Mapeo de IDs temporales del frontend a IDs reales
+
+  for (const tipo of tipos_instrumentos) {
+    if (!tipo.nombre || !tipo.nombre.trim()) continue;
+    
+    tipoInstrumentoIdx++;
+    const tipoId = `TIPO_INST#${tipoInstrumentoIdx}`;
+
+    // Guardar mapeo si el frontend envió un ID temporal
+    if (tipo.id) {
+      tipoIdMapping[tipo.id] = tipoId;
+    }
+
+    tipoInstrumentoWrites.push({
+      PutRequest: {
+        Item: {
+          PK: grupo_id,
+          SK: tipoId,
+          nombre: tipo.nombre.trim(),
+          created_at: timestamp,
+          created_by: userEmail
+        }
+      }
+    });
+  }
+
+  // Batch write tipos de instrumentos (25 por lote)
+  if (tipoInstrumentoWrites.length > 0) {
+    const tipoChunks = [];
+    const tipoInstrumentoWritesCopy = [...tipoInstrumentoWrites];
+    while (tipoInstrumentoWritesCopy.length) tipoChunks.push(tipoInstrumentoWritesCopy.splice(0, 25));
+
+    for (const chunk of tipoChunks) {
+      await db.send(new BatchWriteCommand({
+        RequestItems: {
+          [process.env.TIPOS_INSTRUMENTOS_TABLE]: chunk
+        }
+      }));
+    }
+    
+    logger.info('Tipos de instrumentos guardados', { total: tipoInstrumentoIdx });
+  }
+
+  // Generar instrumentos
+  let instrumentoIdx = 0;
+  const instrumentoWrites = [];
+
+  for (const inst of instrumentos) {
+    if (!inst.nombre || !inst.nombre.trim()) continue;
+    
+    instrumentoIdx++;
+    const instrumentoId = `INST#${instrumentoIdx}`;
+
+    // Mapear el tipo_id temporal al ID real
+    const tipoIdReal = inst.tipo_id ? tipoIdMapping[inst.tipo_id] : null;
+
+    instrumentoWrites.push({
+      PutRequest: {
+        Item: {
+          PK: grupo_id,
+          SK: instrumentoId,
+          nombre: inst.nombre.trim(),
+          tipo_instrumento_id: tipoIdReal,
+          created_at: timestamp,
+          created_by: userEmail
+        }
+      }
+    });
+  }
+
+  // Batch write instrumentos (25 por lote)
+  if (instrumentoWrites.length > 0) {
+    const instrumentoChunks = [];
+    const instrumentoWritesCopy = [...instrumentoWrites];
+    while (instrumentoWritesCopy.length) instrumentoChunks.push(instrumentoWritesCopy.splice(0, 25));
+
+    for (const chunk of instrumentoChunks) {
+      await db.send(new BatchWriteCommand({
+        RequestItems: {
+          [process.env.INSTRUMENTOS_TABLE]: chunk
+        }
+      }));
+    }
+    
+    logger.info('Instrumentos guardados', { total: instrumentoIdx });
+  }
+
+  // Retornar resultado exitoso
+  return successResponse({
+    ok: true,
+    grupo_id,
+    total_generales: generalIdx,
+    total_especificos: specificIdx,
+    total_especialidades: especialidadIdx,
+    total_ocupantes: occupantIdx,
+    total_tipos_instrumentos: tipoInstrumentoIdx,
+    total_instrumentos: instrumentoIdx
+  });
 };
+
+module.exports.handler = createAPIHandler(saveSpaces, {
+  allowAnonymous: false,
+  rateLimitConfig: {
+    maxRequests: 50,
+    windowMs: 60000
+  }
+});

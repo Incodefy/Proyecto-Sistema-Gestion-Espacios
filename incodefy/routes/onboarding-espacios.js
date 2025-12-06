@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
-const attachApiClient = require('../middleware/apiClient');
+const attachApiClientV2 = require('../middleware/apiClientV2');
 
 router.use(requireAuth);
-router.use(attachApiClient);
+router.use(attachApiClientV2);
 
 /**
  * DEBUG ENDPOINT - Eliminar después de solucionar el problema

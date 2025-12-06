@@ -10,19 +10,23 @@ document.addEventListener('DOMContentLoaded', function() {
   const spinner = document.getElementById('spinner');
 
   // Toggle password visibility
-  togglePassword.addEventListener('click', function() {
-    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-    passwordInput.setAttribute('type', type);
-    this.classList.toggle('fa-eye');
-    this.classList.toggle('fa-eye-slash');
-  });
+  if (togglePassword) {
+    togglePassword.addEventListener('click', function() {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      this.classList.toggle('fa-eye');
+      this.classList.toggle('fa-eye-slash');
+    });
+  }
 
-  toggleConfirmPassword.addEventListener('click', function() {
-    const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-    confirmPasswordInput.setAttribute('type', type);
-    this.classList.toggle('fa-eye');
-    this.classList.toggle('fa-eye-slash');
-  });
+  if (toggleConfirmPassword) {
+    toggleConfirmPassword.addEventListener('click', function() {
+      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      confirmPasswordInput.setAttribute('type', type);
+      this.classList.toggle('fa-eye');
+      this.classList.toggle('fa-eye-slash');
+    });
+  }
 
   // Password strength validation
   const requirements = {
@@ -33,8 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     special: { regex: /[^A-Za-z0-9]/, element: document.getElementById('special-check') }
   };
 
-  passwordInput.addEventListener('input', function() {
-    const password = this.value;
+  function validatePasswordRequirements(password) {
     let allValid = true;
 
     for (const [key, requirement] of Object.entries(requirements)) {
@@ -55,6 +58,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     return allValid;
+  }
+
+  passwordInput.addEventListener('input', function() {
+    validatePasswordRequirements(this.value);
+  });
+
+  // También validar cuando se escribe en confirmar contraseña
+  confirmPasswordInput.addEventListener('input', function() {
+    const password = passwordInput.value;
+    const confirmPassword = this.value;
+    
+    // Validar que coincidan
+    if (confirmPassword.length > 0) {
+      const confirmPasswordBox = this.closest('.input-box');
+      if (password === confirmPassword) {
+        confirmPasswordBox.classList.add('has-success');
+        confirmPasswordBox.classList.remove('has-error');
+        document.getElementById('confirm-password-error').textContent = '';
+      } else {
+        confirmPasswordBox.classList.add('has-error');
+        confirmPasswordBox.classList.remove('has-success');
+      }
+    }
   });
 
   // Form validation
@@ -85,13 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Validate password requirements
-    let passwordValid = true;
-    for (const [key, requirement] of Object.entries(requirements)) {
-      if (!requirement.regex.test(password)) {
-        passwordValid = false;
-        break;
-      }
-    }
+    const passwordValid = validatePasswordRequirements(password);
 
     if (!passwordValid) {
       document.getElementById('password-error').textContent = 'La contraseña no cumple con los requisitos';

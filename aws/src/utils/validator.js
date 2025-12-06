@@ -83,6 +83,83 @@ const schemas = {
     additionalProperties: false
   },
 
+  saveSpaces: {
+    type: 'object',
+    required: ['grupo_id', 'espacios'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      espacios: {
+        type: 'array',
+        minItems: 1,
+        items: {
+          type: 'object',
+          required: ['name', 'specificSpaces'],
+          properties: {
+            name: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+            specificSpaces: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true }
+                }
+              }
+            }
+          }
+        }
+      },
+      especialidades: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nombre: { type: 'string', minLength: 1, maxLength: 200 }
+          }
+        },
+        default: []
+      },
+      ocupantes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nombre: { type: 'string', minLength: 1, maxLength: 200 },
+            tipo: { type: 'string', maxLength: 100 },
+            email: { type: 'string', format: 'email' },
+            especialidad_id: { type: 'string' },
+            especialidad: { type: 'string', maxLength: 200 }
+          }
+        },
+        default: []
+      },
+      tipos_instrumentos: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            nombre: { type: 'string', minLength: 1, maxLength: 200 }
+          }
+        },
+        default: []
+      },
+      instrumentos: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nombre: { type: 'string', minLength: 1, maxLength: 200 },
+            tipo_id: { type: 'string' }
+          }
+        },
+        default: []
+      }
+    },
+    additionalProperties: false
+  },
+
   updateGroupName: {
     type: 'object',
     required: ['group_id', 'name'],

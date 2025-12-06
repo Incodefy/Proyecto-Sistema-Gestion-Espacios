@@ -304,6 +304,21 @@ class ApiClientV2 {
   }
 
   /**
+   * Actualiza la nomenclatura de un grupo
+   */
+  async actualizarNomenclaturaGrupo(grupoId, nomenclatura) {
+    try {
+      const response = await this.client.put(`/grupos/${grupoId}/nomenclatura`, {
+        nomenclatura
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando nomenclatura:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Obtiene appointments por fecha
    */
   async obtenerAgendaPorFecha(fecha, grupo_id = null) {
@@ -392,6 +407,67 @@ class ApiClientV2 {
       return this._extractData(response);
     } catch (error) {
       console.error('Error guardando personalización:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene la configuración de espacios de un grupo
+   */
+  async obtenerConfiguracionEspacios(grupo_id = null) {
+    try {
+      const endpoint = grupo_id 
+        ? `/api/espacios/configuracion?grupo_id=${grupo_id}`
+        : '/api/espacios/configuracion';
+      const response = await this.client.get(endpoint);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo configuración espacios:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Guarda espacios de un grupo
+   */
+  async guardarEspacios(grupo_id, espacios, ocupantes = [], especialidades = [], tiposInstrumentos = [], instrumentos = []) {
+    try {
+      const response = await this.client.post(`/groups/${grupo_id}/spaces`, {
+        espacios,
+        ocupantes,
+        especialidades,
+        tiposInstrumentos,
+        instrumentos
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error guardando espacios:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Lista espacios de un grupo
+   */
+  async listarEspacios(grupo_id) {
+    try {
+      const response = await this.client.get(`/api/espacios/lista?grupo_id=${grupo_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error listando espacios:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina la configuración de espacios de un grupo
+   */
+  async eliminarConfiguracionEspacios(grupo_id) {
+    try {
+      const response = await this.client.delete(`/api/espacios/configuracion?grupo_id=${grupo_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error eliminando configuración espacios:', error.apiError || error.message);
       throw error;
     }
   }

@@ -4,7 +4,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs20.x
-  region: ${env:AWS_REGION, 'us-east-2'}
+  region: ${env:AWS_REGION, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
   
   tags:
@@ -147,6 +147,8 @@ provider:
         - dynamodb:DeleteItem
         - dynamodb:UpdateItem
         - dynamodb:Query
+        - dynamodb:BatchGetItem
+        - dynamodb:BatchWriteItem
       Resource:
         - Fn::GetAtt: [GroupsTable, Arn]
         - Fn::GetAtt: [GroupMembersTable, Arn]
@@ -169,6 +171,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
         - dynamodb:BatchWriteItem
+        - dynamodb:BatchGetItem
         - dynamodb:Query
         - dynamodb:GetItem
       Resource:
