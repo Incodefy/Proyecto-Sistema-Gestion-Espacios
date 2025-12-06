@@ -44,36 +44,46 @@ const saveSpaces = async (event) => {
     generalIdx++;
     const generalId = `SPACE#${generalIdx}`;
     
-    writes.push({
-      PutRequest: {
-        Item: {
-          PK: grupo_id,
-          SK: generalId,
-          tipo: "general",
-          nombre: espacio.name,
-          created_at: timestamp,
-          created_by: userEmail
-        }
-      }
-    });
+    const generalItem = {
+      PK: grupo_id,
+      SK: generalId,
+      tipo: "general",
+      nombre: espacio.name,
+      created_at: timestamp,
+      created_by: userEmail
+    };
+
+    // ✅ VALIDACIÓN AJV para cada Item
+    const validationResult = validate('batchSpaceItem', generalItem, logger);
+    if (!validationResult.valid) {
+      logger.warn('Validación fallida para espacio general', { errors: validationResult.errors, item: generalItem });
+      throw new Error(`Validation failed for general space: ${validationResult.errors}`);
+    }
+    
+    writes.push({ PutRequest: { Item: generalItem } });
     
     for (const spec of espacio.specificSpaces) {
       specificIdx++;
       const specId = `SUBSPACE#${specificIdx}`;
       
-      writes.push({
-        PutRequest: {
-          Item: {
-            PK: grupo_id,
-            SK: specId,
-            tipo: "especifico",
-            nombre: spec.name,
-            parent: generalId,
-            created_at: timestamp,
-            created_by: userEmail
-          }
-        }
-      });
+      const specificItem = {
+        PK: grupo_id,
+        SK: specId,
+        tipo: "especifico",
+        nombre: spec.name,
+        parent: generalId,
+        created_at: timestamp,
+        created_by: userEmail
+      };
+
+      // ✅ VALIDACIÓN AJV para cada Item
+      const specificValidation = validate('batchSpaceItem', specificItem, logger);
+      if (!specificValidation.valid) {
+        logger.warn('Validación fallida para espacio específico', { errors: specificValidation.errors, item: specificItem });
+        throw new Error(`Validation failed for specific space: ${specificValidation.errors}`);
+      }
+
+      writes.push({ PutRequest: { Item: specificItem } });
     }
   }
   

@@ -3,7 +3,6 @@ const config = require('../../config/config');
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
 const { validate } = require("../../utils/validation");
@@ -11,9 +10,11 @@ const { successResponse, errorResponse } = require("../../utils/response");
 const Logger = require("../../utils/logger");
 const { createAPIHandler } = require("../../utils/interceptors");
 const { AuthorizationError, ValidationError } = require("../../utils/errors");
+const { getAmbassador } = require("../../utils/awsAmbassador");
+
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const snsClient = new SNSClient({});
+const ambassador = getAmbassador();
 
 // Parámetros disponibles para personalización
 const PERSONALIZATION_PARAMETERS = config.personalization.parameters;
@@ -26,12 +27,7 @@ const getGlobalParameters = () => {
   );
 };
 
-const { retryWithJitter } = require("../../utils/retry");
-const { createCircuitBreaker } = require("../../utils/circuitBreaker");
-
-const snsBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 15000 });
-
-// Publicar eventos a SNS
+// Publicar eventos a SNS via Ambassador
 async function publishPersonalizationEvent(eventType, data) {
   const eventId = `${eventType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -43,28 +39,16 @@ async function publishPersonalizationEvent(eventType, data) {
       data
     };
 
-    if (!snsBreaker.shouldAllow()) {
-      logger.warn("Circuit breaker abierto para SNS", { eventType });
-      throw new Error("CircuitBreakerOpen");
-    }
+    await ambassador.publishToSNS({
+      topicArn: process.env.PERSONALIZATION_TOPIC_ARN,
+      message: message,
+      subject: `Personalization Event: ${eventType}`
+    });
 
-    await retryWithJitter(
-      async () => {
-        await snsClient.send(new PublishCommand({
-          TopicArn: process.env.PERSONALIZATION_TOPIC_ARN,
-          Message: JSON.stringify(message),
-          Subject: `Personalization Event: ${eventType}`
-        }));
-        snsBreaker.reportSuccess();
-      },
-      { maxAttempts: 3, baseDelayMs: 400 }
-    );
-
-    logger.info("Evento SNS publicado", { eventType, eventId });
+    logger.info("Evento SNS publicado via Ambassador", { eventType, eventId });
     return true;
 
   } catch (error) {
-    snsBreaker.reportFailure();
     logger.error("Error publicando evento SNS", error, { eventType });
     return false;
   }
@@ -241,6 +225,19 @@ async function setPersonalizationHandler(event, logger) {
       if (!dynamoBreaker.shouldAllow()) {
         logger.warn("Circuit breaker abierto - escritura pausada");
         throw new Error("CircuitBreakerOpen");
+      }
+
+      // ✅ VALIDACIÓN AJV antes de cada PutCommand
+      const item = {
+        user_sub: userSub,
+        parameter_key: key,
+        parameter_value: value
+      };
+
+      const validationResult = validate('personalizationParameter', item, logger);
+      if (!validationResult.valid) {
+        logger.warn('Validación fallida para parámetro personalización', { errors: validationResult.errors, item });
+        throw new Error(`Validation failed for parameter ${key}: ${validationResult.errors}`);
       }
 
       await retryWithJitter(

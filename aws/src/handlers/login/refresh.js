@@ -1,12 +1,14 @@
 // src/handlers/refresh.js
-const { CognitoIdentityProviderClient, InitiateAuthCommand } = require('@aws-sdk/client-cognito-identity-provider');
+
+// ✅ ANTI-CORRUPTION LAYER: AuthAdapter reemplaza llamadas directas a Cognito
+const { getAuthAdapter, TokenExpiredError, InvalidTokenError } = require('../../adapters/authAdapter');
 const Logger = require('../../utils/logger');
 const { createAPIHandler } = require('../../utils/interceptors');
 const { ValidationError } = require('../../utils/errors');
-const { successResponse } = require('../../utils/response');
-const { retryCognito } = require('../../utils/cognitoWrapper');
+const { successResponse, errorResponse } = require('../../utils/response');
 
-const client = new CognitoIdentityProviderClient({});
+// AuthAdapter (ACL)
+const authAdapter = getAuthAdapter();
 
 async function refreshHandler(event, logger) {
   const body = JSON.parse(event.body || '{}');
@@ -14,25 +16,42 @@ async function refreshHandler(event, logger) {
 
   if (!refreshToken) throw new ValidationError('refreshToken es obligatorio');
 
-  const cmd = new InitiateAuthCommand({
-    AuthFlow: 'REFRESH_TOKEN_AUTH',
-    ClientId: process.env.USER_POOL_CLIENT_ID,
-    AuthParameters: { REFRESH_TOKEN: refreshToken }
-  });
+  try {
+    // ✅ ACL: AuthAdapter maneja Cognito con circuit breaker, retry, traducción de errores
+    const tokenSet = await authAdapter.refresh(refreshToken);
 
-  const out = await retryCognito(() => client.send(cmd));
-  const auth = out.AuthenticationResult || {};
+    logger.info('Token refrescado exitosamente');
 
-  logger.info('Token refrescado exitosamente');
+    // ✅ Retornar modelo de dominio (no estructura Cognito)
+    return successResponse({
+      idToken: tokenSet.idToken,
+      accessToken: tokenSet.accessToken,
+      expiresIn: tokenSet.expiresIn
+    });
 
-  return successResponse({
-    idToken: auth.IdToken,
-    accessToken: auth.AccessToken,
-    expiresIn: auth.ExpiresIn
-  });
+  } catch (error) {
+    // ✅ Excepciones del dominio (no errores Cognito)
+    if (error instanceof TokenExpiredError) {
+      logger.warn('Refresh token expired');
+      return errorResponse('Token expirado, por favor inicia sesión nuevamente', 401);
+    }
+
+    if (error instanceof InvalidTokenError) {
+      logger.warn('Invalid refresh token');
+      return errorResponse('Token inválido', 401);
+    }
+
+    // Error genérico
+    logger.error('Token refresh error', error);
+    return errorResponse('Error refrescando token', 500);
+  }
 }
 
-module.exports.refresh = createAPIHandler(refreshHandler, { rateLimit: { maxRequests: 20, windowSeconds: 60 } });
-    };
+// Exportar con interceptors (rate limit: 20 req/min)
+exports.handler = createAPIHandler(refreshHandler, {
+  rateLimit: {
+    limit: 20,
+    window: 60,
+    endpoint: 'refresh'
   }
-};
+});

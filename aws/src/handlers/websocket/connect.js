@@ -5,6 +5,7 @@ const Logger = require('../../utils/logger');
 const { retryDB } = require('../../utils/retry');
 const { ValidationError } = require('../../utils/errors');
 const { getSecurityHeaders } = require('../../middleware/securityHeaders');
+const { validate } = require('../../utils/validator');
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -32,12 +33,14 @@ exports.handler = async (event) => {
       };
     }
 
-    if (!/^[a-zA-Z0-9-_]{8,36}$/.test(grupoId)) {
-      logger.warn('grupo_id inválido', { grupoId });
+    // ✅ VALIDACIÓN AJV
+    const validationResult = validate('wsConnect', { grupo_id: grupoId, connectionId }, logger);
+    if (!validationResult.valid) {
+      logger.warn('Validación fallida', { errors: validationResult.errors });
       return {
         statusCode: 400,
         headers: getSecurityHeaders(),
-        body: JSON.stringify({ error: 'grupo_id inválido' })
+        body: JSON.stringify({ error: validationResult.errors })
       };
     }
 

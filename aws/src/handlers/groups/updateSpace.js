@@ -31,10 +31,10 @@ const updateSpace = async (event) => {
     () => db.send(new UpdateCommand({
       TableName: process.env.SPACES_TABLE,
       Key: { PK: grupoId, SK: espacioId },
-      UpdateExpression: \"SET nombre = :nombre, updated_at = :now\",
+      UpdateExpression: "SET nombre = :nombre, updated_at = :now",
       ExpressionAttributeValues: {
-        \":nombre\": body.nombre.trim(),
-        \":now\": timestamp
+        ":nombre": body.nombre.trim(),
+        ":now": timestamp
       }
     })),
     { operation: 'updateSpace' }

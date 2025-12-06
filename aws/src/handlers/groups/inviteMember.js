@@ -1,27 +1,31 @@
 const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const { CognitoIdentityProviderClient, ListUsersCommand } = require("@aws-sdk/client-cognito-identity-provider");
-const { SESv2Client, SendEmailCommand } = require("@aws-sdk/client-sesv2");
-const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-const cognito = new CognitoIdentityProviderClient({});
-const ses = new SESv2Client({});
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const crypto = require("crypto");
-const { getInvitationEmailTemplate, getInvitationEmailText } = require("../../utils/emailTemplates");
 const { notifyMiembroInvitado } = require('../../utils/notificationHelper');
 const { getSecret } = require("../../utils/secretsManager");
 
+// ✅ ANTI-CORRUPTION LAYER: Adaptadores reemplazan llamadas directas a AWS
+const { getUserAdapter, getEmailAdapter } = require("../../adapters");
+
 // ✅ MEJORAS IMPLEMENTADAS
-const { Logger } = require("../../utils/logger");
+const Logger = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { 
   ValidationError, 
   NotFoundError, 
   ConflictError, 
   successResponse 
-} = require("../../utils/errorHandler");
+} = require("../../utils/errors");
 const { createAPIHandler } = require("../../middleware/interceptors");
-const { cognitoWithCircuitBreaker, sendEmailWithCircuitBreaker } = require("../../utils/circuitBreaker");
-const { retryDB, retryAWS } = require("../../utils/retry");
+const { retryDB } = require("../../utils/retry");
 const { cacheSystemConfig } = require("../../utils/cache");
+
+// Inicializar DynamoDB Client
+const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+// Adaptadores (ACL)
+const userAdapter = getUserAdapter();
+const emailAdapter = getEmailAdapter();
 
 /**
  * POST /groups/{group_id}/invite
@@ -43,18 +47,26 @@ async function inviteMemberHandler(event, context, logger) {
     return await getSecret();
   });
 
+  // Extraer parámetros del path y body
+  const grupo_id = event.pathParameters?.group_id;
+  const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+  const { email, rol } = body;
+
   // 2️⃣ VALIDACIÓN CON JSON SCHEMA
-  const validationResult = validate('inviteMember', event.parsedBody, logger);
+  const validationResult = validate('inviteMember', { grupo_id, email, rol }, logger);
   
   if (!validationResult.valid) {
     logger.warn('Validation failed', { errors: validationResult.errors });
     throw new ValidationError('Invalid invitation data', { errors: validationResult.errors });
   }
 
-  const { grupo_id, email, rol } = validationResult.data;
-  const userSub = event.userContext?.sub;
-  const userEmail = event.userContext?.email;
-  const userName = event.userContext?.name || userEmail?.split('@')[0] || 'Usuario';
+  // Extraer información del usuario que invita
+  const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub || 
+                  event.requestContext?.authorizer?.claims?.sub;
+  const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email || 
+                    event.requestContext?.authorizer?.claims?.email;
+  const userName = event.requestContext?.authorizer?.jwt?.claims?.['cognito:username'] || 
+                   userEmail?.split('@')[0] || 'Usuario';
 
   logger = logger.child({ grupo_id, invitedEmail: email, role: rol });
 
@@ -74,27 +86,21 @@ async function inviteMemberHandler(event, context, logger) {
   const groupName = groupResult.Item.nombre || groupResult.Item.name || 'sin nombre';
   logger.debug('Group found', { groupName });
 
-  // 4️⃣ BUSCAR USUARIO EN COGNITO CON CIRCUIT BREAKER
+  // 4️⃣ BUSCAR USUARIO CON USERADAPTER (ACL)
   let invitedUserSub = null;
   
   try {
-    const usersResult = await cognitoWithCircuitBreaker(
-      cognito,
-      new ListUsersCommand({
-        UserPoolId: process.env.USER_POOL_ID,
-        Filter: `email = "${email}"`,
-        Limit: 1
-      })
-    );
+    // ✅ ACL: UserAdapter maneja Cognito con circuit breaker y retry
+    const users = await userAdapter.findByEmail(email);
     
-    if (usersResult.Users && usersResult.Users.length > 0) {
-      invitedUserSub = usersResult.Users[0].Attributes?.find(attr => attr.Name === 'sub')?.Value;
-      logger.info('User found in Cognito', { invitedUserSub });
+    if (users && users.length > 0) {
+      invitedUserSub = users[0].userId;
+      logger.info('User found via UserAdapter', { invitedUserSub });
     } else {
-      logger.info('User not found in Cognito - will send email invitation');
+      logger.info('User not found - will send email invitation');
     }
   } catch (error) {
-    logger.warn('Error searching user in Cognito', error);
+    logger.warn('Error searching user via UserAdapter', error);
     // Continuar sin el user_sub - se enviará invitación por email
   }
 
@@ -140,7 +146,7 @@ async function inviteMemberHandler(event, context, logger) {
     }));
   });
 
-  // 7️⃣ ENVIAR EMAIL CON CIRCUIT BREAKER
+  // 7️⃣ ENVIAR EMAIL CON EMAILADAPTER (ACL)
   const roleNames = {
     'admin': 'Administrador',
     'escritor': 'Escritor',
@@ -151,50 +157,16 @@ async function inviteMemberHandler(event, context, logger) {
 
   try {
     await logger.traceAsync('sendInvitationEmail', async () => {
-      await sendEmailWithCircuitBreaker(ses, {
-        FromEmailAddress: secrets.SES_FROM_EMAIL,
-        Destination: { ToAddresses: [email] },
-        Content: {
-          Simple: {
-            Subject: {
-              Data: `Invitación al grupo ${groupName}`,
-              Charset: 'UTF-8'
-            },
-            Body: {
-              Html: {
-                Data: getInvitationEmailTemplate({
-                  invitedEmail: email,
-                  groupName,
-                  inviterName: userName,
-                  roleName,
-                  acceptLink
-                }),
-                Charset: 'UTF-8'
-              },
-              Text: {
-                Data: getInvitationEmailText({
-                  invitedEmail: email,
-                  groupName,
-                  inviterName: userName,
-                  roleName,
-                  acceptLink
-                }),
-                Charset: 'UTF-8'
-              }
-            }
-          }
-        }
-      }, {
-        fallback: async () => {
-          logger.warn('Email not sent - circuit breaker open or SES failure', {
-            action: 'INVITATION_CREATED_WITHOUT_EMAIL'
-          });
-          return { MessageId: 'FALLBACK' };
-        }
-      });
-    }, { service: 'SES' });
+      // ✅ ACL: EmailAdapter maneja SES con Ambassador (circuit breaker, rate limit, retry)
+      await emailAdapter.sendGroupInvitation(
+        email,
+        groupName,
+        userName,
+        acceptLink
+      );
+    }, { service: 'EmailAdapter' });
 
-    logger.info('Invitation email sent successfully');
+    logger.info('Invitation email sent successfully via EmailAdapter');
   } catch (emailError) {
     logger.error('Email sending failed but invitation created', emailError);
     // No fallar - la invitación ya está creada
@@ -238,142 +210,3 @@ exports.handler = createAPIHandler(inviteMemberHandler, {
     endpoint: 'inviteMember'
   }
 });
-          })
-        };
-      }
-    }
-
-    // Generar token único para la invitación
-    const invitationToken = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
-    // TTL en formato epoch (segundos desde 1970) - 7 días
-    const expiresAtEpoch = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
-
-    console.log(`[${TRACE_ID}] 💾 Creando invitación con token:`, invitationToken);
-
-    // Guardar invitación
-    await db.send(new PutCommand({
-      TableName: process.env.GROUP_INVITATIONS_TABLE,
-      Item: {
-        token: invitationToken,
-        group_id: grupo_id,
-        invited_email: email,
-        invited_user_sub: invitedUserSub,
-        role: rol,
-        invited_by: userSub,
-        status: 'pending',
-        created_at: timestamp,
-        expires_at: expiresAtEpoch
-      }
-    }));
-
-    // Obtener información del invitador
-    const inviterEmail = event.requestContext.authorizer.jwt.claims.email;
-    const inviterName = event.requestContext.authorizer.jwt.claims['cognito:username'] || inviterEmail.split('@')[0];
-
-    // Mapear nombres de roles
-    const roleNames = {
-      'admin': 'Administrador',
-      'escritor': 'Escritor',
-      'lector': 'Lector'
-    };
-    const roleName = roleNames[rol] || rol;
-
-    // Construir link de aceptación
-    const acceptLink = `${secrets.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
-
-    console.log(`[${TRACE_ID}] 📧 Enviando email a ${email}...`);
-
-    try {
-      // Enviar email con SES
-      await ses.send(new SendEmailCommand({
-        FromEmailAddress: secrets.SES_FROM_EMAIL,
-        Destination: {
-          ToAddresses: [email]
-        },
-        Content: {
-          Simple: {
-            Subject: {
-              Data: `Invitación al grupo ${groupResult.Item.name || 'sin nombre'}`,
-              Charset: 'UTF-8'
-            },
-            Body: {
-              Html: {
-                Data: getInvitationEmailTemplate({
-                  invitedEmail: email,
-                  groupName: groupResult.Item.name || 'sin nombre',
-                  inviterName,
-                  roleName,
-                  acceptLink
-                }),
-                Charset: 'UTF-8'
-              },
-              Text: {
-                Data: getInvitationEmailText({
-                  invitedEmail: email,
-                  groupName: groupResult.Item.name || 'sin nombre',
-                  inviterName,
-                  roleName,
-                  acceptLink
-                }),
-                Charset: 'UTF-8'
-              }
-            }
-          }
-        }
-      }));
-
-      console.log(`[${TRACE_ID}] ✅ Email enviado exitosamente`);
-    } catch (emailError) {
-      console.error(`[${TRACE_ID}] ⚠️ Error enviando email (invitación creada):`, emailError.message);
-      // No fallar la invitación si el email falla - la invitación ya está creada
-    }
-
-    console.log(`[${TRACE_ID}] ✅ Invitación creada exitosamente`);
-
-    // Crear notificación para el usuario invitado (si tiene sub)
-    if (invitedUserSub) {
-      try {
-        await notifyMiembroInvitado({
-          invitedUserSub,
-          grupoId: grupo_id,
-          grupoNombre: groupResult.Item.name || 'sin nombre',
-          createdBy: userSub,
-          rol,
-          invitedEmail: email
-        });
-        console.log(`[${TRACE_ID}] 📬 Notificación creada para ${email}`);
-      } catch (notifError) {
-        console.error(`[${TRACE_ID}] ⚠️ Error creando notificación:`, notifError);
-        // No fallar si la notificación falla
-      }
-    }
-
-    return {
-      statusCode: 201,
-      headers: getSecurityHeaders(),
-      body: JSON.stringify({ 
-        ok: true,
-        message: 'Invitación enviada correctamente',
-        invitation_token: invitationToken,
-        email,
-        rol,
-        grupo_id,
-        trace_id: TRACE_ID
-      })
-    };
-
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error enviando invitación:`, error);
-    
-    return {
-      statusCode: 500,
-      headers: getSecurityHeaders(),
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al enviar la invitación",
-        trace_id: TRACE_ID
-      })
-    };
-  }
-};

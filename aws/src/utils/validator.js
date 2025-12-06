@@ -271,6 +271,105 @@ const schemas = {
       }
     },
     additionalProperties: false
+  },
+
+  // === ACTIVITY LOGS ===
+  logUserActivity: {
+    type: 'object',
+    required: ['userSub', 'action'],
+    properties: {
+      userSub: { type: 'string', minLength: 1, maxLength: 255 },
+      userEmail: commonSchemas.email,
+      action: { 
+        type: 'string', 
+        minLength: 1, 
+        maxLength: 100,
+        pattern: '^[A-Z_]+$',
+        errorMessage: 'action debe estar en UPPER_SNAKE_CASE'
+      },
+      metadata: { 
+        type: 'object',
+        additionalProperties: true
+      },
+      timestamp: { type: 'string', format: 'date-time' },
+      ipAddress: { type: 'string', maxLength: 45 }, // IPv6 max length
+      userAgent: { type: 'string', maxLength: 500 },
+      source: { type: 'string', maxLength: 100 }
+    },
+    additionalProperties: false
+  },
+
+  // === WEBSOCKET ===
+  wsConnect: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: {
+        type: 'string',
+        pattern: '^[a-zA-Z0-9-_]{8,36}$',
+        errorMessage: 'grupo_id debe tener entre 8-36 caracteres alfanuméricos'
+      },
+      connectionId: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  wsSubscribeOperation: {
+    type: 'object',
+    required: ['operationId'],
+    properties: {
+      operationId: {
+        type: 'string',
+        format: 'uuid',
+        errorMessage: 'operationId debe ser un UUID válido'
+      },
+      userId: { type: 'string', maxLength: 255 }
+    },
+    additionalProperties: false
+  },
+
+  // === PERSONALIZATION ===
+  setPersonalization: {
+    type: 'object',
+    required: ['parameters'],
+    properties: {
+      parameters: {
+        type: 'object',
+        additionalProperties: true, // Se validarán individualmente en el handler
+        minProperties: 1
+      }
+    },
+    additionalProperties: false
+  },
+
+  personalizationParameter: {
+    type: 'object',
+    required: ['user_sub', 'parameter_key', 'parameter_value'],
+    properties: {
+      user_sub: { type: 'string', minLength: 1, maxLength: 255 },
+      parameter_key: { type: 'string', minLength: 1, maxLength: 100 },
+      parameter_value: {} // any type
+    },
+    additionalProperties: false
+  },
+
+  // === BATCH OPERATIONS ===
+  batchSpaceItem: {
+    type: 'object',
+    required: ['PK', 'SK', 'tipo', 'nombre'],
+    properties: {
+      PK: { type: 'string', minLength: 1, maxLength: 255 },
+      SK: { type: 'string', minLength: 1, maxLength: 255 },
+      tipo: { 
+        type: 'string', 
+        enum: ['general', 'especifico']
+      },
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+      parent: { type: 'string', maxLength: 255 },
+      created_at: { type: 'string', format: 'date-time' },
+      created_by: commonSchemas.email
+    },
+    additionalProperties: false
   }
 };
 

@@ -1,47 +1,69 @@
 // src/handlers/login.js
-const {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand
-} = require('@aws-sdk/client-cognito-identity-provider');
+
+// ✅ ANTI-CORRUPTION LAYER: AuthAdapter reemplaza llamadas directas a Cognito
+const { getAuthAdapter, InvalidCredentialsError, MFARequiredError, PasswordResetRequiredError } = require('../../adapters/authAdapter');
 
 const { validate } = require('../../utils/validation');
 const { successResponse, errorResponse } = require('../../utils/response');
 const Logger = require('../../utils/logger');
 const { createAPIHandler } = require('../../utils/interceptors');
 const { ValidationError } = require('../../utils/errors');
-const { retryCognito } = require('../../utils/cognitoWrapper');
 
-const client = new CognitoIdentityProviderClient({});
+// AuthAdapter (ACL)
+const authAdapter = getAuthAdapter();
 
 async function loginHandler(event, logger) {
   const body = JSON.parse(event.body || '{}');
   const validation = validate(body, 'login');
   if (!validation.valid) throw new ValidationError('Datos de login inválidos', validation.errors);
   
+  const { username, password } = body;
   logger.info('Login attempt', { username });
 
-  const cmd = new InitiateAuthCommand({
-    AuthFlow: 'USER_PASSWORD_AUTH',
-    ClientId: process.env.USER_POOL_CLIENT_ID,
-    AuthParameters: { USERNAME: username, PASSWORD: password }
-  });
+  try {
+    // ✅ ACL: AuthAdapter maneja Cognito con circuit breaker, retry, traducción de errores
+    const authSession = await authAdapter.login(username, password);
 
-  const out = await retryCognito(() => client.send(cmd));
+    logger.info('Login successful', { 
+      username, 
+      expiresIn: authSession.expiresIn 
+    });
+    
+    // ✅ Retornar modelo de dominio (no estructura Cognito)
+    return successResponse({
+      idToken: authSession.idToken,
+      accessToken: authSession.accessToken,
+      refreshToken: authSession.refreshToken,
+      expiresIn: authSession.expiresIn,
+      tokenType: authSession.tokenType
+    });
 
-  if (out.ChallengeName) {
-    logger.warn('Challenge required', { challenge: out.ChallengeName });
-    throw new ValidationError(`Challenge required: ${out.ChallengeName}`);
+  } catch (error) {
+    // ✅ Excepciones del dominio (no errores Cognito)
+    if (error instanceof InvalidCredentialsError) {
+      logger.warn('Invalid credentials', { username });
+      return errorResponse('Credenciales inválidas', 401);
+    }
+
+    if (error instanceof MFARequiredError) {
+      logger.warn('MFA required', { username });
+      return errorResponse('MFA verification required', 403, {
+        challengeName: 'MFA_REQUIRED',
+        session: error.session
+      });
+    }
+
+    if (error instanceof PasswordResetRequiredError) {
+      logger.warn('Password reset required', { username });
+      return errorResponse('Password reset required', 403, {
+        challengeName: 'NEW_PASSWORD_REQUIRED'
+      });
+    }
+
+    // Error genérico
+    logger.error('Login error', error, { username });
+    return errorResponse('Error en autenticación', 500);
   }
-
-  const auth = out.AuthenticationResult || {};
-  logger.info('Login successful', { username, expiresIn: auth.ExpiresIn });
-  
-  return successResponse({
-    idToken: auth.IdToken,
-    accessToken: auth.AccessToken,
-    refreshToken: auth.RefreshToken,
-    expiresIn: auth.ExpiresIn
-  });
 }
 
 module.exports.login = createAPIHandler(loginHandler, { rateLimit: { maxRequests: 10, windowSeconds: 300 } });

@@ -7,6 +7,7 @@ const Logger = require("../utils/logger");
 const { createAPIHandler } = require("../utils/interceptors");
 const { successResponse } = require("../utils/response");
 const { AuthorizationError } = require("../utils/errors");
+const { validate } = require("../utils/validator");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -94,20 +95,25 @@ async function getActivityStatsHandler(event, logger) {
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
+  // OPTIMIZADO: Query por usuario específico usando UserActivityIndex
   const result = await retryWithJitter(
     async () => {
       if (!dynamoBreaker.shouldAllow()) throw new Error("CircuitBreakerOpen");
-      const res = await docClient.send(new ScanCommand({
+      const res = await docClient.send(new QueryCommand({
         TableName: process.env.ACTIVITY_LOGS_TABLE,
-        FilterExpression: '#timestamp > :weekAgo',
+        IndexName: 'UserActivityIndex',
+        KeyConditionExpression: 'user_sub = :userSub AND #timestamp > :weekAgo',
         ExpressionAttributeNames: { '#timestamp': 'timestamp' },
-        ExpressionAttributeValues: { ':weekAgo': weekAgo.toISOString() }
-        }));
-        dynamoBreaker.reportSuccess();
-        return res;
-      },
-      { maxAttempts: 3, baseDelayMs: 300 }
-    );
+        ExpressionAttributeValues: { 
+          ':userSub': userSub,
+          ':weekAgo': weekAgo.toISOString() 
+        }
+      }));
+      dynamoBreaker.reportSuccess();
+      return res;
+    },
+    { maxAttempts: 3, baseDelayMs: 300 }
+  );
 
     const logs = result.Items || [];
     const stats = {
@@ -177,6 +183,23 @@ module.exports.logActivity = async (activityData) => {
     }
 
     const ttlSeconds = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 días
+
+    // ✅ VALIDACIÓN AJV antes de escribir
+    const validationResult = validate('logUserActivity', {
+      userSub: activityData.userSub,
+      userEmail: activityData.userEmail,
+      action: activityData.action,
+      metadata: activityData.metadata || {},
+      timestamp: activityData.timestamp || new Date().toISOString(),
+      ipAddress: activityData.ipAddress || 'unknown',
+      userAgent: activityData.userAgent || 'unknown',
+      source: activityData.source || 'direct_call'
+    }, logger);
+
+    if (!validationResult.valid) {
+      logger.warn('Validación fallida en logUserActivity', { errors: validationResult.errors });
+      throw new Error(`Validation failed: ${validationResult.errors}`);
+    }
 
     const logEntry = {
       id: `${activityData.userSub}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

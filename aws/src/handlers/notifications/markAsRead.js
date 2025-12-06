@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, QueryCommand, UpdateCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const Logger = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { NotFoundError, AuthorizationError } = require("../../utils/errorHandler");
@@ -31,19 +31,21 @@ const markAsRead = async (event) => {
   if (isReadAll) {
     logger.info('Marcando todas las notificaciones como leídas', { userSub });
     
-    const scanResult = await retryDB(
-      () => db.send(new ScanCommand({
+    // OPTIMIZADO: Usa QueryCommand con PK en lugar de ScanCommand
+    const queryResult = await retryDB(
+      () => db.send(new QueryCommand({
         TableName: NOTIFICATIONS_TABLE,
-        FilterExpression: 'PK = :user AND leida = :leida',
+        KeyConditionExpression: 'PK = :user',
+        FilterExpression: 'leida = :leida',
         ExpressionAttributeValues: {
           ':user': `USER#${userSub}`,
           ':leida': false
         }
       })),
-      { operation: 'scanUnreadNotifications' }
+      { operation: 'queryUnreadNotifications' }
     );
     
-    const notifications = scanResult.Items || [];
+    const notifications = queryResult.Items || [];
     logger.info('Notificaciones no leídas encontradas', { count: notifications.length });
     
     if (notifications.length === 0) {
