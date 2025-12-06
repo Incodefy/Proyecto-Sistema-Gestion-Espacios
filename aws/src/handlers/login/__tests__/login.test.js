@@ -1,234 +1,380 @@
 /**
- * Tests unitarios para el módulo de Login
+ * Login Handler Integration Tests
+ * 
+ * Tests de integración para el handler de login con AuthAdapter (ACL)
+ * 
+ * Coverage:
+ * - Successful login flow
+ * - Error handling (InvalidCredentialsError, MFARequiredError, etc.)
+ * - Challenge responses (NEW_PASSWORD_REQUIRED, MFA)
+ * - Response format validation
  */
 
-const { login } = require('../../src/handlers/login/login');
+const { login } = require('../login');
+const {
+  getAuthAdapter,
+  AuthSession,
+  InvalidCredentialsError,
+  MFARequiredError,
+  PasswordResetRequiredError,
+  UserNotConfirmedError
+} = require('../../../adapters/authAdapter');
 
-// Mock del cliente de Cognito
-jest.mock('@aws-sdk/client-cognito-identity-provider', () => {
-  const mockSend = jest.fn();
-  return {
-    CognitoIdentityProviderClient: jest.fn(() => ({
-      send: mockSend
-    })),
-    InitiateAuthCommand: jest.fn((params) => params),
-    __mockSend: mockSend
-  };
-});
+// Mock AuthAdapter (ACL)
+jest.mock('../../../adapters/authAdapter');
 
-const { CognitoIdentityProviderClient } = require('@aws-sdk/client-cognito-identity-provider');
-
-describe('Login Handler', () => {
-  let mockSend;
+describe('Login Handler - ACL Integration Tests', () => {
+  let mockAuthAdapter;
+  let mockLogger;
 
   beforeEach(() => {
-    // Obtener referencia al mock
-    const clientInstance = new CognitoIdentityProviderClient();
-    mockSend = clientInstance.send;
-    mockSend.mockClear();
+    jest.clearAllMocks();
+
+    // Mock logger
+    mockLogger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn()
+    };
+
+    // Mock AuthAdapter
+    mockAuthAdapter = {
+      login: jest.fn()
+    };
+
+    getAuthAdapter.mockReturnValue(mockAuthAdapter);
   });
 
-  describe('Validación de entrada', () => {
-    test('debe retornar 400 si falta username', async () => {
-      const event = {
-        body: JSON.stringify({ password: 'Test123!' })
-      };
+  // ========== SUCCESSFUL LOGIN ==========
 
-      const result = await login(event);
-      const body = JSON.parse(result.body);
+  describe('Successful Login', () => {
+    test('should return tokens on successful login', async () => {
+      const mockSession = new AuthSession({
+        idToken: 'mock-id-token',
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: 3600,
+        tokenType: 'Bearer'
+      });
 
-      expect(result.statusCode).toBe(400);
-      expect(body.ok).toBe(false);
-      expect(body.error).toContain('username y password son obligatorios');
-    });
-
-    test('debe retornar 400 si falta password', async () => {
-      const event = {
-        body: JSON.stringify({ username: 'test@example.com' })
-      };
-
-      const result = await login(event);
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(400);
-      expect(body.ok).toBe(false);
-      expect(body.error).toContain('username y password son obligatorios');
-    });
-
-    test('debe retornar 400 si el body está vacío', async () => {
-      const event = { body: '{}' };
-
-      const result = await login(event);
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(400);
-      expect(body.ok).toBe(false);
-    });
-
-    test('debe manejar body sin definir', async () => {
-      const event = {};
-
-      const result = await login(event);
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(400);
-      expect(body.ok).toBe(false);
-    });
-  });
-
-  describe('Autenticación exitosa', () => {
-    test('debe retornar tokens cuando las credenciales son válidas', async () => {
-      const mockAuthResult = {
-        AuthenticationResult: {
-          IdToken: 'mock-id-token',
-          AccessToken: 'mock-access-token',
-          RefreshToken: 'mock-refresh-token',
-          ExpiresIn: 3600
-        }
-      };
-
-      mockSend.mockResolvedValueOnce(mockAuthResult);
-
-      const event = {
-        body: JSON.stringify({
-          username: 'test@example.com',
-          password: 'ValidPassword123!'
-        })
-      };
-
-      const result = await login(event);
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(200);
-      expect(body.ok).toBe(true);
-      expect(body.idToken).toBe('mock-id-token');
-      expect(body.accessToken).toBe('mock-access-token');
-      expect(body.refreshToken).toBe('mock-refresh-token');
-      expect(body.expiresIn).toBe(3600);
-    });
-
-    test('debe llamar a Cognito con los parámetros correctos', async () => {
-      const mockAuthResult = {
-        AuthenticationResult: {
-          IdToken: 'token',
-          AccessToken: 'token',
-          RefreshToken: 'token',
-          ExpiresIn: 3600
-        }
-      };
-
-      mockSend.mockResolvedValueOnce(mockAuthResult);
+      mockAuthAdapter.login.mockResolvedValueOnce(mockSession);
 
       const event = {
         body: JSON.stringify({
           username: 'user@test.com',
-          password: 'Pass123!'
+          password: 'Password123!'
         })
       };
 
-      await login(event);
+      const result = await login(event, mockLogger);
+      const body = JSON.parse(result.body);
 
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          AuthFlow: 'USER_PASSWORD_AUTH',
-          ClientId: process.env.USER_POOL_CLIENT_ID,
-          AuthParameters: {
-            USERNAME: 'user@test.com',
-            PASSWORD: 'Pass123!'
-          }
-        })
-      );
+      expect(result.statusCode).toBe(200);
+      expect(body.data).toMatchObject({
+        idToken: 'mock-id-token',
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: 3600
+      });
+
+      expect(mockAuthAdapter.login).toHaveBeenCalledWith('user@test.com', 'Password123!');
     });
   });
 
-  describe('Manejo de errores', () => {
-    test('debe retornar 401 cuando las credenciales son inválidas', async () => {
-      mockSend.mockRejectedValueOnce(new Error('NotAuthorizedException'));
+  // ========== VALIDATION ERRORS ==========
+
+  describe('Validation Errors', () => {
+    test('should return 400 on missing username', async () => {
+      const event = {
+        body: JSON.stringify({ password: 'Password123!' })
+      };
+
+      const result = await login(event, mockLogger);
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toContain('inválidos');
+    });
+
+    test('should return 400 on missing password', async () => {
+      const event = {
+        body: JSON.stringify({ username: 'user@test.com' })
+      };
+
+      const result = await login(event, mockLogger);
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toContain('inválidos');
+    });
+
+    test('should return 400 on empty body', async () => {
+      const event = { body: '{}' };
+
+      const result = await login(event, mockLogger);
+
+      expect(result.statusCode).toBe(400);
+    });
+
+    test('should handle malformed JSON', async () => {
+      const event = { body: 'invalid-json' };
+
+      const result = await login(event, mockLogger);
+
+      expect(result.statusCode).toBe(400);
+    });
+  });
+
+  // ========== INVALID CREDENTIALS ==========
+
+  describe('Invalid Credentials', () => {
+    test('should return 401 on invalid credentials', async () => {
+      mockAuthAdapter.login.mockRejectedValueOnce(
+        new InvalidCredentialsError('Invalid username or password')
+      );
 
       const event = {
         body: JSON.stringify({
-          username: 'test@example.com',
-          password: 'WrongPassword'
+          username: 'user@test.com',
+          password: 'wrong-password'
         })
       };
 
-      const result = await login(event);
+      const result = await login(event, mockLogger);
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(401);
-      expect(body.ok).toBe(false);
-      expect(body.error).toContain('Credenciales inválidas');
+      expect(body.error).toBe('Credenciales inválidas');
     });
 
-    test('debe manejar desafíos de Cognito', async () => {
-      const mockChallengeResponse = {
-        ChallengeName: 'NEW_PASSWORD_REQUIRED'
-      };
-
-      mockSend.mockResolvedValueOnce(mockChallengeResponse);
+    test('should not reveal user existence', async () => {
+      mockAuthAdapter.login.mockRejectedValueOnce(
+        new InvalidCredentialsError('Invalid credentials')
+      );
 
       const event = {
         body: JSON.stringify({
-          username: 'test@example.com',
+          username: 'nonexistent@test.com',
+          password: 'any-password'
+        })
+      };
+
+      const result = await login(event, mockLogger);
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(401);
+      expect(body.error).not.toContain('not found');
+      expect(body.error).not.toContain('exist');
+    });
+  });
+
+  // ========== CHALLENGE HANDLING ==========
+
+  describe('Challenge Handling', () => {
+    test('should return 403 on MFA required', async () => {
+      const mfaError = new MFARequiredError('MFA verification required');
+      mfaError.session = 'mfa-session-token';
+      mfaError.challengeName = 'SMS_MFA';
+
+      mockAuthAdapter.login.mockRejectedValueOnce(mfaError);
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'Password123!'
+        })
+      };
+
+      const result = await login(event, mockLogger);
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(403);
+      expect(body.error).toBe('MFA verification required');
+      expect(body.data.challengeName).toBe('MFA_REQUIRED');
+      expect(body.data.session).toBe('mfa-session-token');
+    });
+
+    test('should return 403 on password reset required', async () => {
+      mockAuthAdapter.login.mockRejectedValueOnce(
+        new PasswordResetRequiredError('Password reset required')
+      );
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
           password: 'TempPassword123!'
         })
       };
 
-      const result = await login(event);
+      const result = await login(event, mockLogger);
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(403);
-      expect(body.ok).toBe(false);
-      expect(body.challenge).toBe('NEW_PASSWORD_REQUIRED');
-    });
-
-    test('debe manejar errores de red', async () => {
-      mockSend.mockRejectedValueOnce(new Error('Network error'));
-
-      const event = {
-        body: JSON.stringify({
-          username: 'test@example.com',
-          password: 'Password123!'
-        })
-      };
-
-      const result = await login(event);
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(401);
-      expect(body.ok).toBe(false);
+      expect(body.error).toBe('Password reset required');
+      expect(body.data.challengeName).toBe('NEW_PASSWORD_REQUIRED');
     });
   });
 
-  describe('Casos edge', () => {
-    test('debe manejar respuesta de Cognito sin AuthenticationResult', async () => {
-      mockSend.mockResolvedValueOnce({});
+  // ========== USER STATUS ==========
+
+  describe('User Status Errors', () => {
+    test('should handle user not confirmed', async () => {
+      mockAuthAdapter.login.mockRejectedValueOnce(
+        new UserNotConfirmedError('User email not confirmed')
+      );
 
       const event = {
         body: JSON.stringify({
-          username: 'test@example.com',
+          username: 'unconfirmed@test.com',
           password: 'Password123!'
         })
       };
 
-      const result = await login(event);
-      const body = JSON.parse(result.body);
+      const result = await login(event, mockLogger);
 
-      expect(result.statusCode).toBe(200);
-      expect(body.ok).toBe(true);
-      expect(body.idToken).toBeUndefined();
+      expect(result.statusCode).toBe(403);
     });
+  });
 
-    test('debe manejar JSON malformado', async () => {
+  // ========== GENERIC ERRORS ==========
+
+  describe('Generic Error Handling', () => {
+    test('should return 500 on unexpected error', async () => {
+      mockAuthAdapter.login.mockRejectedValueOnce(
+        new Error('Unexpected error')
+      );
+
       const event = {
-        body: 'invalid-json'
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'Password123!'
+        })
       };
 
-      const result = await login(event);
+      const result = await login(event, mockLogger);
       const body = JSON.parse(result.body);
 
-      expect(result.statusCode).toBe(401);
-      expect(body.ok).toBe(false);
+      expect(result.statusCode).toBe(500);
+      expect(body.error).toBe('Error en autenticación');
+    });
+  });
+
+  // ========== RESPONSE FORMAT ==========
+
+  describe('Response Format', () => {
+    test('should return correct structure on success', async () => {
+      const mockSession = new AuthSession({
+        idToken: 'id-token',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 3600
+      });
+
+      mockAuthAdapter.login.mockResolvedValueOnce(mockSession);
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'Password123!'
+        })
+      };
+
+      const result = await login(event, mockLogger);
+
+      expect(result).toHaveProperty('statusCode');
+      expect(result).toHaveProperty('body');
+      expect(result).toHaveProperty('headers');
+      
+      const body = JSON.parse(result.body);
+      expect(body).toHaveProperty('data');
+      expect(body.data).toHaveProperty('idToken');
+      expect(body.data).toHaveProperty('accessToken');
+      expect(body.data).toHaveProperty('refreshToken');
+      expect(body.data).toHaveProperty('expiresIn');
+    });
+
+    test('should include CORS headers', async () => {
+      const mockSession = new AuthSession({
+        idToken: 'id-token',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 3600
+      });
+
+      mockAuthAdapter.login.mockResolvedValueOnce(mockSession);
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'Password123!'
+        })
+      };
+
+      const result = await login(event, mockLogger);
+
+      expect(result.headers).toMatchObject({
+        'Content-Type': 'application/json'
+      });
+    });
+  });
+
+  // ========== LOGGING ==========
+
+  describe('Logging', () => {
+    test('should log login attempt', async () => {
+      const mockSession = new AuthSession({
+        idToken: 'id-token',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 3600
+      });
+
+      mockAuthAdapter.login.mockResolvedValueOnce(mockSession);
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'Password123!'
+        })
+      };
+
+      await login(event, mockLogger);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Login attempt',
+        expect.objectContaining({ username: 'user@test.com' })
+      );
+    });
+
+    test('should NOT log passwords', async () => {
+      const mockSession = new AuthSession({
+        idToken: 'id-token',
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 3600
+      });
+
+      mockAuthAdapter.login.mockResolvedValueOnce(mockSession);
+
+      const event = {
+        body: JSON.stringify({
+          username: 'user@test.com',
+          password: 'SecretPassword123!'
+        })
+      };
+
+      await login(event, mockLogger);
+
+      const allLogs = [
+        ...mockLogger.info.mock.calls,
+        ...mockLogger.warn.mock.calls,
+        ...mockLogger.error.mock.calls
+      ];
+
+      allLogs.forEach(logCall => {
+        const logString = JSON.stringify(logCall);
+        expect(logString).not.toContain('SecretPassword123!');
+      });
     });
   });
 });

@@ -1,19 +1,22 @@
 const { DynamoDBDocumentClient, QueryCommand, GetCommand, BatchGetCommand } = require("@aws-sdk/lib-dynamodb");
-const { CognitoIdentityProviderClient, AdminGetUserCommand } = require("@aws-sdk/client-cognito-identity-provider");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-const cognito = new CognitoIdentityProviderClient({});
+
+// ✅ ANTI-CORRUPTION LAYER: UserAdapter reemplaza llamadas directas a Cognito
+const { getUserAdapter } = require("../../adapters");
 
 // ✅ MEJORAS IMPLEMENTADAS
 const { Logger } = require("../../utils/logger");
 const { NotFoundError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
-const { retryDB, retryAWS } = require("../../utils/retry");
-const { cognitoWithCircuitBreaker } = require("../../utils/circuitBreaker");
+const { retryDB } = require("../../utils/retry");
 const { Cache } = require("../../utils/cache");
 const { decryptPII } = require("../../utils/encryption");
 
 // Cache para miembros de grupos (2 minutos TTL)
 const membersCache = new Cache({ defaultTTL: 120000, maxSize: 500 });
+
+// UserAdapter (ACL)
+const userAdapter = getUserAdapter();
 
 /**
  * GET /api/grupos/:id/miembros
@@ -101,33 +104,24 @@ async function listMembersHandler(event, context, logger) {
       
       // Fallback: consultar Cognito con circuit breaker (para datos antiguos)
       try {
-        logger.debug('Fetching member data from Cognito', { userSub: member.user_sub });
+        logger.debug('Fetching member data from UserAdapter (ACL)', { userSub: member.user_sub });
         
-        const cognitoData = await cognitoWithCircuitBreaker(async () => {
-          return await retryAWS(async () => {
-            return await cognito.send(new AdminGetUserCommand({
-              UserPoolId: process.env.USER_POOL_ID,
-              Username: member.user_sub
-            }));
-          });
+        // ✅ ACL: UserAdapter maneja Cognito, circuit breaker, retry
+        const user = await userAdapter.getUser(member.user_sub);
+
+        logger.debug('User found via UserAdapter', { 
+          email: user.email, 
+          displayName: user.displayName 
         });
 
-        if (cognitoData?.UserAttributes) {
-          const email = cognitoData.UserAttributes.find(attr => attr.Name === 'email')?.Value || 'Sin email';
-          const name = cognitoData.UserAttributes.find(attr => attr.Name === 'name')?.Value || '';
-          const username = name || cognitoData.Username || email.split('@')[0];
-
-          logger.debug('User found in Cognito', { email, username });
-
-          return {
-            id: member.user_sub,
-            nombre: username,
-            email: email,
-            rol: member.role,
-            fecha_ingreso: member.added_at,
-            esCreador: member.role === 'owner'
-          };
-        }
+        return {
+          id: user.userId,
+          nombre: user.displayName,
+          email: user.email,
+          rol: member.role,
+          fecha_ingreso: member.added_at,
+          esCreador: member.role === 'owner'
+        };
       } catch (error) {
         logger.warn('Error fetching user from Cognito', { 
           userSub: member.user_sub, 

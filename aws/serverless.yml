@@ -37,6 +37,12 @@ provider:
     CONNECTIONS_TABLE: ${self:service}-${sls:stage}-websocket-connections
     WS_ENDPOINT: 
       Fn::Sub: 'https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
+    # CQRS/Event Sourcing
+    EVENTS_TABLE: ${self:service}-${sls:stage}-events
+    SNAPSHOTS_TABLE: ${self:service}-${sls:stage}-snapshots
+    OUTBOX_TABLE: ${self:service}-${sls:stage}-outbox
+    OPERATIONS_TABLE: ${self:service}-${sls:stage}-operations
+    EVENT_BUS_TOPIC_ARN: { Ref: EventBusTopic }
     # SES Configuration
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
     APP_URL: ${env:APP_URL, 'http://localhost:3000'}
@@ -81,6 +87,7 @@ provider:
       Resource:
         - Ref: PersonalizationTopic
         - Ref: SystemNotificationsTopic
+        - Ref: EventBusTopic
     
     # === SES EMAIL PERMISSIONS ===
     - Effect: Allow
@@ -164,6 +171,30 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-group-members
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-group-members/index/UserGroupsIndex
         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-${sls:stage}-groups
+    
+    # === EVENTS TABLE PERMISSIONS (CQRS) ===
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource:
+        - Fn::GetAtt: [EventsTable, Arn]
+        - Fn::Sub: '${EventsTable.Arn}/index/*'
+        - Fn::GetAtt: [SnapshotsTable, Arn]
+    
+    # === OUTBOX TABLE PERMISSIONS ===
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:UpdateItem
+        - dynamodb:TransactWriteItems
+      Resource:
+        - Fn::GetAtt: [OutboxTable, Arn]
+        - Fn::Sub: '${OutboxTable.Arn}/index/*'
 
     - Effect: Allow
       Action:
@@ -215,6 +246,15 @@ provider:
         - dynamodb:ListStreams
       Resource:
         - Fn::GetAtt: [AppointmentsTable, StreamArn]
+        - Fn::GetAtt: [OutboxTable, StreamArn]
+    
+    # === SQS DLQ ACCESS (for Outbox failures) ===
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - Fn::GetAtt: [OutboxDLQ, Arn]
 
 functions:
   # === HEALTH CHECK ===
@@ -226,6 +266,63 @@ functions:
           path: /health
     timeout: 10
     description: Health check endpoint for monitoring
+
+  # === AMBASSADOR HEALTH & MONITORING ===
+  ambassadorHealth:
+    handler: src/handlers/health/ambassadorHealth.getHealth
+    events:
+      - httpApi:
+          method: GET
+          path: /health/ambassador
+    timeout: 10
+    description: Ambassador pattern health check - service status, metrics, insights
+
+  ambassadorMetrics:
+    handler: src/handlers/health/ambassadorHealth.getMetrics
+    events:
+      - httpApi:
+          method: GET
+          path: /health/ambassador/metrics
+    timeout: 10
+    description: Ambassador telemetry metrics - latency, errors, costs
+
+  ambassadorInsights:
+    handler: src/handlers/health/ambassadorHealth.getInsights
+    events:
+      - httpApi:
+          method: GET
+          path: /health/ambassador/insights
+    timeout: 10
+    description: Ambassador automated insights - alerts and recommendations
+
+  ambassadorServiceHealth:
+    handler: src/handlers/health/ambassadorHealth.getServiceHealth
+    events:
+      - httpApi:
+          method: GET
+          path: /health/ambassador/service/{service}
+    timeout: 10
+    description: Individual service health check (SNS, DynamoDB, Cognito, SES)
+
+  ambassadorResetMetrics:
+    handler: src/handlers/health/ambassadorHealth.resetMetrics
+    events:
+      - httpApi:
+          method: POST
+          path: /health/ambassador/reset
+          authorizer:
+            name: cognitoJwt
+    timeout: 10
+    description: Reset Ambassador metrics (admin only)
+
+  ambassadorHealthPublisher:
+    handler: src/handlers/health/ambassadorHealth.publishHealthMetrics
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          description: Publish Ambassador health metrics to CloudWatch every 5 minutes
+    timeout: 30
+    description: Periodic health metrics publisher for CloudWatch alarms
 
   chaosTest:
     handler: src/handlers/chaos.run
@@ -252,7 +349,17 @@ functions:
           method: POST
           path: /auth/login
     timeout: 30
-    description: User authentication endpoint
+    reservedConcurrency: 50  # Bulkhead: limita a 50 ejecuciones concurrentes
+    description: User authentication endpoint - CRITICAL with concurrency limit
+    # Canary Deployment Configuration
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
+      preTrafficHook: validateLoginRequest
+      postTrafficHook: validateLoginResponse
+      alarms:
+        - LoginErrorsAlarm
+        - LoginLatencyAlarm
 
   refresh:
     handler: src/handlers/login/refresh.refresh
@@ -261,7 +368,13 @@ functions:
           method: POST
           path: /auth/refresh
     timeout: 30
-    description: Token refresh endpoint
+    reservedConcurrency: 30  # Bulkhead: previene saturación del pool
+    description: Token refresh endpoint - CRITICAL with concurrency limit
+    deploymentSettings:
+      type: Linear10PercentEvery1Minute
+      alias: Live
+      alarms:
+        - RefreshErrorsAlarm
 
   me:
     handler: src/handlers/login/me.me
@@ -377,6 +490,7 @@ functions:
             Fn::GetAtt: [PersonalizationQueue, Arn]
           batchSize: 5
           maximumBatchingWindow: 10
+    reservedConcurrency: 10  # Bulkhead: limita procesamiento SQS concurrente
 
   handleSystemNotifications:
     handler: src/handlers/events.handleSystemNotifications
@@ -386,6 +500,51 @@ functions:
             Fn::GetAtt: [SystemNotificationsQueue, Arn]
           batchSize: 5
           maximumBatchingWindow: 10
+    reservedConcurrency: 10  # Bulkhead: aísla procesamiento de notificaciones
+
+  # === CQRS/EVENT SOURCING FUNCTIONS ===
+  eventProjection:
+    handler: src/handlers/events/eventProjection.handler
+    events:
+      - sns:
+          arn: { Ref: EventBusTopic }
+          topicName: ${self:service}-${sls:stage}-event-bus
+    reservedConcurrency: 15
+    timeout: 30
+    description: "Proyecta eventos del Event Store a los Read Models"
+
+  autoSnapshot:
+    handler: src/handlers/events/autoSnapshot.handler
+    events:
+      - schedule:
+          rate: rate(6 hours)
+          description: "Create snapshots for aggregates with >100 events"
+          enabled: true
+    reservedConcurrency: 5
+    timeout: 300
+    description: "Automated snapshot creation for Event Sourcing optimization"
+
+  createAppointmentCQRS:
+    handler: src/handlers/appointments/createAppointmentCQRS.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /cqrs/appointments/{grupo_id}
+          authorizer:
+            name: cognitoJwt
+    reservedConcurrency: 25
+    description: "Crear appointment usando CQRS/Event Sourcing"
+
+  # === OPERATIONS (Async Request-Reply Pattern) ===
+  getOperationStatus:
+    handler: src/handlers/operations/getOperationStatus.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /operations/{operationId}
+          authorizer:
+            name: cognitoJwt
+    description: "Get status of async operation (polling endpoint)"
 
   # === FUNCIONES DE LOGS ===
   getActivityLogs:
@@ -529,6 +688,7 @@ functions:
     handler: src/handlers/groups/inviteToGroup.handler
     description: Envía invitación a un usuario
     timeout: 15
+    reservedConcurrency: 20  # Bulkhead: previene saturación de SES
     events:
       - httpApi:
           method: POST
@@ -800,6 +960,7 @@ functions:
     handler: src/handlers/appointments/createAppointment.handler
     description: Crea un nuevo appointment
     timeout: 10
+    reservedConcurrency: 25  # Bulkhead: operación crítica de negocio
     events:
       - httpApi:
           method: POST
@@ -841,6 +1002,7 @@ functions:
     handler: src/handlers/websocket/connect.handler
     description: Maneja conexiones WebSocket
     timeout: 10
+    reservedConcurrency: 100  # Bulkhead: alto tráfico de conexiones
     events:
       - websocket:
           route: $connect
@@ -849,6 +1011,7 @@ functions:
     handler: src/handlers/websocket/disconnect.handler
     description: Maneja desconexiones WebSocket
     timeout: 10
+    reservedConcurrency: 100  # Bulkhead: alto tráfico de desconexiones
     events:
       - websocket:
           route: $disconnect
@@ -857,6 +1020,7 @@ functions:
     handler: src/handlers/websocket/streamProcessor.handler
     description: Procesa DynamoDB Stream y notifica cambios vía WebSocket
     timeout: 30
+    reservedConcurrency: 20  # Bulkhead: previene sobrecarga en streams
     events:
       - stream:
           type: dynamodb
@@ -870,6 +1034,7 @@ functions:
     handler: src/handlers/websocket/spacesStreamProcessor.handler
     description: Procesa cambios en Spaces y notifica vía WebSocket
     timeout: 30
+    reservedConcurrency: 15  # Bulkhead: aísla procesamiento de espacios
     events:
       - stream:
           type: dynamodb
@@ -883,6 +1048,7 @@ functions:
     handler: src/handlers/websocket/occupantsStreamProcessor.handler
     description: Procesa cambios en Occupants y notifica vía WebSocket
     timeout: 30
+    reservedConcurrency: 15  # Bulkhead: aísla procesamiento de ocupantes
     events:
       - stream:
           type: dynamodb
@@ -896,6 +1062,7 @@ functions:
     handler: src/handlers/websocket/groupMembersStreamProcessor.handler
     description: Procesa cambios en GroupMembers y notifica vía WebSocket
     timeout: 30
+    reservedConcurrency: 15  # Bulkhead: aísla procesamiento de miembros
     events:
       - stream:
           type: dynamodb
@@ -904,6 +1071,64 @@ functions:
           batchSize: 10
           startingPosition: LATEST
           enabled: true
+
+  # === OPERATIONS WEBSOCKET HANDLERS (Async Request-Reply Pattern - Phase 2) ===
+  wsSubscribeOperation:
+    handler: src/handlers/websocket/subscribeOperation.handler
+    description: Permite a clientes WebSocket suscribirse a notificaciones de operaciones asíncronas
+    timeout: 10
+    reservedConcurrency: 50  # Bulkhead: alto tráfico de suscripciones
+    events:
+      - websocket:
+          route: subscribeOperation
+
+  wsOperationsStreamProcessor:
+    handler: src/handlers/websocket/operationsStreamProcessor.handler
+    description: Procesa cambios en OperationsTable y notifica a clientes WebSocket suscritos (Async Request-Reply)
+    timeout: 30
+    reservedConcurrency: 20  # Bulkhead: aísla procesamiento de operaciones
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [OperationsTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
+
+  # === OUTBOX PROCESSOR (Transactional Outbox Pattern) ===
+  outboxProcessor:
+    handler: src/handlers/outbox/outboxProcessor.processOutboxStream
+    description: Procesa eventos del Outbox y los publica a SNS (Transactional Outbox Pattern)
+    timeout: 60
+    reservedConcurrency: 10  # Bulkhead: limita concurrencia del relay
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [OutboxTable, StreamArn]
+          batchSize: 25
+          startingPosition: LATEST
+          enabled: true
+          maximumRetryAttempts: 3
+          bisectBatchOnFunctionError: true
+          maximumRecordAgeInSeconds: 3600
+          destinations:
+            onFailure:
+              type: sqs
+              arn:
+                Fn::GetAtt: [OutboxDLQ, Arn]
+
+  # Fallback polling processor (backup para testing o degradación)
+  outboxPollingProcessor:
+    handler: src/handlers/outbox/outboxProcessor.processOutboxPolling
+    description: Polling fallback para procesar mensajes PENDING del Outbox
+    timeout: 60
+    reservedConcurrency: 2
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false  # Disabled by default, enable if DynamoDB Streams fail
 
   # === GESTIÓN DE MIEMBROS (rutas alternativas) ===
   listGroupMembers:
@@ -965,9 +1190,9 @@ functions:
           path: /api/invitaciones/aceptar
           authorizer: cognitoJwt
 
-# Plugins comentados - no necesarios para deployment
-# plugins:
-#   - serverless-offline
+# Plugins para Blue/Green y Canary Deployments
+plugins:
+  - serverless-plugin-canary-deployments
 
 package:
   individually: false
@@ -1456,6 +1681,20 @@ resources:
         Endpoint: 
           Fn::GetAtt: [SystemNotificationsQueue, Arn]
 
+    # === OUTBOX DLQ (Dead Letter Queue for failed outbox messages) ===
+    OutboxDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${sls:stage}-outbox-dlq
+        MessageRetentionPeriod: 1209600  # 14 días
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: Incodefy
+          - Key: Purpose
+            Value: OutboxDeadLetterQueue
+
     # === COGNITO ===
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
@@ -1508,9 +1747,412 @@ resources:
         TopicName: ${self:service}-${sls:stage}-notifications
         DisplayName: "Notificaciones del sistema"
 
+    # === CQRS/EVENT SOURCING ===
+    EventBusTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:service}-${sls:stage}-event-bus
+        DisplayName: "Event Bus para CQRS/Event Sourcing"
+
+    EventBusSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: lambda
+        TopicArn: { Ref: EventBusTopic }
+        Endpoint: 
+          Fn::GetAtt: [EventProjectionLambdaFunction, Arn]
+
+    EventProjectionLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: { Ref: EventProjectionLambdaFunction }
+        Action: lambda:InvokeFunction
+        Principal: sns.amazonaws.com
+        SourceArn: { Ref: EventBusTopic }
+
+    EventsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-events
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI2PK
+            AttributeType: S
+          - AttributeName: GSI2SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: EventTypeIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: AggregateTypeIndex
+            KeySchema:
+              - AttributeName: GSI2PK
+                KeyType: HASH
+              - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: Incodefy
+          - Key: Purpose
+            Value: EventStore
+
+    SnapshotsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-snapshots
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: Incodefy
+          - Key: Purpose
+            Value: SnapshotStore
+
+    # === TRANSACTIONAL OUTBOX TABLE ===
+    OutboxTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-outbox
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        GlobalSecondaryIndexes:
+          - IndexName: StatusIndex
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: Incodefy
+          - Key: Purpose
+            Value: TransactionalOutbox
+
+    # === OPERATIONS TABLE (Async Request-Reply Pattern) ===
+    OperationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${sls:stage}-operations
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${sls:stage}
+          - Key: Project
+            Value: Incodefy
+          - Key: Purpose
+            Value: AsyncRequestReplyTracking
+
+    # === CLOUDWATCH ALARMS FOR CANARY DEPLOYMENTS ===
+    
+    # Login Function Alarms
+    LoginErrorsAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${sls:stage}-login-errors
+        AlarmDescription: "Triggers when login function error rate exceeds threshold"
+        MetricName: Errors
+        Namespace: AWS/Lambda
+        Statistic: Sum
+        Period: 60
+        EvaluationPeriods: 2
+        Threshold: 5
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: FunctionName
+            Value: { Ref: LoginLambdaFunction }
+        TreatMissingData: notBreaching
+
+    LoginLatencyAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${sls:stage}-login-latency
+        AlarmDescription: "Triggers when login function latency exceeds 5 seconds"
+        MetricName: Duration
+        Namespace: AWS/Lambda
+        Statistic: Average
+        Period: 60
+        EvaluationPeriods: 2
+        Threshold: 5000
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: FunctionName
+            Value: { Ref: LoginLambdaFunction }
+        TreatMissingData: notBreaching
+
+    # Refresh Function Alarms
+    RefreshErrorsAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${sls:stage}-refresh-errors
+        AlarmDescription: "Triggers when refresh function error rate exceeds threshold"
+        MetricName: Errors
+        Namespace: AWS/Lambda
+        Statistic: Sum
+        Period: 60
+        EvaluationPeriods: 2
+        Threshold: 3
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: FunctionName
+            Value: { Ref: RefreshLambdaFunction }
+        TreatMissingData: notBreaching
+
   Outputs:
+    # === COGNITO ===
     UserPoolId:
       Value: { Ref: CognitoUserPool }
+      Export:
+        Name: ${self:service}-${sls:stage}-UserPoolId
+      Description: "Cognito User Pool ID"
     
     UserPoolClientId:
       Value: { Ref: CognitoUserPoolClient }
+      Export:
+        Name: ${self:service}-${sls:stage}-UserPoolClientId
+      Description: "Cognito User Pool Client ID"
+    
+    # === SNS TOPICS ===
+    EventBusTopicArn:
+      Value: { Ref: EventBusTopic }
+      Export:
+        Name: ${self:service}-${sls:stage}-EventBusTopicArn
+      Description: "Event Bus Topic ARN for CQRS"
+    
+    PersonalizationTopicArn:
+      Value: { Ref: PersonalizationTopic }
+      Export:
+        Name: ${self:service}-${sls:stage}-PersonalizationTopicArn
+      Description: "Personalization Topic ARN"
+    
+    SystemNotificationsTopicArn:
+      Value: { Ref: SystemNotificationsTopic }
+      Export:
+        Name: ${self:service}-${sls:stage}-SystemNotificationsTopicArn
+      Description: "System Notifications Topic ARN"
+    
+    # === DYNAMODB TABLES ===
+    EventsTableName:
+      Value: { Ref: EventsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-EventsTableName
+      Description: "Event Store Table Name"
+    
+    SnapshotsTableName:
+      Value: { Ref: SnapshotsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-SnapshotsTableName
+      Description: "Snapshots Table Name"
+    
+    GroupsTableName:
+      Value: { Ref: GroupsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-GroupsTableName
+      Description: "Groups Table Name"
+    
+    GroupMembersTableName:
+      Value: { Ref: GroupMembersTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-GroupMembersTableName
+      Description: "Group Members Table Name"
+    
+    SpacesTableName:
+      Value: { Ref: SpacesTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-SpacesTableName
+      Description: "Spaces Table Name"
+    
+    OccupantsTableName:
+      Value: { Ref: OccupantsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-OccupantsTableName
+      Description: "Occupants Table Name"
+    
+    AppointmentsTableName:
+      Value: { Ref: AppointmentsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-AppointmentsTableName
+      Description: "Appointments Table Name"
+    
+    NotificationsTableName:
+      Value: { Ref: NotificationsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-NotificationsTableName
+      Description: "Notifications Table Name"
+    
+    OperationsTableName:
+      Value: { Ref: OperationsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-OperationsTableName
+      Description: "Operations Table Name (Async Request-Reply)"
+    
+    OutboxTableName:
+      Value: { Ref: OutboxTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-OutboxTableName
+      Description: "Outbox Table Name (Transactional Outbox Pattern)"
+    
+    # === SQS QUEUES ===
+    PersonalizationQueueUrl:
+      Value: { Ref: PersonalizationQueue }
+      Export:
+        Name: ${self:service}-${sls:stage}-PersonalizationQueueUrl
+      Description: "Personalization Queue URL"
+    
+    PersonalizationQueueArn:
+      Value: { Fn::GetAtt: [PersonalizationQueue, Arn] }
+      Export:
+        Name: ${self:service}-${sls:stage}-PersonalizationQueueArn
+      Description: "Personalization Queue ARN"
+    
+    SystemNotificationsQueueUrl:
+      Value: { Ref: SystemNotificationsQueue }
+      Export:
+        Name: ${self:service}-${sls:stage}-SystemNotificationsQueueUrl
+      Description: "System Notifications Queue URL"
+    
+    # === WEBSOCKET ===
+    WebSocketEndpoint:
+      Value:
+        Fn::Sub: 'wss://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
+      Export:
+        Name: ${self:service}-${sls:stage}-WebSocketEndpoint
+      Description: "WebSocket API Endpoint"
+    
+    ConnectionsTableName:
+      Value: { Ref: ConnectionsTable }
+      Export:
+        Name: ${self:service}-${sls:stage}-ConnectionsTableName
+      Description: "WebSocket Connections Table Name"
+    
+    # === HTTP API ===
+    HttpApiUrl:
+      Value:
+        Fn::Sub: 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+      Export:
+        Name: ${self:service}-${sls:stage}-HttpApiUrl
+      Description: "HTTP API Gateway URL"
+    
+    HttpApiId:
+      Value: { Ref: HttpApi }
+      Export:
+        Name: ${self:service}-${sls:stage}-HttpApiId
+      Description: "HTTP API Gateway ID"
+    
+    # === STAGE INFO ===
+    ServiceName:
+      Value: ${self:service}
+      Export:
+        Name: ${self:service}-${sls:stage}-ServiceName
+      Description: "Service Name"
+    
+    Stage:
+      Value: ${sls:stage}
+      Export:
+        Name: ${self:service}-${sls:stage}-Stage
+      Description: "Deployment Stage"
+    
+    Region:
+      Value: ${self:provider.region}
+      Export:
+        Name: ${self:service}-${sls:stage}-Region
+      Description: "AWS Region"
+

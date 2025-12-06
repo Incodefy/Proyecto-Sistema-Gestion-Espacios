@@ -1,18 +1,17 @@
 // src/handlers/events.js
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const Logger = require("../utils/logger");
 const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
-const { retryWithJitter } = require("../utils/retry");
+const { getAmbassador } = require("../utils/awsAmbassador");
 const { createCircuitBreaker } = require("../utils/circuitBreaker");
+const { validate } = require("../utils/validator");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const snsClient = new SNSClient({});
+const ambassador = getAmbassador();
 
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
-const snsBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 15000 });
 
 module.exports.handlePersonalizationEvents = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'personalizationEvents' });
@@ -45,7 +44,7 @@ module.exports.handlePersonalizationEvents = async (event) => {
         continue;
       }
 
-      if (!dynamoBreaker.shouldAllow() || !snsBreaker.shouldAllow()) {
+      if (!dynamoBreaker.shouldAllow()) {
         logger.warn('Circuit breaker abierto, evento pospuesto');
         throw new Error("CircuitBreakerOpen");
       }
@@ -298,7 +297,7 @@ async function logSystemEvent(eventData) {
 }
 
 /**
- * Publica notificación del sistema (SNS protegido por breaker y retry)
+ * Publica notificación del sistema (Ambassador handles retry, circuit breaker, telemetry)
  */
 async function publishSystemNotification(notificationType, data) {
   const notification = {
@@ -308,26 +307,19 @@ async function publishSystemNotification(notificationType, data) {
     data,
   };
 
-  await retryWithJitter(
-    async () => {
-      await snsClient.send(
-        new PublishCommand({
-          TopicArn: process.env.SYSTEM_NOTIFICATIONS_TOPIC_ARN,
-          Message: JSON.stringify(notification),
-          Subject: `System Notification: ${notificationType}`,
-        })
-      );
-      snsBreaker.reportSuccess();
-    },
-    { maxAttempts: 3, baseDelayMs: 300 }
-  ).catch((err) => {
-    snsBreaker.reportFailure();
+  try {
+    await ambassador.publishToSNS({
+      topicArn: process.env.SYSTEM_NOTIFICATIONS_TOPIC_ARN,
+      message: notification,
+      subject: `System Notification: ${notificationType}`
+    });
+
+    console.log(`📨 Notificación SNS enviada via Ambassador: ${notificationType}`);
+    return true;
+  } catch (err) {
     console.error("Error publicando notificación SNS:", err);
     throw err;
-  });
-
-  console.log(`📨 Notificación SNS enviada: ${notificationType}`);
-  return true;
+  }
 }
 
 /**
@@ -349,6 +341,23 @@ function hashString(str) {
 async function logUserActivity(activityData) {
   try {
     const ttlSeconds = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 días
+
+    // ✅ VALIDACIÓN AJV antes de escribir
+    const validationResult = validate('logUserActivity', {
+      userSub: activityData.userSub,
+      userEmail: activityData.userEmail,
+      action: activityData.action,
+      metadata: activityData.metadata || {},
+      timestamp: activityData.timestamp || new Date().toISOString(),
+      ipAddress: activityData.ipAddress || 'unknown',
+      userAgent: activityData.userAgent || 'unknown',
+      source: activityData.source || 'event_handler'
+    });
+
+    if (!validationResult.valid) {
+      console.warn('⚠️ Validación fallida en logUserActivity:', validationResult.errors);
+      throw new Error(`Validation failed: ${validationResult.errors}`);
+    }
 
     const logEntry = {
       id: `${activityData.userSub}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

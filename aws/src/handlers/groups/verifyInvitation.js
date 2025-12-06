@@ -62,23 +62,3 @@ const verifyInvitation = async (event) => {
 };
 
 module.exports.handler = createAPIHandler(verifyInvitation, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
-          created_at: invitation.created_at
-        },
-        trace_id: TRACE_ID
-      })
-    };
-
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error verificando invitación:`, error);
-    
-    return {
-      statusCode: 500,
-      headers: getSecurityHeaders(),
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al verificar la invitación",
-        trace_id: TRACE_ID
-      })
-    };
-  }
-};

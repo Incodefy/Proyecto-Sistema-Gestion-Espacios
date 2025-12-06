@@ -82,7 +82,17 @@ exports.handler = async (event) => {
       step: Step 
     });
 
-    throw error;
+    // CRITICAL: Return error status instead of throwing to prevent Lambda zombie
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: 'SECRET_ROTATION_FAILED',
+        message: `Failed to rotate secret at step ${Step}`,
+        secretId: SecretId,
+        step: Step,
+        details: error.message
+      })
+    };
   }
 };
 
