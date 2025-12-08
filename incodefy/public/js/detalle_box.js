@@ -4,6 +4,7 @@ let graficoCumplimiento = null;
 let tiposInstrumentos = [];
 let instrumentos = [];
 let tipoActivo = null;
+let userRole = null;
 
 // ========= Performance Optimization Utilities =========
 const performanceUtils = {
@@ -65,6 +66,31 @@ const performanceUtils = {
         this.cache.clear();
     }
 };
+
+// ========= Funciones de Permisos por Rol =========
+function applyRoleRestrictions() {
+    if (!canModifyBookings()) {
+        // Deshabilitar botón de guardar agendamiento
+        const btnGuardar = document.querySelector('[data-action="save-agendamiento"]');
+        if (btnGuardar) {
+            btnGuardar.disabled = true;
+            btnGuardar.classList.add('btn-disabled');
+            btnGuardar.title = 'No tienes permisos para modificar agendamientos';
+        }
+        
+        // Deshabilitar botón de eliminar agendamiento
+        const btnEliminar = document.querySelector('[data-action="delete-agendamiento"]');
+        if (btnEliminar) {
+            btnEliminar.disabled = true;
+            btnEliminar.classList.add('btn-disabled');
+            btnEliminar.title = 'No tienes permisos para eliminar agendamientos';
+        }
+    }
+}
+
+function canModifyBookings() {
+    return userRole !== 'reader';
+}
 
 // ========= Función de pluralización =========
 function pluralize(word) {
@@ -876,6 +902,12 @@ window.cambiarVistaUnificado = function(modo) {
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar nomenclatura
     inicializarNomenclatura();
+    
+    // Inicializar rol de usuario
+    userRole = window.USER_ROLE || null;
+    
+    // Aplicar restricciones de rol
+    applyRoleRestrictions();
 
     // ========= Event Listeners (refactorizado para CSP sin unsafe-inline) =========
     

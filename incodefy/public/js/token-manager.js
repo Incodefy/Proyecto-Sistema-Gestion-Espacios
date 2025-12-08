@@ -194,17 +194,6 @@ class TokenManager {
       this.lastRefresh = Date.now();
       console.log('✅ [Token Manager] Token renovado exitosamente');
 
-      // Mostrar notificación discreta si está disponible
-      if (window.notificationManager && typeof window.notificationManager.show === 'function') {
-        window.notificationManager.show({
-          id: `token-refresh-${Date.now()}`,
-          type: 'success',
-          title: 'Sesión Actualizada',
-          message: 'Tu sesión ha sido renovada automáticamente',
-          duration: 2000
-        });
-      }
-
       // Emitir evento personalizado para que otros componentes sepan que el token se renovó
       const event = new CustomEvent('tokenRefreshed', { 
         detail: { 

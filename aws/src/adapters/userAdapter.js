@@ -26,7 +26,7 @@ const {
   AdminEnableUserCommand,
   AdminDisableUserCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
-const Logger = require("../utils/logger");
+const { createLogger } = require('../utils/logger');
 
 /**
  * Domain Model: User
@@ -128,7 +128,7 @@ class UserAdapter {
   constructor(options = {}) {
     this.cognito = options.cognitoClient || new CognitoIdentityProviderClient({});
     this.userPoolId = options.userPoolId || process.env.USER_POOL_ID;
-    this.logger = options.logger || Logger.create({ component: 'UserAdapter' });
+    this.logger = options.logger || createLogger({ component: 'UserAdapter' });
   }
 
   /**

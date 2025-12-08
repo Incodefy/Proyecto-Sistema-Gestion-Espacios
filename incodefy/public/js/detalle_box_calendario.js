@@ -697,6 +697,15 @@ function abrirModalAgendamiento() {
 }
 
 function abrirModalCrear(fecha, hora) {
+    // Verificar permisos
+    if (!canModifyBookings()) {
+        window.notificationManager.showNotification(
+            'No tienes permisos para crear agendamientos',
+            'warning'
+        );
+        return;
+    }
+    
     calendarioState.editingBooking = null;
     
     document.getElementById('modalAgendamientoTitle').textContent = 'Nueva Agendación';
@@ -729,15 +738,44 @@ function abrirModalEditar(bookingId) {
     
     calendarioState.editingBooking = booking;
     
-    document.getElementById('modalAgendamientoTitle').textContent = 'Editar Agendación';
+    // Determinar si el usuario puede modificar
+    const canModify = canModifyBookings();
+    
+    document.getElementById('modalAgendamientoTitle').textContent = canModify ? 'Editar Agendación' : 'Ver Agendación';
     document.getElementById('agendamientoId').value = booking.id;
     document.getElementById('agendamientoOcupante').value = booking.occupant_id;
     document.getElementById('agendamientoFecha').value = booking.date;
     document.getElementById('agendamientoHoraInicio').value = booking.startTime;
     document.getElementById('agendamientoHoraFin').value = booking.endTime;
     document.getElementById('agendamientoObservaciones').value = booking.observaciones || '';
-    document.getElementById('btnEliminarAgendamiento').classList.remove('d-none');
-    document.getElementById('btnGuardarAgendamiento').innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+    
+    // Deshabilitar inputs si es reader
+    const inputs = [
+        document.getElementById('agendamientoOcupante'),
+        document.getElementById('agendamientoFecha'),
+        document.getElementById('agendamientoHoraInicio'),
+        document.getElementById('agendamientoHoraFin'),
+        document.getElementById('agendamientoObservaciones')
+    ];
+    
+    inputs.forEach(input => {
+        if (input) {
+            input.disabled = !canModify;
+        }
+    });
+    
+    // Ocultar botones de acción si es reader
+    const btnEliminar = document.getElementById('btnEliminarAgendamiento');
+    const btnGuardar = document.getElementById('btnGuardarAgendamiento');
+    
+    if (canModify) {
+        btnEliminar.classList.remove('d-none');
+        btnGuardar.classList.remove('d-none');
+        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+    } else {
+        btnEliminar.classList.add('d-none');
+        btnGuardar.classList.add('d-none');
+    }
     
     document.getElementById('modalAgendamiento').classList.remove('d-none');
 }

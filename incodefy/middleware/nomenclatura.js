@@ -38,48 +38,21 @@ async function nomenclaturaMiddleware(req, res, next) {
       return next();
     }
 
-    // Verificar cache en sesión (dura toda la sesión)
-    if (req.session.nomenclaturaCache && 
-        req.session.nomenclaturaCache.grupoId === grupoId) {
-      res.locals.nomenclatura = req.session.nomenclaturaCache.data;
-      req.nomenclatura = req.session.nomenclaturaCache.data;
-      if (DEBUG) console.log('[Nomenclatura] ✅ Usando cache de sesión');
-      return next();
-    }
-
-    // Si ya está en grupoActivo.nomenclatura, usar directamente
-    if (grupoActivo.nomenclatura) {
-      res.locals.nomenclatura = grupoActivo.nomenclatura;
-      req.nomenclatura = grupoActivo.nomenclatura;
-      
-      // Guardar en cache de sesión
-      req.session.nomenclaturaCache = {
-        grupoId,
-        data: grupoActivo.nomenclatura
-      };
-      
-      if (DEBUG) console.log('[Nomenclatura] ✅ Usando nomenclatura de grupoActivo');
-      return next();
-    }
-
-    // Último recurso: llamar a API (solo si no hay cache)
+    // ⭐ Obtener nomenclatura fresca del grupo (optimizado sin timeout artificial)
     if (req.apiClient) {
-      const grupoResponse = await Promise.race([
-        req.apiClient.obtenerGrupo(grupoId),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-      ]);
-      
-      if (grupoResponse?.ok && grupoResponse.group?.nomenclatura) {
-        res.locals.nomenclatura = grupoResponse.group.nomenclatura;
-        req.nomenclatura = grupoResponse.group.nomenclatura;
+      try {
+        const grupoResponse = await req.apiClient.obtenerGrupo(grupoId);
         
-        // Guardar en cache de sesión
-        req.session.nomenclaturaCache = {
-          grupoId,
-          data: grupoResponse.group.nomenclatura
-        };
-        
-        if (DEBUG) console.log('[Nomenclatura] ✅ Cargado desde API y cacheado');
+        if (grupoResponse?.ok && grupoResponse.group?.nomenclatura) {
+          res.locals.nomenclatura = grupoResponse.group.nomenclatura;
+          req.nomenclatura = grupoResponse.group.nomenclatura;
+          
+          if (DEBUG) console.log('[Nomenclatura] ✅ Cargado fresco desde API:', grupoResponse.group.nomenclatura);
+        } else {
+          if (DEBUG) console.log('[Nomenclatura] ⚠️ No se encontró nomenclatura en el grupo');
+        }
+      } catch (apiError) {
+        if (DEBUG) console.log('[Nomenclatura] ⚠️ Error de API:', apiError.message);
       }
     }
   } catch (error) {

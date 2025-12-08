@@ -1,5 +1,5 @@
 ﻿// aws/src/handlers/especialidades/createEspecialidad.js
-const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const crypto = require("crypto");
 const { Logger } = require("../../utils/logger");
@@ -7,6 +7,7 @@ const { validate } = require("../../utils/validator");
 const { ValidationError } = require("../../utils/errorHandler");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");
+const { notifyEspecialidadCreada } = require("../../utils/notificationHelper");
 
 const createEspecialidad = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'createEspecialidad' });
@@ -45,6 +46,33 @@ const createEspecialidad = async (event) => {
   );
   
   logger.info('Especialidad creada exitosamente', { especialidadId });
+  
+  // Enviar notificación a todos los miembros del grupo
+  try {
+    const membersResult = await retryDB(
+      () => db.send(new QueryCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        KeyConditionExpression: 'group_id = :gid',
+        ExpressionAttributeValues: { ':gid': grupo_id }
+      })),
+      { operation: 'getGroupMembers' }
+    );
+
+    const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+    if (userSubs.length > 0) {
+      await notifyEspecialidadCreada({
+        userSubs,
+        grupoId: grupo_id,
+        createdBy: userSub,
+        especialidadNombre: body.nombre.trim(),
+        tipoEspecialidad: 'Especialidad'
+      });
+      logger.info('Notification sent for especialidad creation', { userSubs: userSubs.length });
+    }
+  } catch (notifError) {
+    logger.warn('Failed to send notification for especialidad creation', notifError);
+  }
   
   return {
     statusCode: 201,

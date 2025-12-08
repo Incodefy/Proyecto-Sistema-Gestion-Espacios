@@ -2,7 +2,6 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const crypto = require("crypto");
 const { notifyMiembroInvitado } = require('../../utils/notificationHelper');
-const { getSecret } = require("../../utils/secretsManager");
 
 // ✅ ANTI-CORRUPTION LAYER: Adaptadores reemplazan llamadas directas a AWS
 const { getUserAdapter, getEmailAdapter } = require("../../adapters");
@@ -18,7 +17,6 @@ const {
 } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
-const { cacheSystemConfig } = require("../../utils/cache");
 
 // Inicializar DynamoDB Client
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -42,16 +40,11 @@ const emailAdapter = getEmailAdapter();
 async function inviteMemberHandler(event, context, logger) {
   logger.info('Processing member invitation');
 
-  // 1️⃣ OBTENER SECRETS Y VALIDAR
-  const secrets = await cacheSystemConfig('appSecrets', async () => {
-    return await getSecret();
-  });
-
   // Extraer parámetros del body (grupo_id viene en body para esta ruta alternativa)
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
   const { grupo_id, email, rol } = body;
 
-  // 2️⃣ VALIDACIÓN CON JSON SCHEMA
+  // VALIDACIÓN CON JSON SCHEMA
   const validationResult = validate('inviteMember', { grupo_id, email, rol }, logger);
   
   if (!validationResult.valid) {
@@ -148,11 +141,11 @@ async function inviteMemberHandler(event, context, logger) {
   // 7️⃣ ENVIAR EMAIL CON EMAILADAPTER (ACL)
   const roleNames = {
     'admin': 'Administrador',
-    'escritor': 'Escritor',
-    'lector': 'Lector'
+    'writer': 'Escritor',
+    'reader': 'Lector'
   };
   const roleName = roleNames[rol] || rol;
-  const acceptLink = `${secrets.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
+  const acceptLink = `${process.env.APP_URL}/aceptar-invitacion?token=${invitationToken}`;
 
   try {
     await logger.traceAsync('sendInvitationEmail', async () => {
@@ -160,7 +153,7 @@ async function inviteMemberHandler(event, context, logger) {
       await emailAdapter.sendGroupInvitation(
         email,
         groupName,
-        userName,
+        userEmail || userName,
         acceptLink
       );
     }, { service: 'EmailAdapter' });

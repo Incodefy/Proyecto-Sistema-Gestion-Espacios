@@ -20,7 +20,7 @@ class CommandBus {
   constructor() {
     this.handlers = new Map();
     this.middleware = [];
-    this.logger = Logger.create({ handler: 'CommandBus' });
+    this.logger = createLogger({ handler: 'CommandBus' });
     this.eventStore = new EventStore(this.logger);
     this.operationStore = getOperationStore(this.logger);
   }

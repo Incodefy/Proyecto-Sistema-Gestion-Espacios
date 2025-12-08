@@ -22,12 +22,12 @@
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { getOutboxStore, OutboxStatus } = require("../utils/outboxStore");
 const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
-const { Logger } = require("../utils/logger");
+const { createLogger } = require("../../utils/logger");
 
 const snsClient = new SNSClient({});
 const EVENT_BUS_TOPIC_ARN = process.env.EVENT_BUS_TOPIC_ARN;
 
-const logger = Logger.create({ handler: 'OutboxProcessor' });
+const logger = createLogger({ handler: 'OutboxProcessor' });
 const outboxStore = getOutboxStore(logger);
 
 /**

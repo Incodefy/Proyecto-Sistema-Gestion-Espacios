@@ -227,6 +227,19 @@ function mapearMensajeANotificacion(message) {
         nombre: message.data?.nombre || message.data?.email || 'Miembro',
         email: message.data?.email
       }
+    },
+    
+    // Nomenclatura
+    'NOMENCLATURA_ACTUALIZADA': {
+      tipo: 'NOMENCLATURA_ACTUALIZADA',
+      categoria: 'CONFIGURACION',
+      mensaje: `Nomenclatura actualizada${message.data?.cambios ? ': ' + formatearCambios(message.data.cambios) : ''}`,
+      prioridad: 'BAJA',
+      detalle: message.data || {},
+      entidad_afectada: {
+        tipo: 'GRUPO',
+        nombre: message.data?.grupo_nombre || 'el grupo'
+      }
     }
   };
 
@@ -239,6 +252,25 @@ function mapearMensajeANotificacion(message) {
     leida: false,
     ...mapping
   };
+}
+
+/**
+ * Formatea los cambios de nomenclatura para el mensaje
+ */
+function formatearCambios(cambios) {
+  if (!cambios || cambios.length === 0) return '';
+  
+  const camposTexto = {
+    general: 'Espacio General',
+    especifico: 'Espacio Específico',
+    ocupante: 'Ocupante',
+    especialidad: 'Especialidad',
+    instrumento: 'Instrumento'
+  };
+  
+  return cambios.map(c => 
+    `${camposTexto[c.campo] || c.campo}`
+  ).join(', ');
 }
 
 /**
@@ -259,7 +291,8 @@ function mostrarToastDesdeWebSocket(message) {
     'MEMBER_ADDED': () => window.notificationManager.showMemberAdded(message.data),
     'MEMBER_MODIFIED': () => window.notificationManager.showMemberModified(message.data),
     'ROLE_CHANGED': () => window.notificationManager.showRoleChanged(message.data),
-    'MEMBER_REMOVED': () => window.notificationManager.showMemberRemoved(message.data)
+    'MEMBER_REMOVED': () => window.notificationManager.showMemberRemoved(message.data),
+    'NOMENCLATURA_ACTUALIZADA': () => window.notificationManager.showNomenclaturaUpdated(message.data)
   };
 
   const handler = typeMap[message.type];

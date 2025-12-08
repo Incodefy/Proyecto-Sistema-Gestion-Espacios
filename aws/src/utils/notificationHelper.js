@@ -23,7 +23,21 @@ const NOTIFICATION_TYPES = {
   MIEMBRO_REMOVIDO: 'MIEMBRO_REMOVIDO',
   
   // Roles
-  ROL_CAMBIADO: 'ROL_CAMBIADO'
+  ROL_CAMBIADO: 'ROL_CAMBIADO',
+  
+  // Recursos
+  OCUPANTE_CREADO: 'OCUPANTE_CREADO',
+  OCUPANTE_MODIFICADO: 'OCUPANTE_MODIFICADO',
+  OCUPANTE_ELIMINADO: 'OCUPANTE_ELIMINADO',
+  ESPECIALIDAD_CREADA: 'ESPECIALIDAD_CREADA',
+  ESPECIALIDAD_MODIFICADA: 'ESPECIALIDAD_MODIFICADA',
+  ESPECIALIDAD_ELIMINADA: 'ESPECIALIDAD_ELIMINADA',
+  TIPO_INSTRUMENTO_CREADO: 'TIPO_INSTRUMENTO_CREADO',
+  TIPO_INSTRUMENTO_MODIFICADO: 'TIPO_INSTRUMENTO_MODIFICADO',
+  TIPO_INSTRUMENTO_ELIMINADO: 'TIPO_INSTRUMENTO_ELIMINADO',
+  INSTRUMENTO_CREADO: 'INSTRUMENTO_CREADO',
+  INSTRUMENTO_MODIFICADO: 'INSTRUMENTO_MODIFICADO',
+  INSTRUMENTO_ELIMINADO: 'INSTRUMENTO_ELIMINADO'
 };
 
 /**
@@ -33,7 +47,8 @@ const NOTIFICATION_CATEGORIES = {
   CONFIGURACION: 'CONFIGURACION',
   ESPACIOS: 'ESPACIOS',
   GRUPO: 'GRUPO',
-  PERMISOS: 'PERMISOS'
+  PERMISOS: 'PERMISOS',
+  RECURSOS: 'RECURSOS'
 };
 
 /**
@@ -531,6 +546,391 @@ async function notifyRolCambiado({
   });
 }
 
+/**
+ * Notifica la creación de un ocupante
+ */
+async function notifyOcupanteCreado({
+  userSubs,
+  grupoId,
+  createdBy,
+  ocupanteNombre,
+  especialidadNombre,
+  tipoOcupante = 'Ocupante'
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.OCUPANTE_CREADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Nuevo ${tipoOcupante.toLowerCase()} agregado: ${ocupanteNombre}`,
+    detalle: {
+      ocupante_nombre: ocupanteNombre,
+      especialidad: especialidadNombre,
+      tipo: tipoOcupante
+    },
+    entidadAfectada: {
+      tipo: 'OCUPANTE',
+      nombre: ocupanteNombre,
+      especialidad: especialidadNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la modificación de un ocupante
+ */
+async function notifyOcupanteModificado({
+  userSubs,
+  grupoId,
+  createdBy,
+  ocupanteNombre,
+  especialidadNombre,
+  cambios = {},
+  tipoOcupante = 'Ocupante'
+}) {
+  let mensajeCambios = '';
+  if (cambios.nombre) {
+    mensajeCambios = ` (nombre cambiado de "${cambios.nombre.old}" a "${cambios.nombre.new}")`;
+  } else if (cambios.especialidad) {
+    mensajeCambios = ` (especialidad cambiada a "${cambios.especialidad.new}")`;
+  }
+
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.OCUPANTE_MODIFICADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `${tipoOcupante} modificado: ${ocupanteNombre}${mensajeCambios}`,
+    detalle: {
+      ocupante_nombre: ocupanteNombre,
+      especialidad: especialidadNombre,
+      cambios,
+      tipo: tipoOcupante
+    },
+    entidadAfectada: {
+      tipo: 'OCUPANTE',
+      nombre: ocupanteNombre,
+      especialidad: especialidadNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la eliminación de un ocupante
+ */
+async function notifyOcupanteEliminado({
+  userSubs,
+  grupoId,
+  createdBy,
+  ocupanteNombre,
+  especialidadNombre,
+  tipoOcupante = 'Ocupante'
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.OCUPANTE_ELIMINADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `${tipoOcupante} eliminado: ${ocupanteNombre}`,
+    detalle: {
+      ocupante_nombre: ocupanteNombre,
+      especialidad: especialidadNombre,
+      tipo: tipoOcupante
+    },
+    entidadAfectada: {
+      tipo: 'OCUPANTE',
+      nombre: ocupanteNombre,
+      especialidad: especialidadNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la creación de una especialidad
+ */
+async function notifyEspecialidadCreada({
+  userSubs,
+  grupoId,
+  createdBy,
+  especialidadNombre,
+  tipoEspecialidad = 'Especialidad'
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.ESPECIALIDAD_CREADA,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Nueva ${tipoEspecialidad.toLowerCase()} creada: ${especialidadNombre}`,
+    detalle: {
+      especialidad_nombre: especialidadNombre,
+      tipo: tipoEspecialidad
+    },
+    entidadAfectada: {
+      tipo: 'ESPECIALIDAD',
+      nombre: especialidadNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la modificación de una especialidad
+ */
+async function notifyEspecialidadModificada({
+  userSubs,
+  grupoId,
+  createdBy,
+  especialidadNombre,
+  nombreAnterior,
+  tipoEspecialidad = 'Especialidad'
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.ESPECIALIDAD_MODIFICADA,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `${tipoEspecialidad} modificada: "${nombreAnterior}" → "${especialidadNombre}"`,
+    detalle: {
+      especialidad_nombre: especialidadNombre,
+      nombre_anterior: nombreAnterior,
+      tipo: tipoEspecialidad
+    },
+    entidadAfectada: {
+      tipo: 'ESPECIALIDAD',
+      nombre: especialidadNombre,
+      nombre_anterior: nombreAnterior
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la eliminación de una especialidad
+ */
+async function notifyEspecialidadEliminada({
+  userSubs,
+  grupoId,
+  createdBy,
+  especialidadNombre,
+  tipoEspecialidad = 'Especialidad'
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.ESPECIALIDAD_ELIMINADA,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `${tipoEspecialidad} eliminada: ${especialidadNombre}`,
+    detalle: {
+      especialidad_nombre: especialidadNombre,
+      tipo: tipoEspecialidad
+    },
+    entidadAfectada: {
+      tipo: 'ESPECIALIDAD',
+      nombre: especialidadNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la creación de un tipo de instrumento
+ */
+async function notifyTipoInstrumentoCreado({
+  userSubs,
+  grupoId,
+  createdBy,
+  tipoNombre
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.TIPO_INSTRUMENTO_CREADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Nuevo tipo de instrumento creado: ${tipoNombre}`,
+    detalle: {
+      tipo_nombre: tipoNombre
+    },
+    entidadAfectada: {
+      tipo: 'TIPO_INSTRUMENTO',
+      nombre: tipoNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la modificación de un tipo de instrumento
+ */
+async function notifyTipoInstrumentoModificado({
+  userSubs,
+  grupoId,
+  createdBy,
+  tipoNombre,
+  nombreAnterior
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.TIPO_INSTRUMENTO_MODIFICADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Tipo de instrumento modificado: "${nombreAnterior}" → "${tipoNombre}"`,
+    detalle: {
+      tipo_nombre: tipoNombre,
+      nombre_anterior: nombreAnterior
+    },
+    entidadAfectada: {
+      tipo: 'TIPO_INSTRUMENTO',
+      nombre: tipoNombre,
+      nombre_anterior: nombreAnterior
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la eliminación de un tipo de instrumento
+ */
+async function notifyTipoInstrumentoEliminado({
+  userSubs,
+  grupoId,
+  createdBy,
+  tipoNombre,
+  instrumentosAfectados = 0
+}) {
+  let mensaje = `Tipo de instrumento eliminado: ${tipoNombre}`;
+  if (instrumentosAfectados > 0) {
+    mensaje += ` (${instrumentosAfectados} instrumentos afectados)`;
+  }
+
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.TIPO_INSTRUMENTO_ELIMINADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje,
+    detalle: {
+      tipo_nombre: tipoNombre,
+      instrumentos_afectados: instrumentosAfectados
+    },
+    entidadAfectada: {
+      tipo: 'TIPO_INSTRUMENTO',
+      nombre: tipoNombre
+    },
+    prioridad: instrumentosAfectados > 0 ? NOTIFICATION_PRIORITIES.NORMAL : NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la creación de un instrumento
+ */
+async function notifyInstrumentoCreado({
+  userSubs,
+  grupoId,
+  createdBy,
+  instrumentoNombre,
+  tipoNombre
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.INSTRUMENTO_CREADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Nuevo instrumento agregado: ${instrumentoNombre} (${tipoNombre})`,
+    detalle: {
+      instrumento_nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre
+    },
+    entidadAfectada: {
+      tipo: 'INSTRUMENTO',
+      nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la modificación de un instrumento
+ */
+async function notifyInstrumentoModificado({
+  userSubs,
+  grupoId,
+  createdBy,
+  instrumentoNombre,
+  tipoNombre,
+  cambios = {}
+}) {
+  let mensajeCambios = '';
+  if (cambios.nombre) {
+    mensajeCambios = ` (nombre: "${cambios.nombre.old}" → "${cambios.nombre.new}")`;
+  } else if (cambios.tipo) {
+    mensajeCambios = ` (tipo: "${cambios.tipo.old}" → "${cambios.tipo.new}")`;
+  }
+
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.INSTRUMENTO_MODIFICADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Instrumento modificado: ${instrumentoNombre}${mensajeCambios}`,
+    detalle: {
+      instrumento_nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre,
+      cambios
+    },
+    entidadAfectada: {
+      tipo: 'INSTRUMENTO',
+      nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
+/**
+ * Notifica la eliminación de un instrumento
+ */
+async function notifyInstrumentoEliminado({
+  userSubs,
+  grupoId,
+  createdBy,
+  instrumentoNombre,
+  tipoNombre
+}) {
+  return await notifyGroupMembers({
+    userSubs,
+    grupoId,
+    createdBy,
+    tipo: NOTIFICATION_TYPES.INSTRUMENTO_ELIMINADO,
+    categoria: NOTIFICATION_CATEGORIES.RECURSOS,
+    mensaje: `Instrumento eliminado: ${instrumentoNombre} (${tipoNombre})`,
+    detalle: {
+      instrumento_nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre
+    },
+    entidadAfectada: {
+      tipo: 'INSTRUMENTO',
+      nombre: instrumentoNombre,
+      tipo_instrumento: tipoNombre
+    },
+    prioridad: NOTIFICATION_PRIORITIES.BAJA
+  });
+}
+
 module.exports = {
   NOTIFICATION_TYPES,
   NOTIFICATION_CATEGORIES,
@@ -547,5 +947,17 @@ module.exports = {
   notifyMiembroInvitado,
   notifyInvitacionAceptada,
   notifyMiembroRemovido,
-  notifyRolCambiado
+  notifyRolCambiado,
+  notifyOcupanteCreado,
+  notifyOcupanteModificado,
+  notifyOcupanteEliminado,
+  notifyEspecialidadCreada,
+  notifyEspecialidadModificada,
+  notifyEspecialidadEliminada,
+  notifyTipoInstrumentoCreado,
+  notifyTipoInstrumentoModificado,
+  notifyTipoInstrumentoEliminado,
+  notifyInstrumentoCreado,
+  notifyInstrumentoModificado,
+  notifyInstrumentoEliminado
 };

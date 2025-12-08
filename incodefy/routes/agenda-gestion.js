@@ -62,6 +62,7 @@ router.get('/agenda/gestion', async (req, res) => {
             currentPath: req.path,
             title: 'Sistema de Agendación',
             groupId: groupId,
+            userRole: req.session.userRole || res.locals.userRole || null,
             personalization: res.locals.personalization || {},
             idToken: req.session.user?.idToken || '',
             wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev',

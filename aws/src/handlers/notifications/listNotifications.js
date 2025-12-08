@@ -3,14 +3,10 @@ const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb"
 const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { createAPIHandler } = require("../../middleware/interceptors");
 
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const NOTIFICATIONS_TABLE = process.env.NOTIFICATIONS_TABLE;
-
-// Cache de 2 minutos para notificaciones (alta frecuencia de consultas)
-const notificationsCache = new Cache({ ttl: 120, maxSize: 1000 });
 
 /**
  * GET /notifications
@@ -27,25 +23,6 @@ const listNotifications = async (event) => {
   const soloNoLeidas = queryParams.solo_no_leidas === 'true';
   
   validate('listNotifications', { userSub, limit });
-  
-  const cacheKey = `notifications:${userSub}:${grupoId || 'all'}:${soloNoLeidas}:${limit}`;
-  const cached = notificationsCache.get(cacheKey);
-  
-  if (cached) {
-    logger.info('Notificaciones obtenidas desde cache', { 
-      count: cached.notifications.length,
-      grupo_id: grupoId,
-      solo_no_leidas: soloNoLeidas
-    });
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ 
-        ok: true,
-        ...cached,
-        cached: true
-      })
-    };
-  }
   
   logger.info('Consultando notificaciones desde DB', { 
     userSub,
@@ -119,8 +96,7 @@ const listNotifications = async (event) => {
     has_more: !!result.LastEvaluatedKey
   };
   
-  notificationsCache.set(cacheKey, response);
-  logger.info('Notificaciones obtenidas y cacheadas', { count: notifications.length });
+  logger.info('Notificaciones obtenidas', { count: notifications.length });
   
   return {
     statusCode: 200,

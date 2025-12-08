@@ -526,6 +526,13 @@ router.get('/espacios/configuracion', requireAuthAPI, async (req, res) => {
       
       console.log('✅ Configuración formateada:', configuracion);
       
+      // Headers para prevenir cache
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
       res.json(configuracion);
       
     } catch (error) {

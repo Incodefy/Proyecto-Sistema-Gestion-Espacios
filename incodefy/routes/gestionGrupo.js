@@ -7,6 +7,43 @@ router.use(requireAuth);
 router.use(attachApiClient);
 
 /**
+ * GET /grupos/:group_id
+ * Proxy para obtener datos frescos del grupo (especialmente nomenclatura)
+ */
+router.get('/grupos/:group_id', async (req, res) => {
+  const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  console.log(`\n=== [Express] GET /grupos/${req.params.group_id} | ${TRACE_ID} ===`);
+
+  try {
+    const { group_id } = req.params;
+    
+    // Llamar directamente al Lambda sin cache de Express
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
+    
+    const grupoResponse = await apiClient.obtenerGrupo(group_id);
+    
+    console.log(`[${TRACE_ID}] ✅ Grupo obtenido fresco desde Lambda`);
+    
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    res.json(grupoResponse);
+
+  } catch (error) {
+    console.error(`[${TRACE_ID}] ❌ Error obteniendo grupo:`, error);
+    res.status(error.response?.status || 500).json({
+      ok: false,
+      error: 'Error obteniendo grupo',
+      trace_id: TRACE_ID
+    });
+  }
+});
+
+/**
  * GET /gestion-grupo
  * Renderiza la página de gestión de grupo
  */
@@ -20,16 +57,17 @@ router.get('/gestion-grupo', async (req, res) => {
     
     console.log(`[${TRACE_ID}] 📦 Grupo activo desde sesión:`, grupoActivo);
     
-    // TODO: Implementar verificación de permisos real
-    // Por ahora, asumimos que si tiene grupo activo, puede gestionarlo
-    const tieneAcceso = !!grupoActivo;
+    // Verificar que el usuario tenga rol de owner o admin
+    const userRole = req.session.userRole || res.locals.userRole || null;
+    console.log(`[${TRACE_ID}] 🔐 Rol del usuario:`, userRole);
     
-    // if (!tieneAcceso) {
-    //   return res.status(403).render('error', {
-    //     message: 'No tienes permisos para gestionar este grupo',
-    //     error: { status: 403 }
-    //   });
-    // }
+    if (userRole !== 'owner' && userRole !== 'admin') {
+      console.log(`[${TRACE_ID}] ❌ Acceso denegado - Rol insuficiente:`, userRole);
+      return res.status(403).render('error', {
+        message: 'No tienes permisos para acceder a la gestión del grupo. Solo los propietarios y administradores pueden gestionar el grupo.',
+        error: { status: 403 }
+      });
+    }
 
     console.log(`[${TRACE_ID}] ✅ Renderizando página de gestión`);
 
@@ -38,6 +76,8 @@ router.get('/gestion-grupo', async (req, res) => {
       i18n: req.i18n || { language: 'es' },
       t: req.t || ((key) => key),
       user: req.session.user || null,
+      userSub: req.session.user?.sub || null,
+      userEmail: req.session.user?.email || null,
       nomenclatura: req.nomenclatura || null,
       currentPath: req.path || '/gestion-grupo',
       grupoActivo,
@@ -86,7 +126,13 @@ router.put('/api/espacios/nomenclatura', async (req, res) => {
     try {
       const response = await req.apiClient.actualizarNomenclaturaGrupo(grupo_id, nomenclatura);
       
-      console.log(`[${TRACE_ID}] ✅ Nomenclatura actualizada`);
+      console.log(`[${TRACE_ID}] ✅ Nomenclatura actualizada exitosamente`);
+      
+      // ⭐ Invalidar cualquier cache de nomenclatura y grupo activo
+      delete req.session.nomenclaturaCache;
+      delete req.session.grupoActivoVerificado;
+      delete req.session.grupoActivo;
+      console.log(`[${TRACE_ID}] 🗑️ Cache de nomenclatura y grupo activo invalidado`);
 
       res.json({
         ok: true,
@@ -268,11 +314,11 @@ router.post('/api/grupos/invitar', async (req, res) => {
     }
 
     // Validar rol
-    const rolesValidos = ['admin', 'editor', 'viewer'];
+    const rolesValidos = ['admin', 'writer', 'reader'];
     if (!rolesValidos.includes(rol)) {
       return res.status(400).json({
         ok: false,
-        error: 'Rol inválido',
+        error: 'Rol inválido. Los valores permitidos son: admin, writer, reader',
         trace_id: TRACE_ID
       });
     }
@@ -319,6 +365,11 @@ router.get('/api/grupos/:id/miembros', async (req, res) => {
 
     console.log(`[${TRACE_ID}] ✅ Miembros obtenidos`);
 
+    // Deshabilitar cache para que siempre se obtengan datos frescos
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     res.json({
       ok: true,
       miembros: response.miembros || [],
@@ -349,6 +400,9 @@ router.put('/api/grupos/miembro/:id/rol', async (req, res) => {
   try {
     const { rol, grupo_id } = req.body;
 
+    console.log(`[${TRACE_ID}] 🔍 DEBUG - Body recibido:`, req.body);
+    console.log(`[${TRACE_ID}] 🔍 DEBUG - Rol extraído: "${rol}"`);
+
     if (!rol) {
       return res.status(400).json({
         ok: false,
@@ -357,11 +411,12 @@ router.put('/api/grupos/miembro/:id/rol', async (req, res) => {
       });
     }
 
-    const rolesValidos = ['admin', 'editor', 'viewer'];
+    const rolesValidos = ['admin', 'writer', 'reader'];
     if (!rolesValidos.includes(rol)) {
+      console.log(`[${TRACE_ID}] ❌ Rol inválido recibido: "${rol}". Válidos: ${rolesValidos.join(', ')}`);
       return res.status(400).json({
         ok: false,
-        error: 'Rol inválido',
+        error: `Rol inválido. Valores permitidos: ${rolesValidos.join(', ')}`,
         trace_id: TRACE_ID
       });
     }

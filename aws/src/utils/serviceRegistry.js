@@ -31,7 +31,7 @@ const ServiceStatus = {
  */
 class ServiceRegistry {
   constructor(config = {}) {
-    this.logger = Logger.create({ handler: 'ServiceRegistry' });
+    this.logger = createLogger({ handler: 'ServiceRegistry' });
     this.config = {
       healthCheckInterval: config.healthCheckInterval || 60000, // 1 minute
       healthCheckTimeout: config.healthCheckTimeout || 5000,

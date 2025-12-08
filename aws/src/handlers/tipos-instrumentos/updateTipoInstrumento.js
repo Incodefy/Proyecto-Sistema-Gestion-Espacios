@@ -1,17 +1,19 @@
 ﻿// aws/src/handlers/tipos-instrumentos/updateTipoInstrumento.js
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { NotFoundError } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
+const { notifyTipoInstrumentoModificado } = require("../../utils/notificationHelper");
 
 const updateTipoInstrumento = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'updateTipoInstrumento' });
   const body = JSON.parse(event.body || "{}");
   const grupo_id = event.pathParameters?.grupo_id;
   const tipoId = event.pathParameters?.id;
+  const userSub = event.requestContext.authorizer.jwt.claims.sub;
   
   validate('updateTipoInstrumento', { ...body, grupo_id, id: tipoId });
   
@@ -25,6 +27,7 @@ const updateTipoInstrumento = async (event) => {
   
   if (!getResult.Item) throw new NotFoundError('Tipo de instrumento no encontrado');
   
+  const nombreAnterior = getResult.Item.nombre;
   const now = new Date().toISOString();
   
   await retryDB(
@@ -41,6 +44,35 @@ const updateTipoInstrumento = async (event) => {
   );
   
   logger.info('Tipo de instrumento actualizado', { tipoId });
+  
+  // Enviar notificación solo si el nombre cambió
+  if (nombreAnterior !== body.nombre.trim()) {
+    try {
+      const membersResult = await retryDB(
+        () => db.send(new QueryCommand({
+          TableName: process.env.GROUP_MEMBERS_TABLE,
+          KeyConditionExpression: 'group_id = :gid',
+          ExpressionAttributeValues: { ':gid': grupo_id }
+        })),
+        { operation: 'getGroupMembers' }
+      );
+
+      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+      if (userSubs.length > 0) {
+        await notifyTipoInstrumentoModificado({
+          userSubs,
+          grupoId: grupo_id,
+          createdBy: userSub,
+          tipoNombre: body.nombre.trim(),
+          nombreAnterior
+        });
+        logger.info('Notification sent for tipo instrumento update');
+      }
+    } catch (notifError) {
+      logger.warn('Failed to send notification for tipo instrumento update', notifError);
+    }
+  }
   
   return {
     statusCode: 200,

@@ -53,9 +53,9 @@ const verifyInvitation = async (event) => {
         email: invitation.invited_email,
         role: invitation.role,
         group_id: invitation.group_id,
-        group_name: groupResult.Item?.name || 'sin nombre',
+        group_name: groupResult.Item?.nombre || groupResult.Item?.name || 'Grupo sin nombre',
         invited_by: invitation.invited_by,
-        sent_at: invitation.sent_at
+        created_at: invitation.sent_at || invitation.created_at
       }
     })
   };

@@ -6,7 +6,7 @@
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { retryDB } = require("./retry");
-const { Logger } = require("./logger");
+const { Logger, createLogger } = require("./logger");
 const { encryptPII } = require("./encryption");
 
 const client = new DynamoDBClient({});
@@ -18,7 +18,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 class Projection {
   constructor(readModelTable, logger) {
     this.readModelTable = readModelTable;
-    this.logger = logger || Logger.create({ handler: 'Projection' });
+    this.logger = logger || createLogger({ handler: 'Projection' });
   }
 
   /**
@@ -263,7 +263,7 @@ class GroupsProjection extends Projection {
 class ProjectionManager {
   constructor() {
     this.projections = new Map();
-    this.logger = Logger.create({ handler: 'ProjectionManager' });
+    this.logger = createLogger({ handler: 'ProjectionManager' });
   }
 
   registerProjection(aggregateType, projection) {

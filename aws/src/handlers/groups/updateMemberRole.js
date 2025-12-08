@@ -33,7 +33,7 @@ async function updateMemberRoleHandler(event, context, logger) {
     throw new ValidationError('Invalid role data', { errors: result.errors });
   }
   
-  const { rol } = result.data;
+  const { new_role: rol } = result.data;
   
   if (!grupoId) {
     throw new ValidationError('grupo_id es requerido');

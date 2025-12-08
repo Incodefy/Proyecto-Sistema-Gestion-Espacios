@@ -24,7 +24,7 @@
  */
 
 const { SESClient, SendEmailCommand, SendRawEmailCommand } = require("@aws-sdk/client-ses");
-const Logger = require("../utils/logger");
+const { createLogger } = require('../utils/logger');
 
 /**
  * Domain Model: Email
@@ -153,7 +153,7 @@ class EmailAdapter {
     this.sesClient = options.sesClient || new SESClient({});
     
     this.fromEmail = options.fromEmail || process.env.SES_FROM_EMAIL || 'noreply@incodefy.com';
-    this.logger = options.logger || Logger.create({ component: 'EmailAdapter' });
+    this.logger = options.logger || createLogger({ component: 'EmailAdapter' });
   }
 
   /**
@@ -179,13 +179,8 @@ class EmailAdapter {
         isHtml: email.isHtml 
       });
 
-      // ✅ Decidir si usar Ambassador o SES directo
-      let result;
-      if (this.useAmbassador) {
-        result = await this._sendViaAmbassador(email);
-      } else {
-        result = await this._sendViaSES(email);
-      }
+      // ✅ Enviar directamente via SES
+      const result = await this._sendViaSES(email);
 
       this.logger.info('Email sent successfully', { 
         messageId: result.messageId,
@@ -335,53 +330,7 @@ class EmailAdapter {
   // ========== INTERNAL METHODS ==========
 
   /**
-   * Envía email directamente via SES
-   */
-  async _sendViaAmbassador(email) {
-    const command = new SendEmailCommand({
-      Source: email.from,
-      Destination: {
-        ToAddresses: email.to,
-        CcAddresses: email.cc,
-        BccAddresses: email.bcc
-      },
-      Message: {
-        Subject: {
-          Data: email.subject,
-          Charset: 'UTF-8'
-        },
-        Body: email.isHtml ? {
-          Html: {
-            Data: email.body,
-            Charset: 'UTF-8'
-          }
-        } : {
-          Text: {
-            Data: email.body,
-            Charset: 'UTF-8'
-          }
-        }
-      },
-      ReplyToAddresses: email.replyTo
-    });
-
-    const result = await this.sesClient.send(command);
-
-    // ✅ Traducción: SES response → Domain EmailResult
-    return new EmailResult({
-      messageId: result.MessageId,
-      status: 'SENT',
-      provider: 'ses',
-      sentAt: new Date().toISOString(),
-      recipient: email.to.join(', '),
-      metadata: {
-        requestId: result.$metadata?.requestId
-      }
-    });
-  }
-
-  /**
-   * Envía email via SES directo (sin Ambassador)
+   * Envía email via SES
    */
   async _sendViaSES(email) {
     const command = new SendEmailCommand({
@@ -410,7 +359,6 @@ class EmailAdapter {
       sentAt: new Date().toISOString(),
       recipient: email.to.join(', '),
       metadata: {
-        ambassador: false,
         requestId: result.$metadata?.requestId
       }
     });
@@ -447,7 +395,7 @@ class EmailAdapter {
   _renderTemplate(templateName, variables) {
     // Templates predefinidos (en producción, cargar desde archivos o S3)
     const templates = {
-      welcome: `
+      'welcome': `
         <!DOCTYPE html>
         <html>
           <head><style>body { font-family: Arial, sans-serif; }</style></head>
@@ -460,13 +408,153 @@ class EmailAdapter {
       `,
       'group-invitation': `
         <!DOCTYPE html>
-        <html>
-          <head><style>body { font-family: Arial, sans-serif; }</style></head>
-          <body>
-            <h1>Invitación al grupo: {{groupName}}</h1>
-            <p>{{inviterName}} te ha invitado a unirte al grupo.</p>
-            <p><a href="{{invitationLink}}">Aceptar invitación</a></p>
-          </body>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              background-color: #f5f5f5;
+              padding: 40px 20px;
+              line-height: 1.6;
+            }
+            .email-container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            }
+            .header {
+              background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .header h1 {
+              color: #ffffff;
+              font-size: 24px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              letter-spacing: -0.5px;
+            }
+            .header p {
+              color: rgba(255, 255, 255, 0.8);
+              font-size: 14px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .invitation-box {
+              background-color: #fafafa;
+              border-left: 4px solid #1a1a1a;
+              border-radius: 8px;
+              padding: 24px;
+              margin-bottom: 32px;
+            }
+            .invitation-box p {
+              color: #2c2c2c;
+              font-size: 16px;
+              margin-bottom: 12px;
+            }
+            .invitation-box .group-name {
+              font-weight: 600;
+              color: #1a1a1a;
+              font-size: 18px;
+            }
+            .invitation-box .inviter {
+              color: #64748b;
+              font-size: 14px;
+            }
+            .invitation-box .inviter strong {
+              color: #1a1a1a;
+              font-weight: 600;
+            }
+            .cta-button {
+              display: inline-block;
+              background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+              color: #ffffff;
+              text-decoration: none;
+              padding: 16px 40px;
+              border-radius: 8px;
+              font-weight: 600;
+              font-size: 16px;
+              text-align: center;
+              transition: transform 0.2s, box-shadow 0.2s;
+              box-shadow: 0 4px 12px rgba(26, 26, 26, 0.2);
+            }
+            .cta-button:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 6px 20px rgba(26, 26, 26, 0.3);
+            }
+            .button-container {
+              text-align: center;
+              margin-bottom: 32px;
+            }
+            .info-text {
+              color: #64748b;
+              font-size: 14px;
+              text-align: center;
+              margin-top: 24px;
+              padding-top: 24px;
+              border-top: 1px solid #e5e5e5;
+            }
+            .footer {
+              background-color: #fafafa;
+              padding: 24px 30px;
+              text-align: center;
+              border-top: 1px solid #e5e5e5;
+            }
+            .footer p {
+              color: #a3a3a3;
+              font-size: 13px;
+              margin-bottom: 8px;
+            }
+            .footer a {
+              color: #1a1a1a;
+              text-decoration: none;
+              font-weight: 500;
+            }
+            @media only screen and (max-width: 600px) {
+              .email-container { border-radius: 0; }
+              .header { padding: 30px 20px; }
+              .content { padding: 30px 20px; }
+              .invitation-box { padding: 20px; }
+              .cta-button { display: block; width: 100%; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="header">
+              <h1>Invitación a Grupo</h1>
+              <p>Has sido invitado a colaborar</p>
+            </div>
+            
+            <div class="content">
+              <div class="invitation-box">
+                <p class="group-name">{{groupName}}</p>
+                <p class="inviter">Invitado por: <strong>{{inviterName}}</strong></p>
+              </div>
+              
+              <div class="button-container">
+                <a href="{{invitationLink}}" class="cta-button">Aceptar Invitación</a>
+              </div>
+              
+              <p class="info-text">
+                Al aceptar esta invitación, tendrás acceso al grupo y podrás colaborar con el equipo.
+              </p>
+            </div>
+            
+            <div class="footer">
+              <p>Este correo fue enviado desde <strong>Incodefy</strong></p>
+              <p>Si no solicitaste esta invitación, puedes ignorar este correo.</p>
+              <p><a href="{{appUrl}}">Visitar plataforma</a></p>
+            </div>
+          </div>
+        </body>
         </html>
       `,
       'appointment-confirmation': `
@@ -541,7 +629,6 @@ class EmailAdapter {
     return {
       provider: 'ses',
       fromEmail: this.fromEmail,
-      useAmbassador: this.useAmbassador,
       timestamp: new Date().toISOString()
     };
   }

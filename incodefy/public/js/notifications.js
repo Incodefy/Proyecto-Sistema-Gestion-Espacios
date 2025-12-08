@@ -392,6 +392,35 @@ class NotificationManager {
   }
 
   /**
+   * Muestra notificación de nomenclatura actualizada
+   */
+  showNomenclaturaUpdated(data) {
+    if (!this.shouldShowNotification('configuration', 'NOMENCLATURA_ACTUALIZADA')) return;
+    
+    let message = 'La nomenclatura del grupo ha sido actualizada';
+    if (data.cambios && data.cambios.length > 0) {
+      const camposTexto = {
+        general: 'Espacio General',
+        especifico: 'Espacio Específico',
+        ocupante: 'Ocupante',
+        especialidad: 'Especialidad',
+        instrumento: 'Instrumento'
+      };
+      
+      const cambiosTexto = data.cambios.map(c => camposTexto[c.campo] || c.campo).join(', ');
+      message = `Nomenclatura actualizada: ${cambiosTexto}`;
+    }
+    
+    this.show({
+      id: `nomenclatura-updated-${Date.now()}`,
+      title: 'Nomenclatura actualizada',
+      message: message,
+      type: 'info',
+      duration: 6000
+    });
+  }
+
+  /**
    * Muestra notificación genérica desde WebSocket
    */
   showFromWebSocket(notification) {

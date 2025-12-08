@@ -5,6 +5,8 @@ const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").
 const { Logger } = require("../../utils/logger");
 const { ValidationError, NotFoundError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
+const { notifyNomenclaturaActualizada } = require("../../utils/notificationHelper");
+const { retryDB } = require("../../utils/retry");
 
 /**
  * PUT /grupos/{groupId}/nomenclatura
@@ -91,6 +93,34 @@ async function updateNomenclaturaHandler(event, context, logger) {
   }));
 
   logger.info('Nomenclatura updated successfully');
+
+  // Notificar a todos los miembros del grupo
+  try {
+    const membersResult = await retryDB(
+      () => db.send(new QueryCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        KeyConditionExpression: 'group_id = :gid',
+        ExpressionAttributeValues: { ':gid': groupId }
+      })),
+      { operation: 'getGroupMembers' }
+    );
+    
+    const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+    
+    if (userSubs.length > 0) {
+      await notifyNomenclaturaActualizada({
+        userSubs,
+        grupoId: groupId,
+        createdBy: userSub,
+        cambios,
+        grupoNombre: currentGroup.Item.nombre || 'el grupo'
+      });
+      logger.info('Notificaciones de nomenclatura enviadas', { recipients: userSubs.length });
+    }
+  } catch (notifError) {
+    logger.warn('Error enviando notificaciones', { error: notifError.message });
+    // No fallar la operación si falla la notificación
+  }
 
   return successResponse({
     ok: true,

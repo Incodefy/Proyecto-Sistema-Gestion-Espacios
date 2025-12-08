@@ -342,8 +342,9 @@ router.post('/login', async (req, res) => {
 router.get('/logout', (req, res) => {
   console.log('📤 Usuario cerrando sesión:', req.session.user?.email);
   
-  // Guardar email para log antes de destruir sesión
+  // Guardar email y redirect para log antes de destruir sesión
   const userEmail = req.session.user?.email;
+  const redirectUrl = req.query.redirect || '/login?logout=true';
   
   // Destruir sesión del servidor
   req.session.destroy((err) => {
@@ -366,8 +367,8 @@ router.get('/logout', (req, res) => {
       'Clear-Site-Data': '"cache", "cookies", "storage"' // HTML5 API para limpiar todo
     });
     
-    // Redirigir al login con mensaje
-    res.redirect('/login?logout=true');
+    // Redirigir a la URL especificada o al login
+    res.redirect(redirectUrl);
   });
 });
 

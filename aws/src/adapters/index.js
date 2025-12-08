@@ -19,13 +19,13 @@
 const { getUserAdapter, UserAdapter } = require('./userAdapter');
 const { getEmailAdapter, EmailAdapter } = require('./emailAdapter');
 const { getAuthAdapter, AuthAdapter } = require('./authAdapter');
-const Logger = require('../utils/logger');
+const { createLogger } = require('../utils/logger');
 
 class AdapterRegistry {
   constructor(config = {}) {
     this.config = config;
     this.adapters = new Map();
-    this.logger = config.logger || Logger.create({ component: 'AdapterRegistry' });
+    this.logger = config.logger || createLogger({ component: 'AdapterRegistry' });
     this.logger.debug('Adapter registry initialized');
   }
 
@@ -56,8 +56,6 @@ class AdapterRegistry {
       const adapter = getEmailAdapter({
         fromEmail: this.config.fromEmail || process.env.SES_FROM_EMAIL,
         sesClient: this.config.sesClient,
-        ambassador: this.config.ambassador,
-        useAmbassador: this.config.useAmbassador !== false,
         logger: this.logger.child({ adapter: 'email' })
       });
       this.adapters.set('email', adapter);

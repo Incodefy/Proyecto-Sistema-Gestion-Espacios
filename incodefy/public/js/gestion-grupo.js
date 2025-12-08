@@ -1,8 +1,358 @@
 // public/js/gestion-grupo.js
 
+// ============= MODAL MANAGER =============
+class ModalManager {
+  constructor() {
+    this.createModalContainer();
+  }
+
+  createModalContainer() {
+    if (!document.getElementById('modal-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-overlay';
+      overlay.className = 'modal-overlay';
+      document.body.appendChild(overlay);
+    }
+  }
+
+  async confirm(options) {
+    const {
+      title = '¿Confirmar acción?',
+      message = '¿Estás seguro de continuar?',
+      confirmText = 'Confirmar',
+      cancelText = 'Cancelar',
+      type = 'danger' // 'danger', 'warning', 'info'
+    } = options;
+
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('modal-overlay');
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal fade show';
+      modal.style.display = 'block';
+      
+      const iconMap = {
+        danger: 'fa-exclamation-triangle',
+        warning: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
+      };
+      
+      modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header ${type}">
+              <h5 class="modal-title ${type === 'danger' ? 'text-danger' : ''}">
+                <i class="fas ${iconMap[type]}"></i>
+                ${title}
+              </h5>
+              <button type="button" class="btn-close" data-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p>${message}</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary cancel-btn">
+                <i class="fas fa-times"></i>
+                ${cancelText}
+              </button>
+              <button type="button" class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'} confirm-btn">
+                <i class="fas fa-check"></i>
+                ${confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const handleClose = (confirmed) => {
+        modal.classList.remove('show');
+        overlay.classList.remove('show');
+        setTimeout(() => {
+          modal.remove();
+          overlay.innerHTML = '';
+        }, 200);
+        resolve(confirmed);
+      };
+
+      modal.querySelector('.btn-close').addEventListener('click', () => handleClose(false));
+      modal.querySelector('.cancel-btn').addEventListener('click', () => handleClose(false));
+      modal.querySelector('.confirm-btn').addEventListener('click', () => handleClose(true));
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) handleClose(false);
+      });
+
+      overlay.appendChild(modal);
+      overlay.classList.add('show');
+      setTimeout(() => modal.classList.add('show'), 10);
+    });
+  }
+
+  async prompt(options) {
+    const {
+      title = 'Ingrese un valor',
+      message = '',
+      placeholder = '',
+      defaultValue = '',
+      confirmText = 'Guardar',
+      cancelText = 'Cancelar',
+      inputType = 'text',
+      required = true
+    } = options;
+
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('modal-overlay');
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal fade show';
+      modal.style.display = 'block';
+      
+      modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="fas fa-edit"></i>
+                ${title}
+              </h5>
+              <button type="button" class="btn-close" data-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              ${message ? `<p class="modal-message">${message}</p>` : ''}
+              <div class="form-group">
+                <input 
+                  type="${inputType}" 
+                  class="form-input modal-input" 
+                  placeholder="${placeholder}"
+                  value="${defaultValue}"
+                  ${required ? 'required' : ''}
+                />
+                <span class="input-error" style="display: none;">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Este campo es requerido
+                </span>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary cancel-btn">
+                <i class="fas fa-times"></i>
+                ${cancelText}
+              </button>
+              <button type="button" class="btn btn-primary confirm-btn">
+                <i class="fas fa-save"></i>
+                ${confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const input = modal.querySelector('.modal-input');
+      const errorSpan = modal.querySelector('.input-error');
+      
+      const handleClose = (value) => {
+        modal.classList.remove('show');
+        overlay.classList.remove('show');
+        setTimeout(() => {
+          modal.remove();
+          overlay.innerHTML = '';
+        }, 200);
+        resolve(value);
+      };
+
+      const handleConfirm = () => {
+        const value = input.value.trim();
+        if (required && !value) {
+          errorSpan.style.display = 'flex';
+          input.classList.add('error');
+          return;
+        }
+        handleClose(value);
+      };
+
+      input.addEventListener('input', () => {
+        errorSpan.style.display = 'none';
+        input.classList.remove('error');
+      });
+
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleConfirm();
+      });
+
+      modal.querySelector('.btn-close').addEventListener('click', () => handleClose(null));
+      modal.querySelector('.cancel-btn').addEventListener('click', () => handleClose(null));
+      modal.querySelector('.confirm-btn').addEventListener('click', handleConfirm);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) handleClose(null);
+      });
+
+      overlay.appendChild(modal);
+      overlay.classList.add('show');
+      setTimeout(() => {
+        modal.classList.add('show');
+        input.focus();
+      }, 10);
+    });
+  }
+
+  async editOcupante(options) {
+    const {
+      title = 'Editar Ocupante',
+      nombreActual = '',
+      especialidadActual = '',
+      especialidades = [],
+      nombreLabel = 'Nombre',
+      especialidadLabel = 'Especialidad',
+      confirmText = 'Actualizar',
+      cancelText = 'Cancelar'
+    } = options;
+
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('modal-overlay');
+      
+      const modal = document.createElement('div');
+      modal.className = 'modal fade show';
+      modal.style.display = 'block';
+      
+      const especialidadesOptions = especialidades.map(esp => 
+        `<option value="${esp.id}" ${esp.id === especialidadActual ? 'selected' : ''}>${esp.nombre}</option>`
+      ).join('');
+      
+      modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="fas fa-user-edit"></i>
+                ${title}
+              </h5>
+              <button type="button" class="btn-close" data-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-user"></i>
+                  ${nombreLabel}
+                </label>
+                <input 
+                  type="text" 
+                  class="form-input" 
+                  id="modal-ocupante-nombre"
+                  placeholder="Ingrese el nombre completo"
+                  value="${nombreActual}"
+                  required
+                />
+                <span class="input-error" id="error-nombre" style="display: none;">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Este campo es requerido
+                </span>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-briefcase"></i>
+                  ${especialidadLabel}
+                </label>
+                <select class="form-select" id="modal-ocupante-especialidad" required>
+                  <option value="">Seleccione una especialidad</option>
+                  ${especialidadesOptions}
+                </select>
+                <span class="input-error" id="error-especialidad" style="display: none;">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Debe seleccionar una especialidad
+                </span>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary cancel-btn">
+                <i class="fas fa-times"></i>
+                ${cancelText}
+              </button>
+              <button type="button" class="btn btn-primary confirm-btn">
+                <i class="fas fa-check-circle"></i>
+                ${confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const nombreInput = modal.querySelector('#modal-ocupante-nombre');
+      const especialidadSelect = modal.querySelector('#modal-ocupante-especialidad');
+      const errorNombre = modal.querySelector('#error-nombre');
+      const errorEspecialidad = modal.querySelector('#error-especialidad');
+      
+      const handleClose = (result) => {
+        modal.classList.remove('show');
+        overlay.classList.remove('show');
+        setTimeout(() => {
+          modal.remove();
+          overlay.innerHTML = '';
+        }, 200);
+        resolve(result);
+      };
+
+      const handleConfirm = () => {
+        const nombre = nombreInput.value.trim();
+        const especialidadId = especialidadSelect.value;
+        
+        let hasError = false;
+        
+        if (!nombre) {
+          errorNombre.style.display = 'flex';
+          nombreInput.classList.add('error');
+          hasError = true;
+        }
+        
+        if (!especialidadId) {
+          errorEspecialidad.style.display = 'flex';
+          especialidadSelect.classList.add('error');
+          hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        handleClose({ nombre, especialidadId });
+      };
+
+      nombreInput.addEventListener('input', () => {
+        errorNombre.style.display = 'none';
+        nombreInput.classList.remove('error');
+      });
+
+      especialidadSelect.addEventListener('change', () => {
+        errorEspecialidad.style.display = 'none';
+        especialidadSelect.classList.remove('error');
+      });
+
+      nombreInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleConfirm();
+      });
+
+      modal.querySelector('.btn-close').addEventListener('click', () => handleClose(null));
+      modal.querySelector('.cancel-btn').addEventListener('click', () => handleClose(null));
+      modal.querySelector('.confirm-btn').addEventListener('click', handleConfirm);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) handleClose(null);
+      });
+
+      overlay.appendChild(modal);
+      overlay.classList.add('show');
+      setTimeout(() => {
+        modal.classList.add('show');
+        nombreInput.focus();
+      }, 10);
+    });
+  }
+}
+
+// ============= GESTION GRUPO =============
 class GestionGrupo {
   constructor() {
     this.grupoId = null;
+    this.currentUserSub = window.currentUserSub || null;
+    this.currentUserEmail = window.currentUserEmail || null;
+    this.currentUserRole = null; // Se obtiene al cargar miembros
+    this.modalManager = new ModalManager();
     this.nomenclatura = {
       general: '',
       especifico: '',
@@ -89,41 +439,92 @@ class GestionGrupo {
     if (!this.grupoId) return;
     
     try {
-      // Primero intentar usar los datos pasados desde el backend
+      // ⭐ ESTRATEGIA HÍBRIDA: Usar valores iniciales del servidor para carga instantánea
+      // y hacer petición en background para verificar actualizaciones
+      
+      // 1. Cargar valores iniciales inmediatamente (si existen)
       if (window.nomenclaturaInicial) {
         this.nomenclatura = window.nomenclaturaInicial;
-        console.log('✅ Nomenclatura cargada desde backend:', this.nomenclatura);
-      } else {
-        // Si no hay datos del backend, hacer request
-        const response = await fetch(`/api/espacios/configuracion?grupo_id=${this.grupoId}`);
-        const data = await response.json();
+        console.log('⚡ Nomenclatura inicial cargada (instantáneo):', this.nomenclatura);
         
-        console.log('📥 Respuesta de configuración:', data);
-        
-        if (data.ok && data.configuracion) {
-          this.nomenclatura = data.configuracion;
-          console.log('✅ Nomenclatura cargada:', this.nomenclatura);
-        } else {
-          // Valores por defecto si no hay nomenclatura
-          this.nomenclatura = { general: 'Pasillo', especifico: 'Box', ocupante: 'Médico', especialidad: 'Especialidad' };
-          console.log('⚠️ Usando nomenclatura por defecto');
-        }
+        // Actualizar UI inmediatamente con valores iniciales
+        this.updateInputsFromNomenclatura();
+        this.updateDynamicTexts();
       }
       
-      // Actualizar inputs
-      document.getElementById('nombreGeneral').value = this.nomenclatura.general || '';
-      document.getElementById('nombreEspecifico').value = this.nomenclatura.especifico || '';
-      document.getElementById('nombreOcupante').value = this.nomenclatura.ocupante || '';
-      document.getElementById('nombreEspecialidad').value = this.nomenclatura.especialidad || '';
+      // 2. Hacer petición en paralelo para verificar si hay actualizaciones
+      // (solo si la página se cargó hace más de 5 segundos o no hay valores iniciales)
+      const pageLoadTime = window.pageLoadTimestamp || Date.now();
+      const timeSinceLoad = Date.now() - pageLoadTime;
       
-      // Actualizar textos dinámicos
-      this.updateDynamicTexts();
+      if (!window.nomenclaturaInicial || timeSinceLoad > 5000) {
+        console.log('🔍 Verificando actualizaciones de nomenclatura...');
+        
+        const response = await fetch(`/grupos/${this.grupoId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.ok && data.group?.nomenclatura) {
+            // Solo actualizar si los valores cambiaron
+            const hasChanged = JSON.stringify(this.nomenclatura) !== JSON.stringify(data.group.nomenclatura);
+            
+            if (hasChanged) {
+              this.nomenclatura = data.group.nomenclatura;
+              console.log('✅ Nomenclatura actualizada desde API:', this.nomenclatura);
+              
+              // Actualizar UI con nuevos valores
+              this.updateInputsFromNomenclatura();
+              this.updateDynamicTexts();
+            } else {
+              console.log('✅ Nomenclatura está actualizada (sin cambios)');
+            }
+          }
+        }
+      } else {
+        console.log('⚡ Usando valores iniciales (página recién cargada)');
+      }
+      
+      // Si no hay valores iniciales ni de API, usar defaults
+      if (!this.nomenclatura) {
+        this.nomenclatura = { general: 'Pasillo', especifico: 'Box', ocupante: 'Médico', especialidad: 'Especialidad' };
+        console.log('⚠️ Usando nomenclatura por defecto');
+        this.updateInputsFromNomenclatura();
+        this.updateDynamicTexts();
+      }
     } catch (error) {
       console.error('❌ Error cargando nomenclatura:', error);
       // Usar valores por defecto en caso de error
       this.nomenclatura = { general: 'Pasillo', especifico: 'Box', ocupante: 'Médico', especialidad: 'Especialidad' };
+      this.updateInputsFromNomenclatura();
       this.updateDynamicTexts();
     }
+  }
+
+  // Método auxiliar para actualizar inputs desde nomenclatura (evita duplicación de código)
+  updateInputsFromNomenclatura() {
+    if (!this.nomenclatura) return;
+    
+    const inputs = {
+      nombreGeneral: this.nomenclatura.general || '',
+      nombreEspecifico: this.nomenclatura.especifico || '',
+      nombreOcupante: this.nomenclatura.ocupante || '',
+      nombreEspecialidad: this.nomenclatura.especialidad || ''
+    };
+    
+    Object.entries(inputs).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.value = value;
+    });
   }
 
   async cargarEspacios() {
@@ -174,22 +575,57 @@ class GestionGrupo {
     }
     
     try {
-      const response = await fetch(`/api/grupos/${this.grupoId}/miembros`);
+      const response = await fetch(`/api/grupos/${this.grupoId}/miembros`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await response.json();
       
       if (data.ok && data.miembros && Array.isArray(data.miembros)) {
         this.miembros = data.miembros;
         console.log('✅ Miembros cargados:', this.miembros.length);
+        
+        // Detectar el rol del usuario actual
+        const currentMember = this.miembros.find(m => 
+          (m.user_sub === this.currentUserSub) || 
+          (m.email === this.currentUserEmail) ||
+          (m.user_email === this.currentUserEmail)
+        );
+        
+        if (currentMember) {
+          this.currentUserRole = currentMember.role || currentMember.rol;
+          console.log('👤 Rol del usuario actual:', this.currentUserRole);
+        }
       } else {
         console.log('⚠️ No hay miembros o endpoint no disponible');
         this.miembros = [];
       }
+      
+      // Ajustar opciones de invitación según el rol del usuario
+      this.ajustarOpcionesInvitacion();
+      
       this.renderMiembros();
     } catch (error) {
       console.error('❌ Error cargando miembros:', error);
       // En caso de error, mostrar lista vacía
       this.miembros = [];
       this.renderMiembros();
+    }
+  }
+
+  ajustarOpcionesInvitacion() {
+    const inviteRoleSelect = document.getElementById('inviteRole');
+    if (!inviteRoleSelect) return;
+
+    // Si es admin, remover la opción de administrador
+    if (this.currentUserRole === 'admin') {
+      const adminOption = inviteRoleSelect.querySelector('option[value="admin"]');
+      if (adminOption) {
+        adminOption.remove();
+      }
+      console.log('🔒 Admin: Solo puede invitar como writer o reader');
     }
   }
 
@@ -304,8 +740,9 @@ class GestionGrupo {
         option.classList.add('selected');
         this.selectedNewRole = option.dataset.role;
         
-        // Habilitar botón solo si es diferente al rol actual
-        if (this.currentMemberToEdit && this.selectedNewRole !== this.currentMemberToEdit.role) {
+        // Habilitar botón solo si es diferente al rol actual (buscar tanto 'role' como 'rol')
+        const rolActual = this.currentMemberToEdit?.role || this.currentMemberToEdit?.rol;
+        if (this.currentMemberToEdit && this.selectedNewRole !== rolActual) {
           btnConfirm.disabled = false;
         } else {
           btnConfirm.disabled = true;
@@ -364,12 +801,41 @@ class GestionGrupo {
     name.textContent = nombreMiembro;
     email.textContent = emailMiembro;
     
-    // Pre-seleccionar el rol actual
+    // Obtener opciones de roles y filtrar según permisos
     const roleOptions = modal.querySelectorAll('.role-option');
     roleOptions.forEach(option => {
-      if (option.dataset.role === miembro.role) {
+      const optionRole = option.dataset.role;
+      
+      // Determinar si la opción debe estar deshabilitada
+      let disabled = false;
+      
+      // Owner nunca se puede asignar desde el modal
+      if (optionRole === 'owner') {
+        disabled = true;
+      }
+      // Si el usuario actual es admin, solo puede asignar writer/reader
+      else if (this.currentUserRole === 'admin' && optionRole === 'admin') {
+        disabled = true;
+      }
+      
+      // Aplicar estado disabled
+      if (disabled) {
+        option.classList.add('disabled');
+        option.style.opacity = '0.5';
+        option.style.cursor = 'not-allowed';
+        option.style.pointerEvents = 'none';
+      } else {
+        option.classList.remove('disabled');
+        option.style.opacity = '1';
+        option.style.cursor = 'pointer';
+        option.style.pointerEvents = 'auto';
+      }
+      
+      // Pre-seleccionar el rol actual (buscar tanto 'role' como 'rol')
+      const rolActual = miembro.role || miembro.rol;
+      if (optionRole === rolActual) {
         option.classList.add('selected');
-        this.selectedNewRole = miembro.role;
+        this.selectedNewRole = rolActual;
       } else {
         option.classList.remove('selected');
       }
@@ -1202,6 +1668,32 @@ class GestionGrupo {
     `;
   }
 
+  canManageMember(miembro) {
+    const targetRole = miembro.role || miembro.rol;
+    const targetSub = miembro.user_sub || miembro.id;
+    
+    // No puede gestionar a sí mismo
+    const isSelf = targetSub === this.currentUserSub || 
+                   (miembro.email === this.currentUserEmail) ||
+                   (miembro.user_email === this.currentUserEmail);
+    
+    if (isSelf) return false;
+    
+    // Owner puede gestionar a todos (excepto a sí mismo)
+    if (this.currentUserRole === 'owner') return true;
+    
+    // Nadie puede gestionar al owner
+    if (targetRole === 'owner') return false;
+    
+    // Admin solo puede gestionar writer y reader
+    if (this.currentUserRole === 'admin') {
+      return targetRole === 'writer' || targetRole === 'reader' || targetRole === 'editor' || targetRole === 'viewer';
+    }
+    
+    // Otros roles no pueden gestionar a nadie
+    return false;
+  }
+
   renderMiembro(miembro) {
     // Generar iniciales del nombre o email
     const nombreMiembro = miembro.user_name || miembro.nombre || miembro.user_email || miembro.email;
@@ -1211,6 +1703,7 @@ class GestionGrupo {
     const fecha = new Date(miembro.added_at || miembro.fecha_ingreso).toLocaleDateString('es-CL');
     const rol = miembro.role || miembro.rol;
     const esCreador = miembro.role === 'owner' || miembro.esCreador;
+    const puedeGestionar = this.canManageMember(miembro);
     
     // Escapar caracteres especiales para JSON
     const miembroJSON = JSON.stringify(miembro).replace(/"/g, '&quot;');
@@ -1238,8 +1731,8 @@ class GestionGrupo {
               class="btn-icon edit" 
               data-action="change-role" 
               data-member='${miembroJSON}'
-              title="Cambiar rol"
-              ${esCreador ? 'disabled' : ''}
+              title="${puedeGestionar ? 'Cambiar rol' : 'No tienes permisos para cambiar el rol'}"
+              ${!puedeGestionar ? 'disabled' : ''}
             >
               <i class="fas fa-user-edit"></i>
             </button>
@@ -1247,8 +1740,8 @@ class GestionGrupo {
               class="btn-icon delete" 
               data-action="remove-member" 
               data-member='${miembroJSON}'
-              title="Remover miembro"
-              ${esCreador ? 'disabled' : ''}
+              title="${puedeGestionar ? 'Remover miembro' : 'No tienes permisos para remover este miembro'}"
+              ${!puedeGestionar ? 'disabled' : ''}
             >
               <i class="fas fa-trash"></i>
             </button>
@@ -1262,10 +1755,24 @@ class GestionGrupo {
     const roles = {
       owner: 'Propietario',
       admin: 'Administrador',
-      editor: 'Editor',
-      viewer: 'Lector'
+      writer: 'Editor',
+      reader: 'Lector'
     };
     return roles[rol] || rol;
+  }
+
+  ajustarOpcionesInvitacion() {
+    const inviteRoleSelect = document.getElementById('inviteRole');
+    if (!inviteRoleSelect) return;
+
+    // Si es admin, remover la opción de administrador
+    if (this.currentUserRole === 'admin') {
+      const adminOption = inviteRoleSelect.querySelector('option[value="admin"]');
+      if (adminOption) {
+        adminOption.remove();
+      }
+      console.log('🔒 Admin: Solo puede invitar como writer o reader');
+    }
   }
 
   async invitarMiembro() {
@@ -1403,13 +1910,18 @@ class GestionGrupo {
     }
   }
 
-  mostrarFormularioEspecialidad(especialidadId = null) {
+  async mostrarFormularioEspecialidad(especialidadId = null) {
     const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
     const especialidad = especialidadId ? this.especialidades.find(e => e.id === especialidadId) : null;
     const titulo = especialidad ? `Editar ${nombreEspecialidad}` : `Nueva ${nombreEspecialidad}`;
     const valorActual = especialidad ? especialidad.nombre : '';
     
-    const nuevoNombre = prompt(titulo, valorActual);
+    const nuevoNombre = await this.modalManager.prompt({
+      title: titulo,
+      placeholder: `Nombre de la ${nombreEspecialidad.toLowerCase()}`,
+      defaultValue: valorActual,
+      confirmText: especialidad ? 'Actualizar' : 'Crear'
+    });
     
     if (nuevoNombre && nuevoNombre.trim()) {
       if (especialidad) {
@@ -1461,8 +1973,8 @@ class GestionGrupo {
     }
   }
 
-  editarEspecialidad(id) {
-    this.mostrarFormularioEspecialidad(id);
+  async editarEspecialidad(id) {
+    await this.mostrarFormularioEspecialidad(id);
   }
 
   async actualizarEspecialidad(id, nombre) {
@@ -1492,9 +2004,14 @@ class GestionGrupo {
     const especialidad = this.especialidades.find(e => e.id === id);
     const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
     
-    if (!confirm(`¿Eliminar la ${nombreEspecialidad.toLowerCase()} "${especialidad.nombre}"?`)) {
-      return;
-    }
+    const confirmed = await this.modalManager.confirm({
+      title: `Eliminar ${nombreEspecialidad}`,
+      message: `¿Estás seguro de eliminar la ${nombreEspecialidad.toLowerCase()} "${especialidad.nombre}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
     
     try {
       const response = await fetch(`/api/grupos/${this.grupoId}/especialidades/${id}`, {
@@ -1695,15 +2212,25 @@ class GestionGrupo {
     }
   }
 
-  editarOcupante(id) {
+  async editarOcupante(id) {
     const ocupante = this.ocupantes.find(o => o.id === id);
     if (!ocupante) return;
 
     const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
-    const nuevoNombre = prompt(`Editar ${nombreOcupante}:`, ocupante.nombre);
+    const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
     
-    if (nuevoNombre && nuevoNombre.trim()) {
-      this.actualizarOcupante(id, nuevoNombre.trim(), ocupante.especialidad_id);
+    const result = await this.modalManager.editOcupante({
+      title: `Editar ${nombreOcupante}`,
+      nombreActual: ocupante.nombre,
+      especialidadActual: ocupante.especialidad_id,
+      especialidades: this.especialidades,
+      nombreLabel: `Nombre del ${nombreOcupante.toLowerCase()}`,
+      especialidadLabel: nombreEspecialidad,
+      confirmText: 'Actualizar'
+    });
+    
+    if (result) {
+      this.actualizarOcupante(id, result.nombre, result.especialidadId);
     }
   }
 
@@ -1742,9 +2269,14 @@ class GestionGrupo {
     const ocupante = this.ocupantes.find(o => o.id === id);
     const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
     
-    if (!confirm(`¿Eliminar al ${nombreOcupante.toLowerCase()} "${ocupante.nombre}"?`)) {
-      return;
-    }
+    const confirmed = await this.modalManager.confirm({
+      title: `Eliminar ${nombreOcupante}`,
+      message: `¿Estás seguro de eliminar a "${ocupante.nombre}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
     
     try {
       const response = await fetch(`/api/grupos/${this.grupoId}/ocupantes/${id}`, {
@@ -1862,7 +2394,13 @@ class GestionGrupo {
     const tipo = this.tiposInstrumentos.find(t => t.id === id);
     if (!tipo) return;
 
-    const nuevoNombre = prompt('Nuevo nombre del tipo:', tipo.nombre);
+    const nuevoNombre = await this.modalManager.prompt({
+      title: 'Editar Tipo de Instrumento',
+      placeholder: 'Nombre del tipo',
+      defaultValue: tipo.nombre,
+      confirmText: 'Actualizar'
+    });
+    
     if (!nuevoNombre || nuevoNombre.trim() === '') return;
 
     try {
@@ -1897,15 +2435,18 @@ class GestionGrupo {
 
     const instrumentosAsociados = this.instrumentos.filter(i => i.tipo_instrumento_id === id).length;
     
-    if (instrumentosAsociados > 0) {
-      if (!confirm(`Este tipo tiene ${instrumentosAsociados} instrumento(s) asociado(s). ¿Deseas eliminarlo de todos modos?`)) {
-        return;
-      }
-    } else {
-      if (!confirm(`¿Eliminar el tipo "${tipo.nombre}"?`)) {
-        return;
-      }
-    }
+    const message = instrumentosAsociados > 0
+      ? `Este tipo tiene ${instrumentosAsociados} instrumento(s) asociado(s). Si lo eliminas, estos instrumentos quedarán sin tipo asignado. ¿Deseas continuar?`
+      : `¿Estás seguro de eliminar el tipo "${tipo.nombre}"? Esta acción no se puede deshacer.`;
+    
+    const confirmed = await this.modalManager.confirm({
+      title: 'Eliminar Tipo',
+      message: message,
+      confirmText: 'Eliminar',
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/grupos/${this.grupoId}/tipos-instrumentos/${id}`, {
@@ -2039,7 +2580,13 @@ class GestionGrupo {
     const instrumento = this.instrumentos.find(i => i.id === id);
     if (!instrumento) return;
 
-    const nuevoNombre = prompt('Nuevo nombre del instrumento:', instrumento.nombre);
+    const nuevoNombre = await this.modalManager.prompt({
+      title: 'Editar Instrumento',
+      placeholder: 'Nombre del instrumento',
+      defaultValue: instrumento.nombre,
+      confirmText: 'Actualizar'
+    });
+    
     if (!nuevoNombre || nuevoNombre.trim() === '') return;
 
     try {
@@ -2071,9 +2618,14 @@ class GestionGrupo {
     const instrumento = this.instrumentos.find(i => i.id === id);
     if (!instrumento) return;
 
-    if (!confirm(`¿Eliminar "${instrumento.nombre}"?`)) {
-      return;
-    }
+    const confirmed = await this.modalManager.confirm({
+      title: 'Eliminar Instrumento',
+      message: `¿Estás seguro de eliminar "${instrumento.nombre}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      type: 'danger'
+    });
+    
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/grupos/${this.grupoId}/instrumentos/${id}`, {

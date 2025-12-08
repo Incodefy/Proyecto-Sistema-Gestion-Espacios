@@ -10,6 +10,7 @@ const state = {
     bookings: [],
     editingBooking: null,
     groupId: null,
+    userRole: null, // Rol del usuario
     currentAbortController: null, // Para cancelar requests anteriores
     loadBookingsTimeout: null, // Para debouncing
     isLoadingBookings: false,
@@ -32,6 +33,12 @@ const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     state.groupId = getGroupIdFromContext();
+    state.userRole = window.USER_ROLE || null;
+    
+    console.log('👤 Rol del usuario:', state.userRole);
+    
+    // Aplicar restricciones de permisos según el rol
+    applyRoleRestrictions();
     
     initializeEventListeners();
     loadInitialData();
@@ -44,6 +51,38 @@ document.addEventListener('DOMContentLoaded', () => {
 function getGroupIdFromContext() {
     // Puede venir de una variable global del servidor, URL, o elemento data
     return window.GROUP_ID || new URLSearchParams(window.location.search).get('groupId');
+}
+
+// Aplicar restricciones de permisos según el rol del usuario
+function applyRoleRestrictions() {
+    const isReader = state.userRole === 'reader';
+    
+    if (isReader) {
+        console.log('🔒 Aplicando restricciones para rol reader');
+        
+        // Deshabilitar botones de guardar y eliminar en el modal
+        const saveBtn = document.getElementById('saveBookingBtn');
+        const deleteBtn = document.getElementById('deleteBookingBtn');
+        
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.title = 'No tienes permisos para crear o editar agendaciones';
+            saveBtn.style.opacity = '0.5';
+            saveBtn.style.cursor = 'not-allowed';
+        }
+        
+        if (deleteBtn) {
+            deleteBtn.disabled = true;
+            deleteBtn.title = 'No tienes permisos para eliminar agendaciones';
+            deleteBtn.style.opacity = '0.5';
+            deleteBtn.style.cursor = 'not-allowed';
+        }
+    }
+}
+
+// Verificar si el usuario puede modificar agendaciones
+function canModifyBookings() {
+    return state.userRole !== 'reader';
 }
 
 // Sincronizar estado con URL
@@ -930,6 +969,16 @@ function renderMonthView() {
 
 // Modal
 function openCreateModal(date, time) {
+    // Verificar permisos
+    if (!canModifyBookings()) {
+        if (window.notificationManager) {
+            window.notificationManager.show('No tienes permisos para crear agendaciones', 'warning');
+        } else {
+            alert('No tienes permisos para crear agendaciones');
+        }
+        return;
+    }
+    
     state.editingBooking = null;
     
     document.getElementById('modalTitle').textContent = 'Nueva Agendación';
@@ -953,12 +1002,29 @@ function openEditModal(bookingId) {
     
     state.editingBooking = booking;
     
-    document.getElementById('modalTitle').textContent = 'Editar Agendación';
+    // Readers pueden ver pero no editar
+    const canEdit = canModifyBookings();
+    const modalTitle = canEdit ? 'Editar Agendación' : 'Ver Agendación';
+    
+    document.getElementById('modalTitle').textContent = modalTitle;
     document.getElementById('dateInput').value = booking.date;
     document.getElementById('startTimeSelect').value = booking.startTime;
     document.getElementById('endTimeSelect').value = booking.endTime;
-    document.getElementById('deleteBookingBtn').classList.remove('d-none');
-    document.getElementById('saveBookingBtn').textContent = 'Guardar Cambios';
+    
+    // Mostrar/ocultar botón eliminar según permisos
+    if (canEdit) {
+        document.getElementById('deleteBookingBtn').classList.remove('d-none');
+        document.getElementById('saveBookingBtn').textContent = 'Guardar Cambios';
+    } else {
+        document.getElementById('deleteBookingBtn').classList.add('d-none');
+        document.getElementById('saveBookingBtn').textContent = 'Guardar Cambios';
+    }
+    
+    // Deshabilitar inputs para readers
+    document.getElementById('occupantSelect').disabled = !canEdit;
+    document.getElementById('dateInput').disabled = !canEdit;
+    document.getElementById('startTimeSelect').disabled = !canEdit;
+    document.getElementById('endTimeSelect').disabled = !canEdit;
     
     // Establecer el ocupante después de un pequeño delay para asegurar que el select está renderizado
     setTimeout(() => {

@@ -1,11 +1,12 @@
 ﻿// aws/src/handlers/especialidades/updateEspecialidad.js
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { NotFoundError } = require("../../utils/errorHandler");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");
+const { notifyEspecialidadModificada } = require("../../utils/notificationHelper");
 
 const updateEspecialidad = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'updateEspecialidad' });
@@ -36,6 +37,8 @@ const updateEspecialidad = async (event) => {
     throw new NotFoundError('Especialidad no encontrada');
   }
   
+  const nombreAnterior = getResult.Item.nombre;
+  const userSub = event.requestContext.authorizer.jwt.claims.sub;
   const now = new Date().toISOString();
   
   await retryDB(
@@ -57,6 +60,36 @@ const updateEspecialidad = async (event) => {
   );
   
   logger.info('Especialidad actualizada exitosamente', { especialidadId });
+  
+  // Enviar notificación solo si el nombre cambió
+  if (nombreAnterior !== body.nombre.trim()) {
+    try {
+      const membersResult = await retryDB(
+        () => db.send(new QueryCommand({
+          TableName: process.env.GROUP_MEMBERS_TABLE,
+          KeyConditionExpression: 'group_id = :gid',
+          ExpressionAttributeValues: { ':gid': grupo_id }
+        })),
+        { operation: 'getGroupMembers' }
+      );
+
+      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+      if (userSubs.length > 0) {
+        await notifyEspecialidadModificada({
+          userSubs,
+          grupoId: grupo_id,
+          createdBy: userSub,
+          especialidadNombre: body.nombre.trim(),
+          nombreAnterior,
+          tipoEspecialidad: 'Especialidad'
+        });
+        logger.info('Notification sent for especialidad update');
+      }
+    } catch (notifError) {
+      logger.warn('Failed to send notification for especialidad update', notifError);
+    }
+  }
   
   return {
     statusCode: 200,

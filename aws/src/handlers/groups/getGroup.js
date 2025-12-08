@@ -9,15 +9,11 @@ const { Logger } = require("../../utils/logger");
 const { NotFoundError, AuthorizationError, ValidationError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { decryptPII } = require("../../utils/encryption");
 
 const db = DynamoDBDocumentClient.from(
   new (require("@aws-sdk/client-dynamodb").DynamoDBClient)()
 );
-
-// Cache para grupos (5 minutos TTL)
-const groupCache = new Cache({ defaultTTL: 300000, maxSize: 1000 });
 
 /**
  * GET /groups/{group_id}
@@ -42,30 +38,23 @@ async function getGroupHandler(event, context, logger) {
     throw new ValidationError('group_id is required');
   }
 
-  // 1️⃣ BUSCAR GRUPO CON CACHE
-  const group = await groupCache.getOrFetch(
-    `group:${groupId}`,
-    async () => {
-      logger.debug('Group not in cache, fetching from DB');
-      
-      const res = await retryDB(async () => {
-        return await db.send(new GetCommand({
-          TableName: process.env.GROUPS_TABLE,
-          Key: { group_id: groupId }
-        }));
-      });
-      
-      if (!res.Item) {
-        throw new NotFoundError('Group', groupId);
-      }
-      
-      return res.Item;
-    },
-    300000 // 5 min TTL
-  );
+  // 1️⃣ BUSCAR GRUPO DIRECTO DE DB (sin cache)
+  logger.debug('Fetching group from DB');
+  
+  const res = await retryDB(async () => {
+    return await db.send(new GetCommand({
+      TableName: process.env.GROUPS_TABLE,
+      Key: { group_id: groupId }
+    }));
+  });
+  
+  if (!res.Item) {
+    throw new NotFoundError('Group', groupId);
+  }
+  
+  const group = res.Item;
 
-  logger.debug('Group retrieved', { 
-    cached: groupCache.has(`group:${groupId}`),
+  logger.debug('Group retrieved fresh from DB', { 
     groupName: group.nombre 
   });
 

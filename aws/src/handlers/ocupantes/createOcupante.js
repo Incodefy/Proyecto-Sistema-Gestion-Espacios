@@ -1,5 +1,5 @@
 // aws/src/handlers/ocupantes/createOcupante.js
-const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const crypto = require("crypto");
 
@@ -10,6 +10,7 @@ const { ValidationError, NotFoundError, successResponse } = require("../../utils
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
 const { encryptPII, decryptPII } = require("../../utils/encryption");
+const { notifyOcupanteCreado } = require("../../utils/notificationHelper");
 
 /**
  * POST /groups/{grupo_id}/ocupantes
@@ -104,6 +105,31 @@ async function createOcupanteHandler(event, context, logger) {
 
   // Desencriptar para retornar al frontend (v2.1)
   const decryptedItem = await decryptPII(encryptedItem);
+
+  // Obtener miembros del grupo para notificar
+  try {
+    const membersResult = await retryDB(() => db.send(new QueryCommand({
+      TableName: process.env.GROUP_MEMBERS_TABLE,
+      KeyConditionExpression: 'group_id = :gid',
+      ExpressionAttributeValues: { ':gid': grupo_id }
+    })));
+
+    const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+    if (userSubs.length > 0) {
+      await notifyOcupanteCreado({
+        userSubs,
+        grupoId: grupo_id,
+        createdBy: userSub,
+        ocupanteNombre: decryptedItem.nombre,
+        especialidadNombre: especialidadNombre || 'Sin especialidad',
+        tipoOcupante: tipo || 'Ocupante'
+      });
+      logger.info('Notification sent for ocupante creation', { userSubs: userSubs.length });
+    }
+  } catch (notifError) {
+    logger.warn('Failed to send notification for ocupante creation', notifError);
+  }
 
   return successResponse({
     ocupante: {

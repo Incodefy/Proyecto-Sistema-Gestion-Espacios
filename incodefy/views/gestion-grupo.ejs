@@ -384,8 +384,8 @@
                     <div class="form-group form-group-min-width">
                         <label class="form-label">Rol</label>
                         <select class="form-select" id="inviteRole">
-                        <option value="viewer" selected>Lector (Viewer)</option>
-                        <option value="editor">Editor</option>
+                        <option value="reader" selected>Lector</option>
+                        <option value="writer">Escritor</option>
                         <option value="admin">Administrador</option>
                         </select>
                     </div>
@@ -457,7 +457,7 @@
                         </div>
                         </div>
 
-                        <div class="role-option" data-role="editor">
+                        <div class="role-option" data-role="writer">
                         <div class="role-option-icon">
                             <i class="fas fa-edit"></i>
                         </div>
@@ -472,7 +472,7 @@
                         </div>
                         </div>
 
-                        <div class="role-option" data-role="viewer">
+                        <div class="role-option" data-role="reader">
                         <div class="role-option-icon">
                             <i class="fas fa-eye"></i>
                         </div>
@@ -599,9 +599,17 @@
   <script src="/js/token-manager.js?v=<%= Date.now() %>"></script>
   
   <script nonce="<%= cspNonce %>">
+    // ⚡ Timestamp de carga de página para optimizaciones
+    window.pageLoadTimestamp = Date.now();
+    
+    // Datos iniciales del servidor para carga instantánea
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
     window.grupoActivo = <%- JSON.stringify(grupoActivo || null) %>;
     window.nomenclaturaInicial = <%- JSON.stringify(nomenclatura || null) %>;
+    window.currentUserSub = '<%= userSub || "" %>';
+    window.currentUserEmail = '<%= userEmail || "" %>';
+    window.currentUserRole = '<%= userRole || "" %>';
+    window.wsEndpoint = '<%= typeof wsEndpoint !== "undefined" ? wsEndpoint : "wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev" %>';
     window.notificationManager = new NotificationManager();
     
     function showDevToast(event) {
@@ -617,5 +625,6 @@
     }
   </script>
   <script src="/js/gestion-grupo.js"></script>
+  <script src="/js/gestion-grupo-websocket.js"></script>
 </body>
 </html>

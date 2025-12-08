@@ -1,5 +1,5 @@
 // aws/src/handlers/ocupantes/deleteOcupante.js
-const { DynamoDBDocumentClient, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, DeleteCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 
 // ✅ MEJORAS IMPLEMENTADAS
@@ -7,6 +7,8 @@ const { Logger } = require("../../utils/logger");
 const { ValidationError, NotFoundError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
+const { decryptPII } = require("../../utils/encryption");
+const { notifyOcupanteEliminado } = require("../../utils/notificationHelper");
 
 /**
  * DELETE /groups/{grupo_id}/ocupantes/{id}
@@ -47,6 +49,12 @@ async function deleteOcupanteHandler(event, context, logger) {
     throw new NotFoundError('Ocupante', ocupanteId);
   }
 
+  // Guardar datos para notificación antes de eliminar
+  const ocupanteData = await decryptPII(getResult.Item);
+  const ocupanteNombre = ocupanteData.nombre;
+  const especialidadNombre = ocupanteData.especialidad || 'Sin especialidad';
+  const tipoOcupante = ocupanteData.tipo || 'Ocupante';
+
   await retryDB(async () => {
     await db.send(
       new DeleteCommand({
@@ -60,6 +68,31 @@ async function deleteOcupanteHandler(event, context, logger) {
   });
 
   logger.info('Ocupante deleted', { ocupanteId });
+
+  // Enviar notificación
+  try {
+    const membersResult = await retryDB(() => db.send(new QueryCommand({
+      TableName: process.env.GROUP_MEMBERS_TABLE,
+      KeyConditionExpression: 'group_id = :gid',
+      ExpressionAttributeValues: { ':gid': grupo_id }
+    })));
+
+    const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+    if (userSubs.length > 0) {
+      await notifyOcupanteEliminado({
+        userSubs,
+        grupoId: grupo_id,
+        createdBy: userSub,
+        ocupanteNombre,
+        especialidadNombre,
+        tipoOcupante
+      });
+      logger.info('Notification sent for ocupante deletion');
+    }
+  } catch (notifError) {
+    logger.warn('Failed to send notification for ocupante deletion', notifError);
+  }
 
   return successResponse({
     message: "Ocupante eliminado exitosamente"

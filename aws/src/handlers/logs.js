@@ -3,7 +3,7 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, ScanCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryWithJitter } = require("../utils/retry");
 const { createCircuitBreaker } = require("../utils/circuitBreaker");
-const { Logger } = require("../utils/logger");
+const { Logger, createLogger } = require("../utils/logger");
 const { createAPIHandler } = require("../middleware/interceptors");
 const { successResponse } = require("../utils/errorHandler");
 const { AuthorizationError } = require("../utils/errorHandler");
@@ -153,7 +153,7 @@ async function getActivityStatsHandler(event, logger) {
 module.exports.getActivityStats = createAPIHandler(getActivityStatsHandler, { rateLimit: { maxRequests: 30, windowSeconds: 60 } });
 
 module.exports.logActivity = async (activityData) => {
-  const logger = Logger.create({ handler: 'logActivity' });
+  const logger = createLogger({ handler: 'logActivity' });
   
   try {
     if (!activityData.userSub || !activityData.action) {

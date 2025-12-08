@@ -304,6 +304,26 @@ class ApiClientV2 {
   }
 
   /**
+   * Obtiene solo la nomenclatura de un grupo (llamada directa al grupo)
+   */
+  async obtenerNomenclaturaGrupo(group_id) {
+    try {
+      const response = await this.client.get(`/grupos/${group_id}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      const data = this._extractData(response);
+      return data.group?.nomenclatura || null;
+    } catch (error) {
+      console.error('Error obteniendo nomenclatura:', error.apiError || error.message);
+      return null;
+    }
+  }
+
+  /**
    * Actualiza la nomenclatura de un grupo
    */
   async actualizarNomenclaturaGrupo(grupoId, nomenclatura) {
@@ -564,7 +584,7 @@ class ApiClientV2 {
    */
   async actualizarRolMiembro(miembroId, grupo_id, rol) {
     try {
-      const response = await this.client.put(`/api/grupos/miembro/${miembroId}/rol?grupo_id=${grupo_id}`, { rol });
+      const response = await this.client.put(`/api/grupos/miembro/${miembroId}/rol?grupo_id=${grupo_id}`, { new_role: rol });
       return this._extractData(response);
     } catch (error) {
       console.error('Error actualizando rol miembro:', error.apiError || error.message);

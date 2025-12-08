@@ -50,13 +50,15 @@
         </a>
       </li>
       
-      <!-- Gestión de Grupo -->
+      <!-- Gestión de Grupo (solo owner y admin) -->
+      <% if (locals.userRole === 'owner' || locals.userRole === 'admin') { %>
       <li>
         <a href="/gestion-grupo" class="menu-link <%= currentPath.startsWith('/gestion-grupo') ? 'active' : '' %>" data-tooltip="<%= t('navbar.manageGroup') %>">
           <img src="/icons/grupo.png" alt="" class="gestion">
           <span><%= t('navbar.manageGroup') %></span>
         </a>
       </li>
+      <% } %>
     <% } %>
 
     <li>

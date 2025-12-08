@@ -9,7 +9,9 @@ const crypto = require('crypto');
  */
 function generateNonce(req, res, next) {
   // Generar nonce aleatorio de 16 bytes (128 bits)
-  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  const nonce = crypto.randomBytes(16).toString('base64');
+  res.locals.cspNonce = nonce;
+  res.locals.nonce = nonce; // Alias para facilidad de uso
   next();
 }
 
@@ -197,7 +199,9 @@ function attachNonceToLocals(req, res, next) {
   // El nonce ya está en res.locals.cspNonce
   // Solo aseguramos que esté disponible para las vistas
   if (!res.locals.cspNonce) {
-    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    const nonce = crypto.randomBytes(16).toString('base64');
+    res.locals.cspNonce = nonce;
+    res.locals.nonce = nonce; // Alias para facilidad de uso
   }
   next();
 }

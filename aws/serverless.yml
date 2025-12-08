@@ -957,6 +957,19 @@ functions:
           startingPosition: LATEST
           enabled: true
 
+  wsGroupsStreamProcessor:
+    handler: src/handlers/websocket/groupsStreamProcessor.handler
+    description: Procesa cambios en Groups (nomenclatura) y notifica vía WebSocket
+    timeout: 30
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [GroupsTable, StreamArn]
+          batchSize: 10
+          startingPosition: LATEST
+          enabled: true
+
   # === OPERATIONS WEBSOCKET HANDLERS (Async Request-Reply Pattern - Phase 2) ===
   wsSubscribeOperation:
     handler: src/handlers/websocket/subscribeOperation.handler
@@ -1163,6 +1176,8 @@ resources:
         KeySchema:
           - AttributeName: group_id
             KeyType: HASH
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
 

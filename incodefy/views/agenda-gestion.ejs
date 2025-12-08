@@ -253,6 +253,7 @@
     <!-- Inyectar datos iniciales pre-cargados del servidor -->
     <script nonce="<%= cspNonce %>">
     window.GROUP_ID = '<%= groupId || "" %>';
+    window.USER_ROLE = '<%= userRole || "" %>';
     window.INITIAL_DATA = <%- JSON.stringify(initialData || { generalSpaces: [], occupants: [] }) %>;
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
     </script>

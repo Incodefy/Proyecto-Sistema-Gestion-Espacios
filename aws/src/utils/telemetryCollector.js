@@ -33,7 +33,7 @@ const MetricType = {
  */
 class TelemetryCollector {
   constructor(config = {}) {
-    this.logger = Logger.create({ handler: 'TelemetryCollector' });
+    this.logger = createLogger({ handler: 'TelemetryCollector' });
     this.config = {
       namespace: config.namespace || 'Incodefy/Application',
       flushInterval: config.flushInterval || 60000, // 1 minute

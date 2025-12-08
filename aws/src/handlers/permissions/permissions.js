@@ -11,7 +11,7 @@ const { createCircuitBreaker } = require("../../utils/circuitBreaker");
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
 const { validate } = require("../../utils/validator");
 const { successResponse, errorResponse } = require("../../utils/errorHandler");
-const { Logger } = require("../../utils/logger");
+const { Logger, createLogger } = require("../../utils/logger");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { AuthorizationError, ValidationError, NotFoundError } = require("../../utils/errorHandler");
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
@@ -134,7 +134,7 @@ try {
   };
 }
 
-async function verifyPermission(userSub, groupId, requiredPermission, logger = Logger.create({ handler: 'verifyPermission' })) {
+async function verifyPermission(userSub, groupId, requiredPermission, logger = createLogger({ handler: 'verifyPermission' })) {
   try {
     logger.info('Verificando permiso', { requiredPermission, userSub, groupId });
     

@@ -20,7 +20,7 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, TransactWriteCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryWithJitter } = require("./retry");
 const { createCircuitBreaker } = require("./circuitBreaker");
-const { Logger } = require("./logger");
+const { Logger, createLogger } = require("./logger");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});
@@ -46,7 +46,7 @@ const OutboxStatus = {
  */
 class OutboxStore {
   constructor(logger) {
-    this.logger = logger || Logger.create({ handler: 'OutboxStore' });
+    this.logger = logger || createLogger({ handler: 'OutboxStore' });
   }
 
   /**

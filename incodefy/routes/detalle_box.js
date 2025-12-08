@@ -107,7 +107,8 @@ router.get('/especifico/:id', checkPermission('box.detalle.read'), async (req, r
       estado: espacio.activo !== false ? 'Habilitado' : 'Inhabilitado',
       instrumentos: instrumentos,
       grupo_id: grupoId,
-      wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
+      wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev',
+      userRole: req.session.userRole || res.locals.userRole || null
     });
   } catch (err) {
     console.error('❌ Error cargando detalle del espacio:', err);

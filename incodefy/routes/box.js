@@ -74,9 +74,19 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
       // Mapear campos para compatibilidad (igual que en /estado-boxes)
       agendas = agendasRaw.map(a => ({
         ...a,
-        boxId: a.espacio_id ? Number(a.espacio_id.replace(/\D/g, '')) : 
-               (a.espacio_especifico?.id ? Number(a.espacio_especifico.id.replace(/\D/g, '')) : 
-               (a.idbox ? Number(a.idbox) : null)),
+        boxId: (() => {
+          // Prioridad: espacio_id directo, luego espacio_especifico.id, finalmente idbox antiguo
+          let espacioId = a.espacio_id || a.espacio_especifico?.id || a.idbox;
+          if (!espacioId) return null;
+          
+          // Si es formato SK (SPECIFICSPACE#X), extraer solo el número
+          if (typeof espacioId === 'string') {
+            const numero = espacioId.match(/\d+/)?.[0];
+            return numero ? Number(numero) : null;
+          }
+          
+          return Number(espacioId);
+        })(),
         horaInicio: a.hora_inicio ? a.hora_inicio.slice(0, 5) : (a.horaInicio ? a.horaInicio.slice(0, 5) : null),
         horaFin: a.hora_fin ? a.hora_fin.slice(0, 5) : (a.horaFin ? a.horaFin.slice(0, 5) : null),
         idMedico: a.ocupante_id || a.ocupante?.id || a.idMedico,
@@ -327,10 +337,20 @@ router.get('/estado-boxes', async (req, res) => {
     agendas = agendas.map(a => ({
       ...a,
       // Mapear campos nuevos a los esperados por el sistema
-      // Prioridad: espacio_id directo, luego espacio_especifico.id, finalmente idbox antiguo
-      boxId: a.espacio_id ? Number(a.espacio_id.replace(/\D/g, '')) : 
-             (a.espacio_especifico?.id ? Number(a.espacio_especifico.id.replace(/\D/g, '')) : 
-             (a.idbox ? Number(a.idbox) : null)),
+      // El boxId debe ser el número del SK del espacio (SPECIFICSPACE#1 -> 1)
+      boxId: (() => {
+        // Prioridad: espacio_id directo, luego espacio_especifico.id, finalmente idbox antiguo
+        let espacioId = a.espacio_id || a.espacio_especifico?.id || a.idbox;
+        if (!espacioId) return null;
+        
+        // Si es formato SK (SPECIFICSPACE#X), extraer solo el número
+        if (typeof espacioId === 'string') {
+          const numero = espacioId.match(/\d+/)?.[0];
+          return numero ? Number(numero) : null;
+        }
+        
+        return Number(espacioId);
+      })(),
       horaInicio: a.hora_inicio ? a.hora_inicio.slice(0, 5) : (a.horaInicio ? a.horaInicio.slice(0, 5) : null),
       horaFin: a.hora_fin ? a.hora_fin.slice(0, 5) : (a.horaFin ? a.horaFin.slice(0, 5) : null),
       // Mantener campos originales también

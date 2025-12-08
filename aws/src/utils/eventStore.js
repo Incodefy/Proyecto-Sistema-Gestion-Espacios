@@ -11,7 +11,7 @@ const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/l
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { retryDB } = require("./retry");
-const { Logger } = require("./logger");
+const { Logger, createLogger } = require("./logger");
 const { getOutboxStore } = require("./outboxStore");
 const crypto = require("crypto");
 
@@ -28,7 +28,7 @@ const USE_OUTBOX = process.env.USE_OUTBOX !== 'false'; // Default true
  */
 class EventStore {
   constructor(logger) {
-    this.logger = logger || Logger.create({ handler: 'EventStore' });
+    this.logger = logger || createLogger({ handler: 'EventStore' });
     this.outboxStore = USE_OUTBOX ? getOutboxStore(logger) : null;
   }
 

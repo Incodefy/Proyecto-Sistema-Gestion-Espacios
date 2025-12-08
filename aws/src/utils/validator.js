@@ -174,12 +174,18 @@ const schemas = {
     type: 'object',
     required: ['grupo_id', 'email', 'rol'],
     properties: {
-      grupo_id: commonSchemas.uuid,
+      grupo_id: { 
+        type: 'string',
+        pattern: '^grp_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$',
+        errorMessage: 'grupo_id debe tener formato grp_<uuid>'
+      },
       email: commonSchemas.email,
       rol: { 
         type: 'string', 
-        enum: ['admin', 'escritor', 'lector'],
-        errorMessage: 'Rol debe ser uno de: admin, escritor, lector'
+        enum: ['admin', 'writer', 'reader'],
+        errorMessage: {
+          enum: 'Rol inválido. Los valores permitidos son: admin, writer, reader'
+        }
       }
     },
     additionalProperties: false
@@ -187,13 +193,40 @@ const schemas = {
 
   updateMemberRole: {
     type: 'object',
-    required: ['group_id', 'user_sub', 'new_role'],
+    required: ['new_role'],
     properties: {
-      group_id: commonSchemas.uuid,
-      user_sub: commonSchemas.uuid,
       new_role: { 
         type: 'string', 
-        enum: ['admin', 'escritor', 'lector', 'owner']
+        enum: ['admin', 'writer', 'reader'],
+        errorMessage: {
+          enum: 'Rol inválido. Los valores permitidos son: admin, writer, reader'
+        }
+      }
+    },
+    additionalProperties: false
+  },
+
+  verifyInvitation: {
+    type: 'object',
+    required: ['token'],
+    properties: {
+      token: { 
+        type: 'string',
+        pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$',
+        errorMessage: 'Token debe ser un UUID válido'
+      }
+    },
+    additionalProperties: false
+  },
+
+  acceptInvitation: {
+    type: 'object',
+    required: ['token'],
+    properties: {
+      token: { 
+        type: 'string',
+        pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$',
+        errorMessage: 'Token debe ser un UUID válido'
       }
     },
     additionalProperties: false

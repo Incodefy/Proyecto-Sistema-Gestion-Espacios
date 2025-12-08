@@ -31,7 +31,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryDB } = require("./retry");
-const { Logger } = require("./logger");
+const { Logger, createLogger } = require("./logger");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});
@@ -54,7 +54,7 @@ const OperationStatus = {
  */
 class OperationStore {
   constructor(logger) {
-    this.logger = logger || Logger.create({ handler: 'OperationStore' });
+    this.logger = logger || createLogger({ handler: 'OperationStore' });
   }
 
   /**

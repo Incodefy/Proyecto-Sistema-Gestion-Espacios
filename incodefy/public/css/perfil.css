@@ -127,8 +127,8 @@ body {
   margin-bottom: 1.6rem!important;
 }
 
-.form-section h4 {
-  color: var(--primary-color);
+.form-section h3 {
+  color: var(--primary-color)!important;
   font-weight: 600;
   margin-bottom: 1rem;
   display: flex;

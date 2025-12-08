@@ -1,5 +1,5 @@
 // aws/src/handlers/ocupantes/updateOcupante.js
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand, GetCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 
 // ✅ MEJORAS IMPLEMENTADAS
@@ -9,6 +9,7 @@ const { ValidationError, NotFoundError, successResponse } = require("../../utils
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
 const { encryptPII, decryptPII } = require("../../utils/encryption");
+const { notifyOcupanteModificado } = require("../../utils/notificationHelper");
 
 /**
  * PUT /groups/{grupo_id}/ocupantes/{id}
@@ -25,6 +26,7 @@ async function updateOcupanteHandler(event, context, logger) {
   const grupo_id = event.pathParameters?.grupo_id;
   const ocupanteId = event.pathParameters?.id;
   const userEmail = event.userContext?.email;
+  const userSub = event.userContext?.sub;
   
   if (!grupo_id || !ocupanteId) {
     throw new ValidationError('grupo_id y ocupante id son requeridos');
@@ -56,6 +58,21 @@ async function updateOcupanteHandler(event, context, logger) {
 
   if (!getResult.Item) {
     throw new NotFoundError('Ocupante', ocupanteId);
+  }
+
+  // Detectar cambios para notificación
+  const oldItem = await decryptPII(getResult.Item);
+  const cambios = {};
+  
+  if (oldItem.nombre !== nombre.trim()) {
+    cambios.nombre = { old: oldItem.nombre, new: nombre.trim() };
+  }
+  
+  if (especialidad_id && oldItem.especialidad_id !== especialidadIdConPrefijo) {
+    cambios.especialidad = { 
+      old: oldItem.especialidad || 'Sin especialidad', 
+      new: especialidadNombre || especialidadIdConPrefijo 
+    };
   }
 
   const now = new Date().toISOString();
@@ -134,6 +151,34 @@ async function updateOcupanteHandler(event, context, logger) {
   const decryptedResponse = await decryptPII({
     nombre: encryptedData.nombre
   });
+
+  // Enviar notificación solo si hubo cambios
+  if (Object.keys(cambios).length > 0) {
+    try {
+      const membersResult = await retryDB(() => db.send(new QueryCommand({
+        TableName: process.env.GROUP_MEMBERS_TABLE,
+        KeyConditionExpression: 'group_id = :gid',
+        ExpressionAttributeValues: { ':gid': grupo_id }
+      })));
+
+      const userSubs = (membersResult.Items || []).map(m => m.user_sub);
+
+      if (userSubs.length > 0) {
+        await notifyOcupanteModificado({
+          userSubs,
+          grupoId: grupo_id,
+          createdBy: userSub,
+          ocupanteNombre: decryptedResponse.nombre,
+          especialidadNombre: especialidadNombre || oldItem.especialidad || 'Sin especialidad',
+          cambios,
+          tipoOcupante: tipo || oldItem.tipo || 'Ocupante'
+        });
+        logger.info('Notification sent for ocupante update', { cambios });
+      }
+    } catch (notifError) {
+      logger.warn('Failed to send notification for ocupante update', notifError);
+    }
+  }
 
   return successResponse({
     ocupante: {

@@ -6,11 +6,7 @@ const { Logger } = require("../../utils/logger");
 const { NotFoundError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { decryptPII } = require("../../utils/encryption");
-
-// Cache para miembros de grupos (2 minutos TTL)
-const membersCache = new Cache({ defaultTTL: 120000, maxSize: 500 });
 
 /**
  * GET /api/grupos/:id/miembros
@@ -18,12 +14,12 @@ const membersCache = new Cache({ defaultTTL: 120000, maxSize: 500 });
  * 
  * MEJORAS:
  * ✅ Logging estructurado
- * ✅ Cache para members (2 min)
  * ✅ Circuit breaker para Cognito
  * ✅ Batch operations (optimizado para N+1)
  * ✅ Error handling centralizado
  * ✅ Retry logic automático
  * ✅ Interceptors (rate limit: 100 req/min)
+ * ⚠️ SIN CACHE - Siempre datos frescos
  */
 async function listMembersHandler(event, context, logger) {
   const grupoId = event.pathParameters?.id;
@@ -44,31 +40,22 @@ async function listMembersHandler(event, context, logger) {
     throw new NotFoundError('Group', grupoId);
   }
 
-  // Obtener miembros con cache
-  const members = await membersCache.getOrFetch(
-    `members:${grupoId}`,
-    async () => {
-      logger.debug('Members not in cache, fetching from DB');
-      
-      const membersResult = await retryDB(async () => {
-        return await db.send(new QueryCommand({
-          TableName: process.env.GROUP_MEMBERS_TABLE,
-          KeyConditionExpression: 'group_id = :group_id',
-          ExpressionAttributeValues: {
-            ':group_id': grupoId
-          }
-        }));
-      });
-      
-      return membersResult.Items || [];
-    },
-    120000 // 2 min TTL
-  );
-
-  logger.debug('Members retrieved', { 
-    count: members.length,
-    cached: membersCache.has(`members:${grupoId}`)
+  // Obtener miembros directamente de DB (SIN CACHE)
+  logger.debug('Fetching members from DB');
+  
+  const membersResult = await retryDB(async () => {
+    return await db.send(new QueryCommand({
+      TableName: process.env.GROUP_MEMBERS_TABLE,
+      KeyConditionExpression: 'group_id = :group_id',
+      ExpressionAttributeValues: {
+        ':group_id': grupoId
+      }
+    }));
   });
+  
+  const members = membersResult.Items || [];
+
+  logger.debug('Members retrieved', { count: members.length });
 
   // Desencriptar PII de miembros (v2.1)
   const decryptedMembers = await Promise.all(
