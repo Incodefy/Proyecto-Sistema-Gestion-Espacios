@@ -213,26 +213,23 @@ async function cargarBookings() {
     const dateTo = formatDate(days[days.length - 1]);
     const cacheKey = `${calendarioState.espacioId}:${dateFrom}:${dateTo}`;
     
-    console.log('📅 Cargando bookings:', { dateFrom, dateTo, viewMode: calendarioState.viewMode });
-    
     // Verificar caché con TTL
     const cached = calendarioState.bookingsCache.get(cacheKey);
-    if (cached) {
-        const age = Date.now() - cached.timestamp;
-        if (age < calendarioState.cacheTTL) {
-            console.log('⚡ Usando caché válido (edad:', Math.round(age/1000), 's)');
-            calendarioState.bookings = cached.data;
-            renderizarCalendario();
-            return;
-        } else {
-            console.log('🗑️ Cache expirado, recargando...');
-            calendarioState.bookingsCache.delete(cacheKey);
-        }
+    if (cached && (Date.now() - cached.timestamp < calendarioState.cacheTTL)) {
+        console.log('⚡ Usando caché válido');
+        calendarioState.bookings = cached.data;
+        renderizarCalendario();
+        return;
     }
     
-    // Mostrar loading
-    calendarioState.isLoading = true;
-    mostrarLoadingCalendario();
+    // Limpiar caché expirado
+    if (cached) calendarioState.bookingsCache.delete(cacheKey);
+    
+    // Mostrar loading solo si tarda más de 200ms
+    const loadingTimer = setTimeout(() => {
+        calendarioState.isLoading = true;
+        mostrarLoadingCalendario();
+    }, 200);
     
     // Crear AbortController
     const abortController = new AbortController();
@@ -242,9 +239,9 @@ async function cargarBookings() {
         const encodedSpaceId = encodeURIComponent(calendarioState.espacioId);
         const url = `/api/groups/${calendarioState.grupoId}/bookings?space_id=${encodedSpaceId}&date_from=${dateFrom}&date_to=${dateTo}`;
         
-        console.log('🌐 URL:', url);
-        
         const response = await fetch(url, { signal: abortController.signal });
+        
+        clearTimeout(loadingTimer);
         
         if (abortController.signal.aborted) {
             console.log('⚠️ Request abortado');
@@ -542,90 +539,92 @@ function renderizarVistaTimeline() {
     const days = getDaysForView();
     const container = document.getElementById('timelineContent');
     
-    console.log('📅 Renderizando timeline:', { viewMode: calendarioState.viewMode, bookings: calendarioState.bookings.length });
-    
-    // Usar DocumentFragment para reducir reflows
+    // Usar DocumentFragment para evitar reflows múltiples
     const fragment = document.createDocumentFragment();
-    const tempDiv = document.createElement('div');
+    const table = document.createElement('table');
+    table.className = 'timeline-table';
     
-    // Header
-    let html = '<div class="timeline-header">';
-    html += '<div class="timeline-time-col"></div>';
+    // Header con thead
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const timeCol = document.createElement('th');
+    timeCol.className = 'timeline-time-col';
+    headerRow.appendChild(timeCol);
     
     days.forEach(day => {
         const isToday = formatDate(day) === formatDate(new Date());
-        const dayName = calendarioState.viewMode === 'day' 
-            ? DAYS_ES[(day.getDay() + 6) % 7]
-            : DAYS_ES[(day.getDay() + 6) % 7].substring(0, 3);
-        html += `<div class="timeline-day-header">
-            <div class="day-name">${dayName}</div>
-            <div class="day-number ${isToday ? 'today' : ''}">${day.getDate()}</div>
-        </div>`;
+        const th = document.createElement('th');
+        th.className = 'timeline-day-header';
+        th.innerHTML = `<div class="day-name">${DAYS_ES[(day.getDay() + 6) % 7]}</div>
+            <div class="day-number ${isToday ? 'today' : ''}">${day.getDate()}</div>`;
+        headerRow.appendChild(th);
     });
     
-    html += '</div>';
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
     
-    // Body
-    html += '<div class="timeline-body">';
+    // Body con tbody
+    const tbody = document.createElement('tbody');
     
     TIME_SLOTS.forEach(time => {
-        html += '<div class="timeline-row">';
-        html += `<div class="time-label">${time}</div>`;
+        const tr = document.createElement('tr');
+        tr.className = 'timeline-row';
+        
+        const timeLabel = document.createElement('td');
+        timeLabel.className = 'time-label';
+        timeLabel.textContent = time;
+        tr.appendChild(timeLabel);
         
         days.forEach(day => {
             const booking = getBookingForSlot(day, time);
-            
-            html += '<div class="timeline-cell">';
+            const td = document.createElement('td');
+            td.className = 'timeline-cell';
             
             if (booking) {
                 const isFirstSlot = booking.startTime === time;
                 
                 if (isFirstSlot) {
-                    // Calcular altura: cada slot de 30min = 50px de altura (ajustado para match con min-height)
                     const duration = calculateDuration(booking.startTime, booking.endTime);
-                    const height = Math.max((duration / 30) * 50 - 8, 42); // Min 42px para que se vea bien
+                    const height = (duration / 30) * 40 - 8;
                     
-                    console.log(`📍 Booking ${booking.occupant_name}: ${booking.startTime}-${booking.endTime} (${duration}min, ${height}px)`);
-                    
-                    html += `<div class="booking-block booking-dynamic-height" data-height="${height}" data-booking-id="${booking.id}">
-                        <div class="booking-name">${booking.occupant_name || 'Sin nombre'}</div>
-                        <div class="booking-time">${booking.startTime} - ${booking.endTime}</div>
-                    </div>`;
+                    const bookingDiv = document.createElement('div');
+                    bookingDiv.className = 'booking-block booking-dynamic-height';
+                    bookingDiv.dataset.bookingId = booking.id;
+                    bookingDiv.dataset.computedHeight = height;
+                    bookingDiv.innerHTML = `<div class="booking-name">${booking.occupant_name || 'Sin nombre'}</div>
+                        <div class="booking-time">${booking.startTime} - ${booking.endTime}</div>`;
+                    td.appendChild(bookingDiv);
+                } else {
+                    const contDiv = document.createElement('div');
+                    contDiv.className = 'booking-continuation';
+                    contDiv.dataset.bookingId = booking.id;
+                    td.appendChild(contDiv);
                 }
             } else {
-                html += `<button class="cell-button" data-create-booking data-date="${formatDate(day)}" data-time="${time}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>`;
+                const btn = document.createElement('button');
+                btn.className = 'cell-button';
+                btn.dataset.createBooking = '';
+                btn.dataset.date = formatDate(day);
+                btn.dataset.time = time;
+                btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>`;
+                td.appendChild(btn);
             }
             
-            html += '</div>';
+            tr.appendChild(td);
         });
         
-        html += '</div>';
+        tbody.appendChild(tr);
     });
     
-    html += '</div>';
+    table.appendChild(tbody);
+    fragment.appendChild(table);
     
-    // Usar batch update para reducir reflows
-    calendarioPerformance.batchUpdate(() => {
-        tempDiv.innerHTML = html;
-        while (tempDiv.firstChild) {
-            fragment.appendChild(tempDiv.firstChild);
-        }
-        container.innerHTML = '';
-        container.appendChild(fragment);
-        
-        // Aplicar alturas dinámicas a los bookings después de renderizar (CSP-safe)
-        container.querySelectorAll('.booking-dynamic-height').forEach(block => {
-            const height = block.getAttribute('data-height');
-            if (height) {
-                block.style.height = height + 'px';
-            }
-        });
-    });
+    // Un solo reflow al reemplazar contenido
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
 function renderizarVistaMonth() {
@@ -633,6 +632,23 @@ function renderizarVistaMonth() {
     const currentMonth = calendarioState.currentDate.getMonth();
     
     console.log('📅 Renderizando vista mensual');
+    
+    // Wrapper para scroll horizontal
+    const monthContainer = document.getElementById('monthView');
+    let wrapperDiv = monthContainer.querySelector('.month-view-container');
+    
+    if (!wrapperDiv) {
+        wrapperDiv = document.createElement('div');
+        wrapperDiv.className = 'month-view-container';
+        
+        // Mover monthHeader y monthGrid dentro del wrapper
+        const monthHeader = document.getElementById('monthHeader');
+        const monthGrid = document.getElementById('monthGrid');
+        
+        monthContainer.insertBefore(wrapperDiv, monthHeader);
+        wrapperDiv.appendChild(monthHeader);
+        wrapperDiv.appendChild(monthGrid);
+    }
     
     // Header
     const headerHtml = DAYS_ES.map(day => 
@@ -669,10 +685,7 @@ function renderizarVistaMonth() {
         gridHtml += '</div></div>';
     });
     
-    // Batch update
-    calendarioPerformance.batchUpdate(() => {
-        document.getElementById('monthGrid').innerHTML = gridHtml;
-    });
+    document.getElementById('monthGrid').innerHTML = gridHtml;
 }
 
 // ============================================
@@ -706,7 +719,13 @@ function abrirModalEditar(bookingId) {
         return;
     }
     
-    console.log('✏️ Editando booking:', booking);
+    console.log('✏️ Editando booking completo:', {
+        id: booking.id,
+        occupant_id: booking.occupant_id,
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime
+    });
     
     calendarioState.editingBooking = booking;
     
@@ -766,18 +785,30 @@ async function guardarAgendamiento(event) {
         // Obtener datos completos del ocupante
         const selectedOccupant = calendarioState.ocupantes.find(o => o.occupant_id === form.occupant_id);
         
+        console.log('👤 Ocupante seleccionado:', selectedOccupant);
+        console.log('📋 Lista de ocupantes disponibles:', calendarioState.ocupantes.length);
+        
+        if (!selectedOccupant) {
+            console.warn('⚠️ No se encontró el ocupante con ID:', form.occupant_id);
+        }
+        
         if (calendarioState.editingBooking) {
             // Actualizar
             const payload = {
-                ...form,
+                occupant_id: form.occupant_id,
+                date: form.date,
+                startTime: form.startTime,
+                endTime: form.endTime,
+                observaciones: form.observaciones || '',
                 space_id: calendarioState.espacioId,
                 current_date: calendarioState.editingBooking.date,
-                occupant_name: selectedOccupant?.nombre,
-                occupant_especialidad_id: selectedOccupant?.especialidad_id,
-                occupant_especialidad_nombre: selectedOccupant?.especialidad
+                occupant_name: selectedOccupant?.nombre || '',
+                occupant_especialidad_id: selectedOccupant?.especialidad_id || '',
+                occupant_especialidad_nombre: selectedOccupant?.especialidad || ''
             };
             
-            console.log('📝 Actualizando:', payload);
+            console.log('📝 Actualizando booking:', calendarioState.editingBooking.id);
+            console.log('📦 Payload completo:', payload);
             
             const encodedBookingId = encodeURIComponent(calendarioState.editingBooking.id);
             const response = await fetch(
@@ -790,7 +821,14 @@ async function guardarAgendamiento(event) {
             );
             
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText };
+                }
+                console.error('❌ Error del servidor:', errorData);
                 throw new Error(errorData.error || 'Error al actualizar');
             }
             
@@ -844,35 +882,137 @@ async function guardarAgendamiento(event) {
 async function eliminarAgendamiento() {
     if (!calendarioState.editingBooking) return;
     
-    if (!confirm('¿Estás seguro de eliminar esta agendación?')) return;
+    const booking = calendarioState.editingBooking;
     
-    try {
-        const bookingId = encodeURIComponent(calendarioState.editingBooking.id);
-        const fecha = calendarioState.editingBooking.date;
-        const horaInicio = calendarioState.editingBooking.startTime;
-        
-        console.log('🗑️ Eliminando:', { bookingId, fecha, horaInicio });
-        
-        const response = await fetch(
-            `/api/groups/${calendarioState.grupoId}/bookings/${bookingId}?fecha=${fecha}&hora_inicio=${horaInicio}`,
-            { method: 'DELETE' }
-        );
-        
-        if (!response.ok) {
-            throw new Error('Error al eliminar');
+    // Mostrar modal de confirmación con detalles
+    mostrarModalConfirmacion({
+        title: '¿Eliminar agendación?',
+        message: 'Esta acción no se puede deshacer',
+        details: [
+            {
+                icon: 'user',
+                label: 'Ocupante',
+                value: booking.occupant_name || 'N/A'
+            },
+            {
+                icon: 'calendar',
+                label: 'Fecha',
+                value: formatearFecha(booking.date)
+            },
+            {
+                icon: 'clock',
+                label: 'Horario',
+                value: `${booking.startTime} - ${booking.endTime}`
+            }
+        ],
+        onConfirm: async () => {
+            try {
+                const bookingId = encodeURIComponent(booking.id);
+                const fecha = booking.date;
+                const horaInicio = booking.startTime;
+                
+                console.log('🗑️ Eliminando:', { bookingId, fecha, horaInicio });
+                
+                const response = await fetch(
+                    `/api/groups/${calendarioState.grupoId}/bookings/${bookingId}?fecha=${fecha}&hora_inicio=${horaInicio}`,
+                    { method: 'DELETE' }
+                );
+                
+                if (!response.ok) {
+                    throw new Error('Error al eliminar');
+                }
+                
+                console.log('✅ Agendamiento eliminado');
+                
+                // Cerrar modal y recargar
+                cerrarModalAgendamiento();
+                calendarioState.bookingsCache.clear();
+                await cargarBookings();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('Error al eliminar la agendación');
+            }
         }
-        
-        console.log('✅ Agendamiento eliminado');
-        
-        // Cerrar modal y recargar
-        cerrarModalAgendamiento();
-        calendarioState.bookingsCache.clear();
-        await cargarBookings();
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('Error al eliminar la agendación');
-    }
+    });
+}
+
+// ============================================
+// MODAL DE CONFIRMACIÓN
+// ============================================
+
+function mostrarModalConfirmacion({ title, message, details, onConfirm }) {
+    const modal = document.getElementById('confirmModal');
+    const confirmTitle = document.getElementById('confirmTitle');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmDetailsContainer = document.getElementById('confirmDetails');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    
+    // Establecer título y mensaje
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    
+    // Renderizar detalles
+    confirmDetailsContainer.innerHTML = details.map(detail => `
+        <div class="confirm-detail-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${getIconPath(detail.icon)}
+            </svg>
+            <span class="confirm-detail-label">${detail.label}:</span>
+            <strong>${detail.value}</strong>
+        </div>
+    `).join('');
+    
+    // Configurar botones
+    const confirmarHandler = async () => {
+        cerrarModalConfirmacion();
+        if (onConfirm) await onConfirm();
+    };
+    
+    const cancelarHandler = () => {
+        cerrarModalConfirmacion();
+    };
+    
+    // Remover listeners anteriores
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+    
+    // Agregar nuevos listeners
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmarHandler);
+    document.getElementById('confirmCancelBtn').addEventListener('click', cancelarHandler);
+    
+    // Mostrar modal
+    modal.classList.add('active');
+    
+    // Cerrar con ESC
+    const escHandler = (e) => {
+        if (e.key === 'Escape') {
+            cerrarModalConfirmacion();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+}
+
+function cerrarModalConfirmacion() {
+    const modal = document.getElementById('confirmModal');
+    modal.classList.remove('active');
+}
+
+function getIconPath(icon) {
+    const icons = {
+        user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+        calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
+        clock: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
+    };
+    return icons[icon] || '';
+}
+
+function formatearFecha(dateStr) {
+    const [year, month, day] = dateStr.split('-');
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${day} ${months[parseInt(month) - 1]} ${year}`;
 }
 
 // ============================================

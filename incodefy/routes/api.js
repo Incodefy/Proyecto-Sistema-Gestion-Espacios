@@ -36,9 +36,13 @@ router.post('/personalization', requireAuthAPI, async (req, res) => {
       console.log('✅ Personalización guardada. Final parameters:', finalParameters);
       console.log('🔵 NODE.JS - Respuesta completa del Lambda:', JSON.stringify(responseData, null, 2));
       
-      // Actualizar la personalización en la sesión
+      // Actualizar la personalización en la sesión (merge con valores existentes)
       if (Object.keys(finalParameters).length > 0) {
-        req.session.user.personalization = finalParameters;
+        // Hacer merge en lugar de reemplazar completo
+        req.session.user.personalization = {
+          ...req.session.user.personalization,
+          ...finalParameters
+        };
         console.log('🔵 NODE.JS - Sesión actualizada con:', JSON.stringify(req.session.user.personalization, null, 2));
         
         // Manejo especial del idioma
@@ -131,8 +135,8 @@ router.get('/test/espacios-methods', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const results = {};
     
@@ -268,8 +272,8 @@ router.get('/espacios/grupo-activo', requireAuthAPI, async (req, res) => {
     
     if (grupoActivoPersonalizacion?.grupo_id) {
       // Obtener detalles completos del grupo usando apiClient
-      const ApiClient = require('../apiClient');
-      const apiClient = new ApiClient(req.session.user.idToken);
+      const ApiClientV2 = require('../apiClientV2');
+      const apiClient = new ApiClientV2(req.session.user.idToken);
       
       try {
         const grupoResponse = await apiClient.obtenerGrupo(grupoActivoPersonalizacion.grupo_id);
@@ -329,8 +333,8 @@ router.get('/espacios/grupos-usuario', requireAuthAPI, async (req, res) => {
   try {
     console.log('📋 GET /api/espacios/grupos-usuario - Usuario:', req.session.user?.email);
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const response = await apiClient.listarGruposUsuario();
     
@@ -381,8 +385,8 @@ router.put('/espacios/asignar-grupo', requireAuthAPI, async (req, res) => {
     }
     
     // Primero obtener detalles del grupo para validar que existe y el usuario tiene acceso
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     let grupoDetalles;
     try {
@@ -503,8 +507,8 @@ router.get('/espacios/configuracion', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     try {
       // La nomenclatura está en obtenerGrupo, no en obtenerConfiguracionEspacios
@@ -563,8 +567,8 @@ router.get('/espacios/lista', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const response = await apiClient.listarEspacios(grupo_id);
     
@@ -608,8 +612,8 @@ router.post('/espacios/espacio', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const response = await apiClient.crearEspacio({
       grupo_id,
@@ -652,8 +656,8 @@ router.put('/espacios/espacio/:id', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const response = await apiClient.actualizarEspacio(id, {
       nombre,
@@ -694,8 +698,8 @@ router.delete('/espacios/espacio/:id', requireAuthAPI, async (req, res) => {
       });
     }
     
-    const ApiClient = require('../apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('../apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const response = await apiClient.eliminarEspacio(id, grupo_id);
     

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Telemetry Collector - Unified Metrics & Tracing
  * 
  * Recopila y agrega métricas de todos los servicios AWS,
@@ -14,7 +14,7 @@
  */
 
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
-const Logger = require("./logger");
+const { Logger } = require("./logger");
 
 /**
  * Metric Types
@@ -35,7 +35,7 @@ class TelemetryCollector {
   constructor(config = {}) {
     this.logger = Logger.create({ handler: 'TelemetryCollector' });
     this.config = {
-      namespace: config.namespace || 'Incodefy/Ambassador',
+      namespace: config.namespace || 'Incodefy/Application',
       flushInterval: config.flushInterval || 60000, // 1 minute
       enableCloudWatch: config.enableCloudWatch !== false,
       maxBatchSize: config.maxBatchSize || 20,

@@ -18,7 +18,8 @@ router.get('/historial-notificaciones', checkPermission('notificaciones.historia
       personalization: res.locals.personalization || {},
       user: req.session.user,
       grupoActivo: req.session.grupoActivo,
-      preferenciasNotificaciones: preferencias
+      preferenciasNotificaciones: preferencias,
+      wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
     });
   } catch (error) {
     console.error('Error al cargar preferencias:', error);
@@ -27,7 +28,8 @@ router.get('/historial-notificaciones', checkPermission('notificaciones.historia
       personalization: res.locals.personalization || {},
       user: req.session.user,
       grupoActivo: req.session.grupoActivo,
-      preferenciasNotificaciones: getDefaultPreferencias()
+      preferenciasNotificaciones: getDefaultPreferencias(),
+      wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
     });
   }
 });

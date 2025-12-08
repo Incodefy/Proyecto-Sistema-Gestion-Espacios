@@ -1,10 +1,10 @@
-// handlers/appointments/checkConflict.js
+﻿// handlers/appointments/checkConflict.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require("../../utils/logger");
-const { createAPIHandler } = require("../../utils/interceptors");
-const { successResponse } = require("../../utils/response");
-const { ValidationError } = require("../../utils/errors");
+const { Logger } = require("../../utils/logger");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { successResponse } = require("../../utils/errorHandler");
+const { ValidationError } = require("../../utils/errorHandler");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);

@@ -1,20 +1,22 @@
-// src/handlers/personalization.js
+﻿// src/handlers/personalization.js
 const config = require('../../config/config');
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 const { wasAlreadyProcessed, markAsProcessed } = require("../../utils/idempotency");
-const { validate } = require("../../utils/validation");
-const { successResponse, errorResponse } = require("../../utils/response");
-const Logger = require("../../utils/logger");
-const { createAPIHandler } = require("../../utils/interceptors");
-const { AuthorizationError, ValidationError } = require("../../utils/errors");
-const { getAmbassador } = require("../../utils/awsAmbassador");
+const { validate } = require("../../utils/validator");
+const { successResponse, errorResponse } = require("../../utils/errorHandler");
+const { Logger } = require("../../utils/logger");
+const { createAPIHandler } = require("../../middleware/interceptors");
+const { AuthorizationError, ValidationError } = require("../../utils/errorHandler");
+const { retryWithJitter } = require("../../utils/retry");
+const { createCircuitBreaker } = require("../../utils/circuitBreaker");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const ambassador = getAmbassador();
+const snsClient = new SNSClient({});
 
 // Parámetros disponibles para personalización
 const PERSONALIZATION_PARAMETERS = config.personalization.parameters;
@@ -27,8 +29,8 @@ const getGlobalParameters = () => {
   );
 };
 
-// Publicar eventos a SNS via Ambassador
-async function publishPersonalizationEvent(eventType, data) {
+// Publicar eventos a SNS directamente
+async function publishPersonalizationEvent(eventType, data, logger = console) {
   const eventId = `${eventType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   try {
@@ -39,22 +41,32 @@ async function publishPersonalizationEvent(eventType, data) {
       data
     };
 
-    await ambassador.publishToSNS({
-      topicArn: process.env.PERSONALIZATION_TOPIC_ARN,
-      message: message,
-      subject: `Personalization Event: ${eventType}`
+    const command = new PublishCommand({
+      TopicArn: process.env.PERSONALIZATION_TOPIC_ARN,
+      Message: JSON.stringify(message),
+      Subject: `Personalization Event: ${eventType}`
     });
 
-    logger.info("Evento SNS publicado via Ambassador", { eventType, eventId });
+    await snsClient.send(command);
+
+    if (logger && logger.info) {
+      logger.info("Evento SNS publicado", { eventType, eventId });
+    } else {
+      console.log("Evento SNS publicado", { eventType, eventId });
+    }
     return true;
 
   } catch (error) {
-    logger.error("Error publicando evento SNS", error, { eventType });
+    if (logger && logger.error) {
+      logger.error("Error publicando evento SNS", error, { eventType });
+    } else {
+      console.error("Error publicando evento SNS", error, { eventType });
+    }
     return false;
   }
 }
 
-async function getPersonalizationHandler(event, logger) {
+async function getPersonalizationHandler(event, context, logger) {
   const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
   const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
   
@@ -96,7 +108,7 @@ async function getPersonalizationHandler(event, logger) {
       userSub,
       userEmail,
       parametersCount: Object.keys(userParameters).length
-    });
+    }, logger);
 
   logger.info("Personalización obtenida", { 
     userSub, 
@@ -118,7 +130,7 @@ module.exports.getPersonalization = createAPIHandler(getPersonalizationHandler, 
 
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 
-async function setPersonalizationHandler(event, logger) {
+async function setPersonalizationHandler(event, context, logger) {
   const userSub = event.requestContext?.authorizer?.jwt?.claims?.sub;
   const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email;
   
@@ -145,11 +157,10 @@ async function setPersonalizationHandler(event, logger) {
       // Retornar el estado actual
       const currentState = await module.exports.getPersonalization(event);
       const currentBody = JSON.parse(currentState.body);
-      endTrace();
       
       return successResponse({
         message: "Parámetros ya estaban actualizados",
-        final_parameters: currentBody.data.final_parameters,
+        final_parameters: currentBody.final_parameters,
         already_processed: true
       });
     }
@@ -191,11 +202,7 @@ async function setPersonalizationHandler(event, logger) {
 
     if (errors.length > 0) {
       logger.warn("Validación fallida en parámetros", { errors });
-      endTrace();
-      return {
-        ...validationErrorResponse(errors),
-        headers: { ...validationErrorResponse(errors).headers, ...getSecurityHeaders() }
-      };
+      throw new ValidationError(`Parámetros inválidos: ${errors.join(', ')}`);
     }
 
     const previousResult = await retryWithJitter(
@@ -272,7 +279,7 @@ async function setPersonalizationHandler(event, logger) {
       updatedParameters: savedParameters,
       timestamp,
       idempotencyKey
-    });
+    }, logger);
 
     const updatedResult = await module.exports.getPersonalization(event);
     const updatedBody = JSON.parse(updatedResult.body);
@@ -285,7 +292,7 @@ async function setPersonalizationHandler(event, logger) {
     return successResponse({
       message: "Parámetros de personalización actualizados",
       saved_parameters: savedParameters,
-      final_parameters: updatedBody.data.final_parameters
+      final_parameters: updatedBody.final_parameters
     });
 }
 

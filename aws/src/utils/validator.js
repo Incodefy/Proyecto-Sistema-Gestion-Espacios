@@ -202,14 +202,12 @@ const schemas = {
   // === OCUPANTES ===
   createOcupante: {
     type: 'object',
-    required: ['nombre', 'tipo'],
+    required: ['nombre'],
     properties: {
       nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
-      tipo: { 
-        type: 'string',
-        enum: ['medico', 'enfermera', 'tecnico', 'administrativo', 'otro']
-      },
-      especialidad: { type: 'string', maxLength: 100 },
+      tipo: { type: 'string', maxLength: 100 },
+      especialidad_id: { type: 'string', maxLength: 100 },
+      especialidad: { type: 'string', maxLength: 200 },
       email: commonSchemas.email,
       telefono: { type: 'string', maxLength: 20 },
       activo: { type: 'boolean', default: true }
@@ -219,18 +217,26 @@ const schemas = {
 
   updateOcupante: {
     type: 'object',
-    required: ['id'],
+    required: [],
     properties: {
-      id: commonSchemas.uuid,
+      id: { type: 'string', minLength: 1 },
       nombre: { type: 'string', minLength: 1, maxLength: 200 },
-      tipo: { 
-        type: 'string',
-        enum: ['medico', 'enfermera', 'tecnico', 'administrativo', 'otro']
-      },
-      especialidad: { type: 'string', maxLength: 100 },
+      tipo: { type: 'string', maxLength: 100 },
+      especialidad_id: { type: 'string', maxLength: 100 },
+      especialidad: { type: 'string', maxLength: 200 },
       email: commonSchemas.email,
       telefono: { type: 'string', maxLength: 20 },
       activo: { type: 'boolean' }
+    },
+    additionalProperties: false
+  },
+
+  deleteOcupante: {
+    type: 'object',
+    required: ['grupo_id', 'id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 }
     },
     additionalProperties: false
   },
@@ -244,6 +250,88 @@ const schemas = {
       descripcion: { type: 'string', maxLength: 500 },
       codigo: { type: 'string', maxLength: 20 },
       activa: { type: 'boolean', default: true }
+    },
+    additionalProperties: false
+  },
+
+  listEspecialidades: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  updateEspecialidad: {
+    type: 'object',
+    required: [],
+    properties: {
+      id: { type: 'string', minLength: 1 },
+      nombre: { type: 'string', minLength: 1, maxLength: 100, isNotEmpty: true },
+      descripcion: { type: 'string', maxLength: 500 },
+      codigo: { type: 'string', maxLength: 20 },
+      activa: { type: 'boolean' }
+    },
+    additionalProperties: false
+  },
+
+  deleteEspecialidad: {
+    type: 'object',
+    required: ['grupo_id', 'id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  listTiposInstrumentos: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  listInstrumentos: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  // === ESPACIOS ===
+  createSpace: {
+    type: 'object',
+    required: ['grupo_id', 'nombre', 'tipo'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+      tipo: { type: 'string', enum: ['general', 'especifico'] },
+      pertenece_a: { type: 'string' } // Para espacios específicos
+    },
+    additionalProperties: false
+  },
+
+  updateSpace: {
+    type: 'object',
+    required: ['id', 'nombre'],
+    properties: {
+      id: { type: 'string', minLength: 1 },
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true }
+    },
+    additionalProperties: false
+  },
+
+  deleteSpace: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string', minLength: 1 }
     },
     additionalProperties: false
   },
@@ -295,23 +383,65 @@ const schemas = {
 
   updateAppointment: {
     type: 'object',
-    required: ['appointment_id'],
+    required: ['appointmentId'],
     properties: {
-      appointment_id: commonSchemas.uuid,
-      ocupante_id: commonSchemas.uuid,
-      espacio_id: commonSchemas.uuid,
-      fecha_inicio: { type: 'string', format: 'date-time' },
-      fecha_fin: { type: 'string', format: 'date-time' },
-      titulo: { type: 'string', maxLength: 200 },
-      descripcion: { type: 'string', maxLength: 1000 },
+      appointmentId: { type: 'string' },
+      grupo_id: { type: 'string' },
+      ocupante_id: { type: 'string' },
+      ocupante_nombre: { type: 'string' },
+      especialidad_id: { type: 'string' },
+      especialidad_nombre: { type: 'string' },
+      espacio_id: { type: 'string' },
+      fecha: { type: 'string', format: 'date' },
+      fecha_actual: { type: 'string', format: 'date' },
+      hora_inicio: { type: 'string', pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' },
+      hora_fin: { type: 'string', pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' },
+      observaciones: { type: 'string' },
+      paciente_nombre: { type: 'string' },
+      paciente_rut: { type: 'string' },
+      tipo_consulta: { type: 'string' },
+      notas: { type: 'string' },
       estado: {
         type: 'string',
-        enum: ['pendiente', 'confirmado', 'cancelado', 'completado']
-      },
-      prioridad: {
-        type: 'string',
-        enum: ['baja', 'normal', 'alta', 'urgente']
+        enum: ['PENDIENTE', 'CONFIRMADA', 'CANCELADA', 'COMPLETADA', 'EN_CURSO']
       }
+    },
+    additionalProperties: true  // Permitir campos adicionales para flexibilidad
+  },
+
+  listAppointments: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      fecha: { type: 'string', format: 'date' },
+      espacio_id: { type: 'string' },
+      ocupante_id: { type: 'string' }
+    },
+    additionalProperties: false
+  },
+
+  deleteAppointment: {
+    type: 'object',
+    required: ['grupo_id', 'appointmentId', 'fecha', 'hora_inicio'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      appointmentId: { type: 'string', minLength: 1 },
+      fecha: { type: 'string', format: 'date' },
+      hora_inicio: { type: 'string', pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]$' }
+    },
+    additionalProperties: false
+  },
+
+  // === NOTIFICACIONES ===
+  listNotifications: {
+    type: 'object',
+    required: ['userSub', 'limit'],
+    properties: {
+      userSub: { type: 'string', minLength: 1 },
+      limit: { type: 'integer', minimum: 1, maximum: 100 },
+      grupo_id: { type: 'string' },
+      solo_no_leidas: { type: 'boolean' }
     },
     additionalProperties: false
   },
@@ -383,8 +513,8 @@ const schemas = {
     properties: {
       grupo_id: {
         type: 'string',
-        pattern: '^[a-zA-Z0-9-_]{8,36}$',
-        errorMessage: 'grupo_id debe tener entre 8-36 caracteres alfanuméricos'
+        pattern: '^grp_[a-zA-Z0-9-]{30,50}$',
+        errorMessage: 'grupo_id debe tener formato grp_xxx con UUID válido'
       },
       connectionId: { type: 'string', minLength: 1 }
     },

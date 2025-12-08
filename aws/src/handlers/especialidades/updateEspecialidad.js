@@ -1,7 +1,7 @@
-// aws/src/handlers/especialidades/updateEspecialidad.js
+﻿// aws/src/handlers/especialidades/updateEspecialidad.js
 const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { NotFoundError } = require("../../utils/errorHandler");
 const { retryDB } = require("../../utils/retry");
@@ -14,7 +14,7 @@ const updateEspecialidad = async (event) => {
   const grupo_id = event.pathParameters?.grupo_id;
   const especialidadId = event.pathParameters?.id;
   
-  validate('updateEspecialidad', { ...body, grupo_id, especialidadId });
+  validate('updateEspecialidad', body);
   
   logger.info('Actualizando especialidad', { grupo_id, especialidadId });
   
@@ -75,19 +75,3 @@ const updateEspecialidad = async (event) => {
 module.exports.handler = createAPIHandler(updateEspecialidad, {
   rateLimit: { maxRequests: 40, windowSeconds: 60 }
 });
-
-  } catch (error) {
-    console.error(`[${TRACE_ID}] ❌ Error actualizando especialidad:`, error);
-    
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        ok: false, 
-        error: "Error al actualizar especialidad",
-        details: error.message,
-        trace_id: TRACE_ID
-      })
-    };
-  }
-};

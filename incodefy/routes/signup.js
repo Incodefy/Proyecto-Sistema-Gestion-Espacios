@@ -120,7 +120,10 @@ router.post('/signup', async (req, res) => {
         }).promise();
         console.log('📧 Email de verificación de SES enviado a:', email);
         
-        req.flash('success', '¡Cuenta creada! Revisa tu correo para verificar tu dirección de email (revisa spam también).');
+        // Guardar el email en la sesión para mostrarlo en el modal
+        const maskedEmail = email.replace(/(.{2})(.*)(@.{2})(.*)(\..*)/, '$1***$3***$5');
+        req.flash('verification_email_sent', maskedEmail);
+        req.flash('success', '¡Cuenta creada exitosamente!');
         return res.redirect('/login');
       } catch (sesError) {
         console.error('⚠️ Error solicitando verificación SES:', sesError.message);

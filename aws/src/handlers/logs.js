@@ -1,12 +1,12 @@
-// src/handlers/logs.js
+﻿// src/handlers/logs.js
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand, ScanCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryWithJitter } = require("../utils/retry");
 const { createCircuitBreaker } = require("../utils/circuitBreaker");
-const Logger = require("../utils/logger");
-const { createAPIHandler } = require("../utils/interceptors");
-const { successResponse } = require("../utils/response");
-const { AuthorizationError } = require("../utils/errors");
+const { Logger } = require("../utils/logger");
+const { createAPIHandler } = require("../middleware/interceptors");
+const { successResponse } = require("../utils/errorHandler");
+const { AuthorizationError } = require("../utils/errorHandler");
 const { validate } = require("../utils/validator");
 
 const client = new DynamoDBClient({});

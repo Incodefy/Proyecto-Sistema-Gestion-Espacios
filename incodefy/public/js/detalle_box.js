@@ -123,76 +123,62 @@ function cerrarModalInstrumentos() {
 }
 
 async function cargarTiposEInstrumentos() {
+    // Usar caché si existe
+    const cacheKey = `instrumentos-${window.grupoId}-${window.espacioId}`;
+    const cached = performanceUtils.getCache(cacheKey);
+    if (cached) {
+        tiposInstrumentos = cached.tipos;
+        instrumentos = cached.instrumentos;
+        renderizarTiposInstrumentos();
+        return;
+    }
+    
     try {
         const grupoId = window.grupoId;
         const espacioId = window.espacioId;
         
         console.log('📦 Cargando tipos e instrumentos para:', { grupoId, espacioId });
         
-        // Cargar tipos de instrumentos con manejo de errores
-        try {
-            const tiposResponse = await fetch(`/groups/${grupoId}/tipos-instrumentos`);
-            if (tiposResponse.ok) {
-                const tiposData = await tiposResponse.json();
-                // El handler retorna 'tipos', no 'tipos_instrumentos'
-                tiposInstrumentos = (tiposData.tipos || []).map(tipo => ({
-                    SK: `TIPO_INST#${tipo.id}`,
-                    nombre: tipo.nombre,
-                    icono: 'tools'
-                }));
-                console.log('📋 Tipos de instrumentos:', tiposInstrumentos);
-            } else {
-                console.warn('⚠️ No se pudieron cargar tipos de instrumentos (puede que no estén desplegados)');
-                tiposInstrumentos = [];
-            }
-        } catch (error) {
-            console.warn('⚠️ Error cargando tipos de instrumentos:', error.message);
+        // Cargar ambos en paralelo para mejor performance
+        const [tiposResult, instrumentosResult] = await Promise.allSettled([
+            fetch(`/groups/${grupoId}/tipos-instrumentos`).then(r => r.ok ? r.json() : null),
+            fetch(`/groups/${grupoId}/instrumentos?espacio_id=${encodeURIComponent(espacioId)}`).then(r => r.ok ? r.json() : null)
+        ]);
+        
+        // Procesar tipos
+        if (tiposResult.status === 'fulfilled' && tiposResult.value) {
+            tiposInstrumentos = (tiposResult.value.tipos || []).map(tipo => ({
+                SK: `TIPO_INST#${tipo.id}`,
+                nombre: tipo.nombre,
+                icono: 'tools'
+            }));
+        } else {
             tiposInstrumentos = [];
         }
         
-        // Cargar instrumentos del espacio
-        try {
-            const instrumentosResponse = await fetch(`/groups/${grupoId}/instrumentos?espacio_id=${encodeURIComponent(espacioId)}`);
-            if (instrumentosResponse.ok) {
-                const instrumentosData = await instrumentosResponse.json();
-                instrumentos = instrumentosData.instrumentos || [];
-                console.log('🔧 Instrumentos del espacio:', instrumentos);
-            } else {
-                console.warn('⚠️ No se pudieron cargar instrumentos');
-                instrumentos = [];
-            }
-        } catch (error) {
-            console.warn('⚠️ Error cargando instrumentos:', error.message);
+        // Procesar instrumentos
+        if (instrumentosResult.status === 'fulfilled' && instrumentosResult.value) {
+            instrumentos = instrumentosResult.value.instrumentos || [];
+        } else {
             instrumentos = [];
         }
         
         // Si no hay tipos pero sí hay instrumentos, agrupar por tipo automáticamente
         if (tiposInstrumentos.length === 0 && instrumentos.length > 0) {
-            console.log('📦 Creando tipos temporales desde instrumentos...');
             const tiposUnicos = new Map();
-            
             instrumentos.forEach(inst => {
                 const tipoId = inst.tipo_instrumento_id || inst.tipo || 'GENERAL';
                 const tipoNombre = inst.tipo_instrumento_nombre || inst.tipo || 'General';
-                
                 if (!tiposUnicos.has(tipoId)) {
-                    tiposUnicos.set(tipoId, {
-                        SK: tipoId,
-                        nombre: tipoNombre,
-                        icono: 'tools'
-                    });
+                    tiposUnicos.set(tipoId, { SK: tipoId, nombre: tipoNombre, icono: 'tools' });
                 }
             });
-            
             tiposInstrumentos = Array.from(tiposUnicos.values());
-            console.log('📋 Tipos generados:', tiposInstrumentos);
         }
         
-        // Renderizar tabs y contenido
-        console.log('📊 Estado final:', { 
-            tiposInstrumentos: tiposInstrumentos.length, 
-            instrumentos: instrumentos.length 
-        });
+        // Guardar en caché
+        performanceUtils.setCache(cacheKey, { tipos: tiposInstrumentos, instrumentos });
+        
         renderizarTiposInstrumentos();
         
     } catch (error) {
@@ -710,14 +696,30 @@ function renderGraficosInmediato(uso, noRealizadas, total) {
 function mostrarTab(tab) {
     console.log('📑 Mostrando tab:', tab);
     
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // Actualizar botones
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    });
+    
+    // Actualizar contenido de tabs
+    document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.remove('active');
+        c.setAttribute('hidden', '');
+    });
     
     const targetBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
     const targetContent = document.getElementById(`tab-${tab}`);
     
-    if (targetBtn) targetBtn.classList.add('active');
-    if (targetContent) targetContent.classList.add('active');
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+        targetBtn.setAttribute('aria-selected', 'true');
+    }
+    
+    if (targetContent) {
+        targetContent.classList.add('active');
+        targetContent.removeAttribute('hidden');
+    }
 
     // Si se muestra el tab de agendamientos, inicializar calendario
     if (tab === 'agendamientos') {
@@ -734,27 +736,28 @@ function mostrarTab(tab) {
     if (tab === 'estadisticas') {
         console.log('📊 Cargando estadísticas desde mostrarTab');
         
-        // Primero, restaurar fecha y viewMode desde URL o calendario
-        let fechaRestaurada = null;
-        let viewModeRestaurado = 'week';
-        
-        // Intentar desde URL primero
-        const params = new URLSearchParams(window.location.search);
-        const dateStr = params.get('date');
-        const viewModeParam = params.get('viewMode');
-        
-        if (dateStr) {
-            const fecha = new Date(dateStr + 'T00:00:00');
-            if (!isNaN(fecha.getTime())) {
-                fechaRestaurada = fecha;
-                console.log('✅ Fecha restaurada desde URL:', dateStr);
+        // Lazy loading - solo cargar si no se ha cargado antes
+        const metricsLoaded = document.getElementById('totalConsultas').textContent.trim() !== '';
+        if (!metricsLoaded) {
+            // Primero, restaurar fecha y viewMode desde URL o calendario
+            let fechaRestaurada = null;
+            let viewModeRestaurado = 'week';
+            
+            // Intentar desde URL primero
+            const params = new URLSearchParams(window.location.search);
+            const dateStr = params.get('date');
+            const viewModeParam = params.get('viewMode');
+            
+            if (dateStr) {
+                const fecha = new Date(dateStr + 'T00:00:00');
+                if (!isNaN(fecha.getTime())) {
+                    fechaRestaurada = fecha;
+                }
             }
-        }
-        
-        if (viewModeParam && ['day', 'week', 'month'].includes(viewModeParam)) {
-            viewModeRestaurado = viewModeParam;
-            console.log('✅ ViewMode restaurado desde URL:', viewModeParam);
-        }
+            
+            if (viewModeParam && ['day', 'week', 'month'].includes(viewModeParam)) {
+                viewModeRestaurado = viewModeParam;
+            }
         
         // Si no hay en URL, intentar desde calendario
         if (!fechaRestaurada && window.calendarioState) {
@@ -778,6 +781,7 @@ function mostrarTab(tab) {
         
         // Cargar estadísticas
         setTimeout(() => cargarEstadisticas(), 100);
+        }
     }
 
     // Mantener el tab en la URL sin perder otros parámetros
@@ -951,8 +955,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabInicial = urlParams.get('tab') || 'agendamientos';
     mostrarTab(tabInicial);
     
-    // Conectar WebSocket para actualizaciones en tiempo real
-    connectWebSocket();
+    // Conectar WebSocket después de un delay para no bloquear carga inicial
+    setTimeout(() => connectWebSocket(), 1000);
 });
 
 // ============================================
@@ -962,7 +966,8 @@ document.addEventListener('DOMContentLoaded', () => {
 let websocket = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
-const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+const wsEndpointElement = document.querySelector('[data-ws-endpoint]');
+const WS_URL = wsEndpointElement ? wsEndpointElement.dataset.wsEndpoint : 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev';
 
 function connectWebSocket() {
     const grupoId = document.body.dataset.grupoId;

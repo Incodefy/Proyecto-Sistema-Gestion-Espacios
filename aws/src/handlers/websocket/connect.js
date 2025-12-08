@@ -1,9 +1,9 @@
-// handlers/websocket/connect.js
+﻿// handlers/websocket/connect.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require('../../utils/logger');
+const { Logger } = require('../../utils/logger');
 const { retryDB } = require('../../utils/retry');
-const { ValidationError } = require('../../utils/errors');
+const { ValidationError } = require('../../utils/errorHandler');
 const { getSecurityHeaders } = require('../../middleware/securityHeaders');
 const { validate } = require('../../utils/validator');
 

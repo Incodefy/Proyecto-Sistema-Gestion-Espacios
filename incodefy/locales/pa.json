@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "ਰੱਦ ਕਰੋ"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "ਕੰਮ ਦੀ ਥਾਂ",
+      "active_group": "ਸਰਗਰਮ ਸਮੂਹ",
+      "loading": "ਸਮੂਹ ਜਾਣਕਾਰੀ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
+      "change_group": "ਸਮੂਹ ਬਦਲੋ",
+      "select_group": "ਸਮੂਹ ਚੁਣੋ",
+      "manage_spaces": "ਸਥਾਨਾਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ",
+      "loading_groups": "ਗੁਰੱਪ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+      "active_badge": "ਸਰਗਰਮ",
+      "select_badge": "ਚੁਣੋ"
+    },
+    "color_picker": {
+      "current_color": "ਮੌਜੂਦਾ ਰੰਗ:",
+      "preview_aria": "ਮੌਜੂਦਾ ਰੰਗ ਦੀ ਝਲਕ",
+      "open_picker_aria": "ਰੰਗ ਚੋਣਕਾਰ ਖੋਲ੍ਹੋ",
+      "explore_colors": "ਹੋਰ ਰੰਗਾਂ ਦੀ ਖੋਜ ਕਰੋ",
+      "select_color": "ਰੰਗ ਚੁਣੋ",
+      "select_a_color": "ਇੱਕ ਰੰਗ ਚੁਣੋ",
+      "search_placeholder": "ਨਾਂ ਦੁਆਰਾ ਰੰਗ ਖੋਜੋ...",
+      "apply_color": "ਰੰਗ ਲਾਗੂ ਕਰੋ",
+      "categories": {
+        "popular": "ਪ੍ਰਸਿੱਧ ਰੰਗ",
+        "vibrant": "ਜੀਵੰਤ",
+        "pastel": "ਪੇਸਟਲ",
+        "dark": "ਗੂੜ਼ਾ"
+      },
+      "color_names": {
+        "Azul": "ਨੀਲਾ",
+        "Rojo": "ਲਾਲ",
+        "Verde": "ਹਰਾ",
+        "Púrpura": "ਜਾਮਨੀ",
+        "Naranja": "ਸੰਤਰੀ",
+        "Rojo Vibrante": "ਚਮਕਦਾਰ ਲਾਲ",
+        "Naranja Intenso": "ਗੂੜ੍ਹਾ ਸੰਤਰੀ",
+        "Ámbar": "ਅੰਬਰ",
+        "Lima": "ਨਿੰਬੂ",
+        "Esmeralda": "ਪੰਨਾ",
+        "Cian": "ਸਿਆਨ",
+        "Azul Rey": "ਸ਼ਾਹੀ ਨੀਲਾ",
+        "Violeta": "ਵਾਇਲਟ",
+        "Rosa Fucsia": "ਫਿਊਸ਼ੀਆ ਗੁਲਾਬੀ",
+        "Rosa Intenso": "ਗੂੜ੍ਹਾ ਗੁਲਾਬੀ",
+        "Rosa Pastel": "ਪੇਸਟਲ ਗੁਲਾਬੀ",
+        "Melocotón": "ਆੜੂ",
+        "Amarillo Suave": "ਹਲਕਾ ਪੀਲਾ",
+        "Lima Pastel": "ਪੇਸਟਲ ਨਿੰਬੂ",
+        "Verde Menta": "ਪੁਦੀਨਾ ਹਰਾ",
+        "Celeste": "ਆਕਾਸ਼ੀ",
+        "Azul Cielo": "ਅਸਮਾਨੀ ਨੀਲਾ",
+        "Lavanda": "ਲੈਵੈਂਡਰ",
+        "Rosa Claro": "ਹਲਕਾ ਗੁਲਾਬੀ",
+        "Coral Suave": "ਹਲਕਾ ਮੂੰਗਾ",
+        "Pizarra": "ਸਲੇਟੀ",
+        "Azul Marino": "ਨੇਵੀ ਬਲੂ",
+        "Rosa Oscuro": "ਗੂੜ੍ਹਾ ਗੁਲਾਬੀ",
+        "Púrpura Oscuro": "ਗੂੜ੍ਹਾ ਜਾਮਨੀ",
+        "Marrón": "ਭੂਰਾ",
+        "Verde Oscuro": "ਗੂੜ੍ਹਾ ਹਰਾ",
+        "Verde Azulado": "ਟੀਲ",
+        "Azul Profundo": "ਡੂੰਘਾ ਨੀਲਾ",
+        "Índigo Oscuro": "ਗੂੜ੍ਹਾ ਇੰਡੀਗੋ",
+        "Carmesí": "ਕਰਮਜ਼ੀ"
+      }
     }
   },
   "navbar": {

@@ -25,16 +25,26 @@ const saveSpaces = async (event, context, logger) => {
   const timestamp = new Date().toISOString();
   
   // Marcar grupo como configurado
-  await retryDB(
-    () => db.send(new UpdateCommand({
-      TableName: process.env.GROUPS_TABLE,
-      Key: { group_id: grupo_id },
-      UpdateExpression: "SET configured = :cfg, updated_at = :now",
-      ExpressionAttributeValues: { ":cfg": true, ":now": timestamp }
-    })),
-    { operation: 'markGroupConfigured' }
-  );
-  logger.info('Grupo marcado como configurado', { grupo_id });
+  try {
+    await retryDB(
+      () => db.send(new UpdateCommand({
+        TableName: process.env.GROUPS_TABLE,
+        Key: { group_id: grupo_id },
+        UpdateExpression: "SET configured = :cfg, updated_at = :now",
+        ExpressionAttributeValues: { ":cfg": true, ":now": timestamp },
+        ConditionExpression: "attribute_exists(group_id)" // Verificar que el grupo existe
+      })),
+      { operation: 'markGroupConfigured' }
+    );
+    logger.info('Grupo marcado como configurado', { grupo_id });
+  } catch (error) {
+    logger.error('Error al marcar grupo como configurado', { 
+      error: error.message, 
+      grupo_id,
+      tableName: process.env.GROUPS_TABLE 
+    });
+    throw new ValidationError(`El grupo ${grupo_id} no existe o no se pudo actualizar: ${error.message}`);
+  }
   
   let generalIdx = 0;
   let specificIdx = 0;

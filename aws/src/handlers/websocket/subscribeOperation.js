@@ -1,7 +1,7 @@
-// handlers/websocket/subscribeOperation.js
+﻿// handlers/websocket/subscribeOperation.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require('../../utils/logger');
+const { Logger } = require('../../utils/logger');
 const { retryDB } = require('../../utils/retry');
 const { getSecurityHeaders } = require('../../middleware/securityHeaders');
 const { getOperationStore } = require('../../utils/operationStore');

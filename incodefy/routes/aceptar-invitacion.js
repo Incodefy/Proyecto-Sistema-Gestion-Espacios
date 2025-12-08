@@ -1,7 +1,7 @@
 // routes/aceptar-invitacion.js
 const express = require('express');
 const router = express.Router();
-const ApiClient = require('../apiClient');
+const ApiClientV2 = require('../apiClientV2');
 
 /**
  * GET /aceptar-invitacion?token=xxx
@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
     }
 
     // Crear cliente API sin token para verificación pública
-    const apiClient = new ApiClient(null);
+    const apiClient = new ApiClientV2(null);
     
     // Verificar que la invitación existe y está pendiente
     const invitationData = await apiClient.verificarInvitacion(token);
@@ -74,8 +74,8 @@ router.post('/', async (req, res) => {
     
     if (user && user.idToken) {
       // Usuario autenticado - crear cliente con su token
-      const ApiClient = require('../apiClient');
-      const apiClient = new ApiClient(user.idToken);
+      const ApiClientV2 = require('../apiClientV2');
+      const apiClient = new ApiClientV2(user.idToken);
       
       console.log('🔄 Intentando aceptar invitación...');
       const result = await apiClient.aceptarInvitacion(token);
@@ -125,3 +125,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+

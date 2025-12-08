@@ -196,6 +196,66 @@ h2 {
     }
 }
 
+/* ========= MODAL DE VERIFICACIÓN AWS SES ========= */
+.verification-notice {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+    animation: slideDown 0.4s ease-out;
+}
+
+.verification-notice i {
+    font-size: 2rem;
+    color: #60a5fa;
+    display: block;
+    text-align: center!important;
+    margin: 0 auto 0.75rem auto !important;
+}
+
+.verification-notice p {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.verification-notice p strong {
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+.verification-notice ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0 0;
+}
+
+.verification-notice ul li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    font-size: 0.875rem;
+}
+
+.verification-notice ul li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #60a5fa;
+    font-weight: bold;
+}
+
+.verification-notice .note {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+}
+
 /* ========= INPUT BOXES ========= */
 .input-box {
     width: 100%;
@@ -542,4 +602,33 @@ input:-webkit-autofill:active {
     button {
         font-size: 0.9375rem;
     }
+}
+
+/* ========= ERROR PAGE STYLES (403, 404, 500) ========= */
+.error-box {
+    text-align: center;
+}
+
+.error-details {
+    text-align: center;
+    color: #666;
+    margin: 15px 0;
+    font-size: 0.9rem;
+}
+
+.error-actions {
+    text-align: center;
+    margin-top: 30px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-secondary {
+    background-color: #6c757d !important;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268 !important;
 }

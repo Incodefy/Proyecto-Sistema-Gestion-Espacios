@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Voorbeeld",
       "save": "Wijzigingen Opslaan",
-      "reset": "Wijzigingen resetten"
+      "reset": "Wijzigingen Resetten",
+      "cancel": "Annuleren"
     },
     "messages": {
       "saving": "Opslaan...",
@@ -68,6 +69,70 @@
       "save_success": "Wijzigingen opgeslagen. De pagina wordt opnieuw geladen...",
       "preview_disabled": "Voorbeeld is uitgeschakeld. Sla wijzigingen op om ze toe te passen.",
       "unsaved": "Niet-opgeslagen wijzigingen"
+    },
+    "workspace": {
+      "title": "Werkruimte",
+      "active_group": "Actieve Groep",
+      "loading": "Groepsinformatie laden...",
+      "change_group": "Groep Wijzigen",
+      "select_group": "Groep Selecteren",
+      "manage_spaces": "Ruimtes Beheren",
+      "loading_groups": "Groepen laden...",
+      "active_badge": "Actief",
+      "select_badge": "Selecteren"
+    },
+    "color_picker": {
+      "current_color": "Huidige kleur:",
+      "preview_aria": "Voorbeeld van huidige kleur",
+      "open_picker_aria": "Open kleurenkiezer",
+      "explore_colors": "Ontdek meer kleuren",
+      "select_color": "Selecteer Kleur",
+      "select_a_color": "Selecteer een kleur",
+      "search_placeholder": "Zoek kleur op naam...",
+      "apply_color": "Kleur Toepassen",
+      "categories": {
+        "popular": "Populaire Kleuren",
+        "vibrant": "Levendig",
+        "pastel": "Pastel",
+        "dark": "Donker"
+      },
+      "color_names": {
+        "Azul": "Blauw",
+        "Rojo": "Rood",
+        "Verde": "Groen",
+        "Púrpura": "Paars",
+        "Naranja": "Oranje",
+        "Rojo Vibrante": "Levendig Rood",
+        "Naranja Intenso": "Intens Oranje",
+        "Ámbar": "Barnsteen",
+        "Lima": "Limoen",
+        "Esmeralda": "Smaragd",
+        "Cian": "Cyaan",
+        "Azul Rey": "Koninklijk Blauw",
+        "Violeta": "Violet",
+        "Rosa Fucsia": "Fuchsia Roze",
+        "Rosa Intenso": "Intens Roze",
+        "Rosa Pastel": "Pastel Roze",
+        "Melocotón": "Perzik",
+        "Amarillo Suave": "Zacht Geel",
+        "Lima Pastel": "Pastel Limoen",
+        "Verde Menta": "Mintgroen",
+        "Celeste": "Hemelsblauw",
+        "Azul Cielo": "Lichtblauw",
+        "Lavanda": "Lavendel",
+        "Rosa Claro": "Licht Roze",
+        "Coral Suave": "Zacht Koraal",
+        "Pizarra": "Leisteen",
+        "Azul Marino": "Marineblauw",
+        "Rosa Oscuro": "Donker Roze",
+        "Púrpura Oscuro": "Donker Paars",
+        "Marrón": "Bruin",
+        "Verde Oscuro": "Donkergroen",
+        "Verde Azulado": "Groenblauw",
+        "Azul Profundo": "Diep Blauw",
+        "Índigo Oscuro": "Donker Indigo",
+        "Carmesí": "Karmozijn"
+      }
     }
   },
   "navbar": {

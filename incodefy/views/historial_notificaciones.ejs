@@ -88,16 +88,16 @@
 
             <div class="preferences-grid" role="group" aria-label="Configuración de preferencias">
               <!-- Citas/Appointments -->
-              <fieldset class="preference-card">
-                <legend class="preference-card-header">
+              <div class="preference-card">
+                <div class="preference-card-header">
                   <div class="preference-icon appointments-icon" aria-hidden="true">
                     <i class="fas fa-calendar-check"></i>
                   </div>
                   <div class="preference-header-text">
-                    <h2>Citas y Agendamientos</h2>
+                    <h5>Citas y Agendamientos</h5>
                     <small>Notificaciones sobre el sistema de agenda médica</small>
                   </div>
-                </legend>
+                </div>
                 <div class="preference-card-body">
                   <div class="form-check form-switch">
                     <input class="form-check-input" 
@@ -273,9 +273,9 @@
               <i class="fas fa-check-circle me-2"></i>
               Preferencias guardadas correctamente
             </div>
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
 
       <%- include("footer") %>
     </div>
@@ -300,7 +300,7 @@
   <script nonce="<%= cspNonce %>">
     window.CURRENT_LOCALE = '<%= i18n.language %>';
     window.GRUPO_ID = '<%= grupoActivo?.grupo_id || "" %>';
-    window.WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+    window.WS_URL = '<%= wsEndpoint %>';
     window.PREFERENCIAS_INICIALES = <%- JSON.stringify(preferenciasNotificaciones || null) %>;
   </script>
   

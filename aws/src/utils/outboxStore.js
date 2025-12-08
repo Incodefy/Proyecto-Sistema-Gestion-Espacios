@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Outbox Store - Transactional Outbox Pattern
  * 
  * Garantiza la consistencia eventual entre cambios de estado y publicación de eventos
@@ -20,7 +20,7 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, TransactWriteCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryWithJitter } = require("./retry");
 const { createCircuitBreaker } = require("./circuitBreaker");
-const Logger = require("./logger");
+const { Logger } = require("./logger");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});

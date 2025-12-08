@@ -261,10 +261,6 @@ class GestionGrupo {
     document.getElementById('btnGuardarNomenclatura').addEventListener('click', () => {
       this.guardarNomenclatura();
     });
-    
-    document.getElementById('btnCancelarNomenclatura').addEventListener('click', () => {
-      this.cargarNomenclatura();
-    });
 
     // Espacios - delegación de eventos
     const espaciosList = document.getElementById('espaciosList');
@@ -274,10 +270,6 @@ class GestionGrupo {
     
     document.getElementById('btnAddGeneral').addEventListener('click', () => {
       this.addGeneralSpace();
-    });
-    
-    document.getElementById('btnGuardarEspacios').addEventListener('click', () => {
-      this.guardarEspacios();
     });
 
     // Miembros
@@ -518,12 +510,21 @@ class GestionGrupo {
   switchTab(tabName) {
     // Actualizar botones
     document.querySelectorAll('.tab-button').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === tabName);
+      const isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive);
     });
     
-    // Actualizar contenido
+    // Actualizar contenido - usar hidden attribute en lugar de clases
     document.querySelectorAll('.tab-content').forEach(content => {
-      content.classList.toggle('active', content.id === `tab-${tabName}`);
+      const isActive = content.id === `tab-${tabName}`;
+      if (isActive) {
+        content.removeAttribute('hidden');
+        content.classList.add('active');
+      } else {
+        content.setAttribute('hidden', '');
+        content.classList.remove('active');
+      }
     });
   }
 
@@ -545,15 +546,60 @@ class GestionGrupo {
     this.switchTab(hash);
   }
 
+  // Función auxiliar para pluralizar palabras en español
+  pluralize(word) {
+    if (!word) return '';
+    
+    const lowerWord = word.toLowerCase();
+    
+    // Si termina en vocal (a, e, i, o, u), agregar 's'
+    if (/[aeiouáéíóú]$/i.test(lowerWord)) {
+      return word + 's';
+    }
+    
+    // Si termina en consonante, agregar 'es'
+    return word + 'es';
+  }
+
   updateDynamicTexts() {
     const general = this.nomenclatura.general.toLowerCase() || 'espacio';
     const especifico = this.nomenclatura.especifico.toLowerCase() || 'sub-espacio';
+    const especialidad = this.nomenclatura.especialidad || 'Especialidad';
+    const ocupante = this.nomenclatura.ocupante || 'Ocupante';
     
+    // Actualizar textos de espacios
     document.getElementById('espaciosDescription').textContent = 
-      `Agrega, edita o elimina ${general}s y ${especifico}s de tu grupo`;
+      `Agrega, edita o elimina ${this.pluralize(general)} y ${this.pluralize(especifico)} de tu grupo`;
     
     document.getElementById('btnAddGeneralText').textContent = 
       `Agregar nuevo ${general}`;
+    
+    // Actualizar textos de especialidades
+    const especialidadTitle = document.getElementById('especialidades-title');
+    if (especialidadTitle) {
+      especialidadTitle.textContent = this.pluralize(especialidad);
+    }
+    
+    const especialidadSubtitle = document.getElementById('especialidades-subtitle');
+    if (especialidadSubtitle) {
+      especialidadSubtitle.textContent = `Categorías de ${this.pluralize(especialidad.toLowerCase())}`;
+    }
+    
+    const nuevaEspecialidadInput = document.getElementById('nuevaEspecialidadNombre');
+    if (nuevaEspecialidadInput) {
+      nuevaEspecialidadInput.placeholder = `Nombre de ${especialidad.toLowerCase()}`;
+    }
+    
+    const btnAgregarEspecialidad = document.getElementById('btnAgregarEspecialidadText');
+    if (btnAgregarEspecialidad) {
+      btnAgregarEspecialidad.textContent = 'Agregar';
+    }
+    
+    // Actualizar textos de ocupantes
+    const ocupantesTitle = document.getElementById('ocupantes-title');
+    if (ocupantesTitle) {
+      ocupantesTitle.textContent = this.pluralize(ocupante);
+    }
   }
 
   // ============= NOMENCLATURA =============
@@ -1312,7 +1358,7 @@ class GestionGrupo {
       container.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-stethoscope"></i>
-          <p>No hay ${nombreEspecialidad.toLowerCase()}es registradas</p>
+          <p>No hay ${this.pluralize(nombreEspecialidad.toLowerCase())} registradas</p>
         </div>
       `;
       return;
@@ -1353,7 +1399,7 @@ class GestionGrupo {
     const subtitle = document.getElementById('ocupantes-subtitle');
     if (subtitle && especialidad) {
       const nombreOcupante = this.nomenclatura.ocupante || 'Ocupante';
-      subtitle.textContent = `${nombreOcupante}s de ${especialidad.nombre}`;
+      subtitle.textContent = `${this.pluralize(nombreOcupante)} de ${especialidad.nombre}`;
     }
   }
 
@@ -1398,9 +1444,14 @@ class GestionGrupo {
       const data = await response.json();
       
       if (data.ok) {
+        // Limpiar input
+        document.getElementById('nuevaEspecialidadNombre').value = '';
+        
         await this.cargarEspecialidades();
         this.renderEspecialidades();
-        this.showNotification(`${this.nomenclatura.especialidad || 'Especialidad'} creada exitosamente`, 'success');
+        
+        const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
+        this.showNotification(`${nombreEspecialidad} creada exitosamente`, 'success');
       } else {
         throw new Error(data.error || 'Error al crear especialidad');
       }
@@ -1476,10 +1527,11 @@ class GestionGrupo {
     
     // Si no hay especialidad seleccionada, mostrar estado vacío
     if (!this.especialidadSeleccionada) {
+      const nombreEspecialidad = this.nomenclatura.especialidad || 'Especialidad';
       container.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-hand-pointer"></i>
-          <p>Selecciona una especialidad</p>
+          <p>Selecciona una ${nombreEspecialidad.toLowerCase()}</p>
         </div>
       `;
       return;
@@ -1492,7 +1544,7 @@ class GestionGrupo {
       container.innerHTML = `
         <div class="empty-state">
           <i class="fas fa-user-md"></i>
-          <p>No hay ${nombreOcupante.toLowerCase()}s en esta especialidad</p>
+          <p>No hay ${this.pluralize(nombreOcupante.toLowerCase())} en esta especialidad</p>
         </div>
       `;
       return;

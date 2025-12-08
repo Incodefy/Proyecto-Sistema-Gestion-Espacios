@@ -59,8 +59,9 @@
     },
     "buttons": {
       "preview": "Anteprima",
-      "save": "Salva modifiche",
-      "reset": "Ripristina modifiche"
+      "save": "Salva Modifiche",
+      "reset": "Ripristina Modifiche",
+      "cancel": "Annulla"
     },
     "messages": {
       "saving": "Salvando...",
@@ -68,6 +69,70 @@
       "save_success": "Modifiche salvate. La pagina verrà ricaricata...",
       "preview_disabled": "L'anteprima è disabilitata. Salva le modifiche per applicarle.",
       "unsaved": "Modifiche non salvate"
+    },
+    "workspace": {
+      "title": "Spazio di Lavoro",
+      "active_group": "Gruppo Attivo",
+      "loading": "Caricamento informazioni gruppo...",
+      "change_group": "Cambia Gruppo",
+      "select_group": "Seleziona Gruppo",
+      "manage_spaces": "Gestisci Spazi",
+      "loading_groups": "Caricamento gruppi...",
+      "active_badge": "Attivo",
+      "select_badge": "Seleziona"
+    },
+    "color_picker": {
+      "current_color": "Colore attuale:",
+      "preview_aria": "Anteprima del colore attuale",
+      "open_picker_aria": "Apri selettore colori",
+      "explore_colors": "Esplora più colori",
+      "select_color": "Seleziona Colore",
+      "select_a_color": "Seleziona un colore",
+      "search_placeholder": "Cerca colore per nome...",
+      "apply_color": "Applica Colore",
+      "categories": {
+        "popular": "Colori Popolari",
+        "vibrant": "Vivaci",
+        "pastel": "Pastello",
+        "dark": "Scuri"
+      },
+      "color_names": {
+        "Azul": "Blu",
+        "Rojo": "Rosso",
+        "Verde": "Verde",
+        "Púrpura": "Viola",
+        "Naranja": "Arancione",
+        "Rojo Vibrante": "Rosso Vibrante",
+        "Naranja Intenso": "Arancione Intenso",
+        "Ámbar": "Ambra",
+        "Lima": "Lime",
+        "Esmeralda": "Smeraldo",
+        "Cian": "Ciano",
+        "Azul Rey": "Blu Reale",
+        "Violeta": "Violetto",
+        "Rosa Fucsia": "Rosa Fucsia",
+        "Rosa Intenso": "Rosa Intenso",
+        "Rosa Pastel": "Rosa Pastello",
+        "Melocotón": "Pesca",
+        "Amarillo Suave": "Giallo Tenue",
+        "Lima Pastel": "Lime Pastello",
+        "Verde Menta": "Verde Menta",
+        "Celeste": "Celeste",
+        "Azul Cielo": "Azzurro",
+        "Lavanda": "Lavanda",
+        "Rosa Claro": "Rosa Chiaro",
+        "Coral Suave": "Corallo Tenue",
+        "Pizarra": "Ardesia",
+        "Azul Marino": "Blu Marina",
+        "Rosa Oscuro": "Rosa Scuro",
+        "Púrpura Oscuro": "Viola Scuro",
+        "Marrón": "Marrone",
+        "Verde Oscuro": "Verde Scuro",
+        "Verde Azulado": "Verde Acqua",
+        "Azul Profundo": "Blu Profondo",
+        "Índigo Oscuro": "Indaco Scuro",
+        "Carmesí": "Cremisi"
+      }
     }
   },
   "navbar": {

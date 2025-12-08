@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "रद्द करें"
     },
     "messages": {
       "saving": "सहेजा जा रहा है...",
@@ -68,6 +69,70 @@
       "save_success": "परिवर्तन सहेजे गए। पृष्ठ पुनः लोड होगा...",
       "preview_disabled": "पूर्वावलोकन अक्षम है। उन्हें लागू करने के लिए परिवर्तन सहेजें।",
       "unsaved": "असहेजे परिवर्तन"
+    },
+    "workspace": {
+      "title": "कार्यक्षेत्र",
+      "active_group": "सक्रिय समूह",
+      "loading": "समूह जानकारी लोड हो रही है...",
+      "change_group": "समूह बदलें",
+      "select_group": "समूह चुनें",
+      "manage_spaces": "स्थान प्रबंधित करें",
+      "loading_groups": "समूह लोड हो रहे हैं...",
+      "active_badge": "सक्रिय",
+      "select_badge": "चुनें"
+    },
+    "color_picker": {
+      "current_color": "वर्तमान रंग:",
+      "preview_aria": "वर्तमान रंग पूर्वावलोकन",
+      "open_picker_aria": "रंग चयनकर्ता खोलें",
+      "explore_colors": "और रंग देखें",
+      "select_color": "रंग चुनें",
+      "select_a_color": "एक रंग चुनें",
+      "search_placeholder": "नाम से रंग खोजें...",
+      "apply_color": "रंग लागू करें",
+      "categories": {
+        "popular": "लोकप्रिय",
+        "vibrant": "जीवंत",
+        "pastel": "पेस्टल",
+        "dark": "गहरा"
+      },
+      "color_names": {
+        "Azul": "नीला",
+        "Rojo": "लाल",
+        "Verde": "हरा",
+        "Púrpura": "बैंगनी",
+        "Naranja": "नारंगी",
+        "Rojo Vibrante": "चमकदार लाल",
+        "Naranja Intenso": "गहरा नारंगी",
+        "Ámbar": "अंबर",
+        "Lima": "नींबू",
+        "Esmeralda": "पन्ना",
+        "Cian": "सियान",
+        "Azul Rey": "शाही नीला",
+        "Violeta": "वायलेट",
+        "Rosa Fucsia": "फ्यूशिया गुलाबी",
+        "Rosa Intenso": "गहरा गुलाबी",
+        "Rosa Pastel": "पेस्टल गुलाबी",
+        "Melocotón": "आड़ू",
+        "Amarillo Suave": "हल्का पीला",
+        "Lima Pastel": "पेस्टल नींबू",
+        "Verde Menta": "पुदीना हरा",
+        "Celeste": "आसमानी",
+        "Azul Cielo": "आकाशी नीला",
+        "Lavanda": "लैवेंडर",
+        "Rosa Claro": "हल्का गुलाबी",
+        "Coral Suave": "हल्का प्रवाल",
+        "Pizarra": "स्लेट",
+        "Azul Marino": "नेवी नीला",
+        "Rosa Oscuro": "गहरा गुलाबी",
+        "Púrpura Oscuro": "गहरा बैंगनी",
+        "Marrón": "भूरा",
+        "Verde Oscuro": "गहरा हरा",
+        "Verde Azulado": "हरा-नीला",
+        "Azul Profundo": "गहरा नीला",
+        "Índigo Oscuro": "गहरा नील",
+        "Carmesí": "किरमिजी"
+      }
     }
   },
   "navbar": {

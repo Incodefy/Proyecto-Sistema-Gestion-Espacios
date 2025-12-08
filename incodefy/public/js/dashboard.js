@@ -422,14 +422,25 @@ function actualizarGraficoEspecialidades(data) {
     const placeholder = document.getElementById('consultasEspecialidadPlaceholder');
     
     if (data && data.labels && data.labels.length > 0) {
-        canvas.style.display = 'block';
-        placeholder.style.display = 'none';
+        // Ocultar placeholder con transición
+        placeholder.classList.add('hidden');
+        
+        // Mostrar canvas
+        setTimeout(() => {
+            canvas.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Añadir clase visible para fade-in
+            setTimeout(() => {
+                canvas.classList.add('visible');
+            }, 50);
+        }, 300);
         
         if (consultasEspecialidadChart) {
             // Actualizar labels
             consultasEspecialidadChart.data.labels = data.labels;
             
-            // Colores por intensidad - más oscuro = mayor valor (hasta #142c59)
+            // Colores por intensidad
             const maxValue = Math.max(...data.data);
             const backgroundColors = data.data.map(value => 
                 DASHBOARD_CHART_COLORS.getIntensityColor(value, maxValue, 0.7, 1.0)
@@ -438,13 +449,11 @@ function actualizarGraficoEspecialidades(data) {
                 DASHBOARD_CHART_COLORS.getHoverColor(value, maxValue)
             );
             
-            // Actualizar datos y colores
             consultasEspecialidadChart.data.datasets[0].data = data.data;
             consultasEspecialidadChart.data.datasets[0].backgroundColor = backgroundColors;
             consultasEspecialidadChart.data.datasets[0].hoverBackgroundColor = hoverColors;
             consultasEspecialidadChart.data.datasets[0].borderColor = backgroundColors;
             
-            // Aplicar la actualización con animación
             consultasEspecialidadChart.update('active');
             
         } else {
@@ -549,12 +558,16 @@ function actualizarGraficoEspecialidades(data) {
             });
         }
     } else {
+        // Mostrar placeholder
         if (consultasEspecialidadChart) {
             consultasEspecialidadChart.destroy();
             consultasEspecialidadChart = null;
         }
+        
+        canvas.classList.remove('visible');
         canvas.style.display = 'none';
         placeholder.style.display = 'flex';
+        placeholder.classList.remove('hidden');
     }
 }
 
@@ -570,14 +583,22 @@ function actualizarGraficoPorDia(data) {
     );
     
     if (tieneDatos) {
-        canvas.style.display = 'block';
-        placeholder.style.display = 'none';
+        // Ocultar placeholder con transición
+        placeholder.classList.add('hidden');
+        
+        // Mostrar canvas
+        setTimeout(() => {
+            canvas.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            setTimeout(() => {
+                canvas.classList.add('visible');
+            }, 50);
+        }, 300);
         
         if (consultasPorDiaChart) {
-            // Actualizar datos existentes
             consultasPorDiaChart.data.labels = data.labels;
             
-            // Colores por intensidad mejorados - del azul claro al #142c59
             const maxValue = Math.max(...data.data);
             const backgroundColors = data.data.map(value => 
                 DASHBOARD_CHART_COLORS.getIntensityColor(value, maxValue, 0.8, 1.0)
@@ -591,11 +612,9 @@ function actualizarGraficoPorDia(data) {
             consultasPorDiaChart.data.datasets[0].hoverBackgroundColor = hoverColors;
             consultasPorDiaChart.data.datasets[0].borderColor = backgroundColors;
             
-            // Actualizar con animación suave
             consultasPorDiaChart.update('active');
             
         } else {
-            // Crear gráfico por primera vez
             const ctx = canvas.getContext('2d');
             
             const maxValue = Math.max(...data.data);
@@ -696,8 +715,11 @@ function actualizarGraficoPorDia(data) {
             consultasPorDiaChart.destroy();
             consultasPorDiaChart = null;
         }
+        
+        canvas.classList.remove('visible');
         canvas.style.display = 'none';
         placeholder.style.display = 'flex';
+        placeholder.classList.remove('hidden');
     }
 }
 
@@ -707,16 +729,24 @@ function actualizarGraficoMedicos(data) {
     const placeholder = document.getElementById('rendimientoMedicosPlaceholder');
     
     if (data && data.labels && data.labels.length > 0) {
-        canvas.style.display = 'block';
-        placeholder.style.display = 'none';
+        // Ocultar placeholder con transición
+        placeholder.classList.add('hidden');
+        
+        // Mostrar canvas
+        setTimeout(() => {
+            canvas.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            setTimeout(() => {
+                canvas.classList.add('visible');
+            }, 50);
+        }, 300);
         
         if (rendimientoMedicosChart) {
-            // Actualizar datos existentes
             const labelsCortos = data.labels.map(label => 
                 label.length > 14 ? label.substring(0, 14) + '…' : label
             );
             
-            // Colores por intensidad para médicos - del azul claro al #142c59
             const maxValue = Math.max(...data.data);
             const backgroundColors = data.data.map(value => 
                 DASHBOARD_CHART_COLORS.getIntensityColor(value, maxValue, 0.8, 1.0)
@@ -731,11 +761,9 @@ function actualizarGraficoMedicos(data) {
             rendimientoMedicosChart.data.datasets[0].hoverBackgroundColor = hoverColors;
             rendimientoMedicosChart.data.datasets[0].borderColor = backgroundColors;
             
-            // Actualizar con animación suave
             rendimientoMedicosChart.update('active');
             
         } else {
-            // Crear gráfico por primera vez
             const ctx = canvas.getContext('2d');
             
             const maxValue = Math.max(...data.data);
@@ -828,7 +856,6 @@ function actualizarGraficoMedicos(data) {
                                     return `Consultas: ${context.raw}`;
                                 },
                                 title: function(context) {
-                                    // Mostrar el nombre completo en el tooltip
                                     return data.labels[context[0].dataIndex];
                                 }
                             }
@@ -842,8 +869,11 @@ function actualizarGraficoMedicos(data) {
             rendimientoMedicosChart.destroy();
             rendimientoMedicosChart = null;
         }
+        
+        canvas.classList.remove('visible');
         canvas.style.display = 'none';
         placeholder.style.display = 'flex';
+        placeholder.classList.remove('hidden');
     }
 }
 
@@ -962,7 +992,10 @@ function connectWebSocket() {
     }
     
     wsState.grupoId = grupoElement.dataset.grupoId;
-    const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+    
+    // Obtener WS_URL desde el elemento inyectado por el servidor
+    const wsEndpointElement = document.querySelector('[data-ws-endpoint]');
+    const WS_URL = wsEndpointElement ? wsEndpointElement.dataset.wsEndpoint : 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev';
     
     try {
         wsState.websocket = new WebSocket(`${WS_URL}?grupo_id=${wsState.grupoId}`);

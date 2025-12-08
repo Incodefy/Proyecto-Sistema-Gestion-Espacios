@@ -1,6 +1,6 @@
-const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+﻿const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const crypto = require("crypto");
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");

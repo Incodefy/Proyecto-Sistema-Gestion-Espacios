@@ -1,15 +1,15 @@
-// src/handlers/events.js
+﻿// src/handlers/events.js
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const Logger = require("../utils/logger");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const { Logger } = require("../utils/logger");
 const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
-const { getAmbassador } = require("../utils/awsAmbassador");
 const { createCircuitBreaker } = require("../utils/circuitBreaker");
 const { validate } = require("../utils/validator");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const ambassador = getAmbassador();
+const snsClient = new SNSClient({});
 
 const dynamoBreaker = createCircuitBreaker({ failureThreshold: 3, cooldownMs: 20000 });
 
@@ -297,7 +297,7 @@ async function logSystemEvent(eventData) {
 }
 
 /**
- * Publica notificación del sistema (Ambassador handles retry, circuit breaker, telemetry)
+ * Publica notificación del sistema directamente
  */
 async function publishSystemNotification(notificationType, data) {
   const notification = {
@@ -308,13 +308,15 @@ async function publishSystemNotification(notificationType, data) {
   };
 
   try {
-    await ambassador.publishToSNS({
-      topicArn: process.env.SYSTEM_NOTIFICATIONS_TOPIC_ARN,
-      message: notification,
-      subject: `System Notification: ${notificationType}`
+    const command = new PublishCommand({
+      TopicArn: process.env.SYSTEM_NOTIFICATIONS_TOPIC_ARN,
+      Message: JSON.stringify(notification),
+      Subject: `System Notification: ${notificationType}`
     });
 
-    console.log(`📨 Notificación SNS enviada via Ambassador: ${notificationType}`);
+    await snsClient.send(command);
+
+    console.log(`📨 Notificación SNS enviada: ${notificationType}`);
     return true;
   } catch (err) {
     console.error("Error publicando notificación SNS:", err);

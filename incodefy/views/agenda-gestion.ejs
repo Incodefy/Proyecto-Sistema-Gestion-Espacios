@@ -20,7 +20,7 @@
     <%- include('navbar') %>
     <div class="container-fluid">
         <div class="row">
-            <main class="main" role="main" aria-label="Contenido principal">
+            <main class="main" role="main" aria-label="Contenido principal" data-ws-endpoint="<%= wsEndpoint %>">
                 <header class="header">
                     <div class="container">
                         <h1 class="title">Sistema de Agendación</h1>
@@ -95,7 +95,7 @@
                             </div>
                         </nav>
                     </div>
-                </div>
+                </header>
 
                 <!-- Contenido Principal -->
                 <section class="main-content" aria-label="Área de agendación">
@@ -217,10 +217,36 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <%- include('footer') %>
+
+                <!-- Modal de confirmación personalizado -->
+                <div id="confirmModal" class="confirm-modal">
+                    <div class="confirm-content">
+                        <div class="confirm-header">
+                            <div class="confirm-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="confirm-text">
+                                <h3 id="confirmTitle">¿Confirmar acción?</h3>
+                                <p id="confirmMessage">Esta acción no se puede deshacer</p>
+                            </div>
+                        </div>
+                        <div class="confirm-body">
+                            <div id="confirmDetails" class="confirm-details"></div>
+                        </div>
+                        <div class="confirm-actions">
+                            <button id="confirmCancelBtn" class="confirm-btn confirm-btn-cancel">Cancelar</button>
+                            <button id="confirmDeleteBtn" class="confirm-btn confirm-btn-delete">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
+    <%- include('footer') %>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -247,7 +273,7 @@
     <script src="/js/token-manager.js"></script>
     
     <script src="/js/csrf-helper.js"></script>
-    <script src="/js/agenda-gestion.js"></script>
+    <script src="/js/agenda-gestion.js?v=table-grid"></script>
     <script nonce="<%= cspNonce %>">
     function showDevToast(event) {
       event.preventDefault();

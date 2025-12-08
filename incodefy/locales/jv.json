@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "Batal"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "Papan Karya",
+      "active_group": "Grup Aktif",
+      "loading": "Ngemot informasi grup...",
+      "change_group": "Ganti Grup",
+      "select_group": "Pilih Grup",
+      "manage_spaces": "Ngatur Papan",
+      "loading_groups": "Ngemot grup...",
+      "active_badge": "Aktif",
+      "select_badge": "Pilih"
+    },
+    "color_picker": {
+      "current_color": "Warna saiki:",
+      "preview_aria": "Pratuduh warna saiki",
+      "open_picker_aria": "Mbukak pamilih warna",
+      "explore_colors": "Jajaki warna liyane",
+      "select_color": "Pilih Warna",
+      "select_a_color": "Pilih warna",
+      "search_placeholder": "Goleki warna miturut jeneng...",
+      "apply_color": "Terapake Warna",
+      "categories": {
+        "popular": "Warna Populer",
+        "vibrant": "Bregasak",
+        "pastel": "Pastel",
+        "dark": "Peteng"
+      },
+      "color_names": {
+        "Azul": "Biru",
+        "Rojo": "Abang",
+        "Verde": "Ijo",
+        "Púrpura": "Ungu",
+        "Naranja": "Oranye",
+        "Rojo Vibrante": "Abang Bregasak",
+        "Naranja Intenso": "Oranye Peteng",
+        "Ámbar": "Kuning Emas",
+        "Lima": "Jeruk Limun",
+        "Esmeralda": "Jamrud",
+        "Cian": "Biru Tosca",
+        "Azul Rey": "Biru Raja",
+        "Violeta": "Violet",
+        "Rosa Fucsia": "Pink Fuchsia",
+        "Rosa Intenso": "Pink Peteng",
+        "Rosa Pastel": "Pink Pastel",
+        "Melocotón": "Peach",
+        "Amarillo Suave": "Kuning Alus",
+        "Lima Pastel": "Jeruk Limun Pastel",
+        "Verde Menta": "Ijo Mint",
+        "Celeste": "Langit",
+        "Azul Cielo": "Biru Langit",
+        "Lavanda": "Lavender",
+        "Rosa Claro": "Pink Padhang",
+        "Coral Suave": "Coral Alus",
+        "Pizarra": "Abu-abu Peteng",
+        "Azul Marino": "Biru Laut",
+        "Rosa Oscuro": "Pink Peteng",
+        "Púrpura Oscuro": "Ungu Peteng",
+        "Marrón": "Coklat",
+        "Verde Oscuro": "Ijo Peteng",
+        "Verde Azulado": "Ijo Kebiru-biruan",
+        "Azul Profundo": "Biru Jero",
+        "Índigo Oscuro": "Nila Peteng",
+        "Carmesí": "Merah Tua"
+      }
     }
   },
   "navbar": {

@@ -57,6 +57,31 @@
           <% }) %>
         </div>
       <% } %>
+
+      <% if (success_msg && success_msg.length) { %>
+        <div class="messages-container" role="status" aria-live="polite">
+          <% success_msg.forEach(msg => { %>
+            <div class="alert alert-success fade-in">
+              <i class="fa-solid fa-check-circle" aria-hidden="true"></i>
+              <span><%= msg %></span>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <!-- Modal de verificación de email AWS SES -->
+      <% if (typeof verification_email_sent !== 'undefined' && verification_email_sent && verification_email_sent.length) { %>
+        <div class="verification-notice" role="status" aria-live="polite">
+          <i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i>
+          <p><strong>Verifica tu correo electrónico</strong></p>
+          <p>Te enviamos un correo a <strong><%= verification_email_sent[0] %></strong> de AWS SES.</p>
+          <p>Debes aceptar la verificación si quieres usar los servicios de:</p>
+          <ul>
+            <li>Recuperación de contraseña</li>
+            <li>Recibir invitaciones de grupos</li>
+          </ul>
+        </div>
+      <% } %>
       
       <div id="logoutMessage" class="messages-container d-none" role="status" aria-live="polite">
         <div class="alert alert-success fade-in">

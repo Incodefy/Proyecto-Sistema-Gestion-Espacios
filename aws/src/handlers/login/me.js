@@ -1,7 +1,7 @@
-// src/handlers/me.js
-const Logger = require('../../utils/logger');
-const { createAPIHandler } = require('../../utils/interceptors');
-const { successResponse } = require('../../utils/response');
+﻿// src/handlers/me.js
+const { Logger } = require('../../utils/logger');
+const { createAPIHandler } = require('../../middleware/interceptors');
+const { successResponse } = require('../../utils/errorHandler');
 
 async function meHandler(event, logger) {
   const claims = event.requestContext?.authorizer?.jwt?.claims || {};

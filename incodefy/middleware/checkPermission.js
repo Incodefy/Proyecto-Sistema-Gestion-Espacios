@@ -66,7 +66,12 @@ const checkPermission = (requiredPermission) => {
       }
       
       console.log(`${TRACE} 🚫 Acceso denegado`);
-      return res.status(403).render('403', { error: 'Permisos insuficientes' });
+      return res.status(403).render('403', { 
+        error: 'Permisos insuficientes',
+        permission: requiredPermission,
+        grupo: req.session.grupoActivo || {},
+        i18n: req.i18n || { language: 'es' }
+      });
     }
 
     // Verificar permiso específico
@@ -81,8 +86,10 @@ const checkPermission = (requiredPermission) => {
       console.log(`${TRACE} 🚫 Acceso denegado`);
       return res.status(403).render('403', { 
         error: 'Permisos insuficientes',
-        requiredPermission,
-        userRole: groupPermissions.role
+        permission: requiredPermission,
+        grupo: req.session.grupoActivo || {},
+        userRole: groupPermissions.role,
+        i18n: req.i18n || { language: 'es' }
       });
     }
   };

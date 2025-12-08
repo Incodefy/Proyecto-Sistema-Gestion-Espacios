@@ -1,11 +1,11 @@
-// src/handlers/refresh.js
+﻿// src/handlers/refresh.js
 
 // ✅ ANTI-CORRUPTION LAYER: AuthAdapter reemplaza llamadas directas a Cognito
 const { getAuthAdapter, TokenExpiredError, InvalidTokenError } = require('../../adapters/authAdapter');
-const Logger = require('../../utils/logger');
-const { createAPIHandler } = require('../../utils/interceptors');
-const { ValidationError } = require('../../utils/errors');
-const { successResponse, errorResponse } = require('../../utils/response');
+const { Logger } = require('../../utils/logger');
+const { createAPIHandler } = require('../../middleware/interceptors');
+const { ValidationError } = require('../../utils/errorHandler');
+const { successResponse, errorResponse } = require('../../utils/errorHandler');
 
 // AuthAdapter (ACL)
 const authAdapter = getAuthAdapter();

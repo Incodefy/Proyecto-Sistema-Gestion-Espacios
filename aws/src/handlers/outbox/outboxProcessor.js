@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Outbox Processor - Event Relay Lambda
  * 
  * Procesador asíncrono que:
@@ -17,16 +17,14 @@
  * ✅ Exactly-once processing (deduplicación en consumers)
  * ✅ Ordering per aggregate (mismo PK)
  * ✅ Dead Letter Queue para mensajes fallidos
- * 
- * UPDATED: Uses Ambassador for SNS publishing
  */
 
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { getOutboxStore, OutboxStatus } = require("../utils/outboxStore");
 const { wasAlreadyProcessed, markAsProcessed } = require("../utils/idempotency");
-const { getAmbassador } = require("../utils/awsAmbassador");
-const Logger = require("../utils/logger");
+const { Logger } = require("../utils/logger");
 
-const ambassador = getAmbassador();
+const snsClient = new SNSClient({});
 const EVENT_BUS_TOPIC_ARN = process.env.EVENT_BUS_TOPIC_ARN;
 
 const logger = Logger.create({ handler: 'OutboxProcessor' });
@@ -210,26 +208,28 @@ async function processMessage(message) {
     // 1. Marcar como PROCESSING
     await outboxStore.markAsProcessing(PK, outboxId);
 
-    // 2. Publicar a SNS/EventBridge via Ambassador
+    // 2. Publicar a SNS/EventBridge directamente
     if (!EVENT_BUS_TOPIC_ARN) {
       logger.error('EVENT_BUS_TOPIC_ARN not configured');
       throw new Error('Event bus not configured');
     }
 
-    const publishResult = await ambassador.publishToSNS({
-      topicArn: EVENT_BUS_TOPIC_ARN,
-      message: payload,
-      subject: `Event: ${eventType}`,
-      attributes: {
-        eventType,
-        aggregateType,
-        aggregateId,
-        eventId,
-        outboxId
+    const command = new PublishCommand({
+      TopicArn: EVENT_BUS_TOPIC_ARN,
+      Message: JSON.stringify(payload),
+      Subject: `Event: ${eventType}`,
+      MessageAttributes: {
+        eventType: { DataType: 'String', StringValue: eventType },
+        aggregateType: { DataType: 'String', StringValue: aggregateType },
+        aggregateId: { DataType: 'String', StringValue: aggregateId },
+        eventId: { DataType: 'String', StringValue: eventId },
+        outboxId: { DataType: 'String', StringValue: outboxId }
       }
     });
 
-    logger.info('Event published to SNS via Ambassador', {
+    const publishResult = await snsClient.send(command);
+
+    logger.info('Event published to SNS', {
       outboxId,
       eventId,
       messageId: publishResult.MessageId

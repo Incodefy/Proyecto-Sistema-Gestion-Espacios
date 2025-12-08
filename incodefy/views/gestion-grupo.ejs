@@ -58,8 +58,8 @@
                     aria-controls="tab-recursos-medicos"
                     aria-selected="false"
                     id="tab-btn-recursos-medicos">
-              <i class="fas fa-user-doctor" aria-hidden="true"></i>
-              Recursos Médicos
+              <i class="fas fa-users" aria-hidden="true"></i>
+              Recursos
             </button>
             <button class="tab-button" 
                     data-tab="instrumentos" 
@@ -151,20 +151,20 @@
               </div>
 
               <div class="action-buttons">
-                <button class="btn btn-secondary" id="btnCancelarNomenclatura">
-                  <i class="fas fa-times"></i>
-                  Cancelar
-                </button>
                 <button class="btn btn-primary" id="btnGuardarNomenclatura">
                   <i class="fas fa-save"></i>
                   Guardar Cambios
                 </button>
               </div>
             </div>
-          </div>
+          </section>
 
           <!-- Tab 2: Espacios -->
-          <div class="tab-content" id="tab-espacios">
+          <section class="tab-content" 
+                   id="tab-espacios" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-espacios"
+                   hidden>
             <div class="section-card">
               <div class="section-header">
                 <div>
@@ -186,18 +186,15 @@
                 <i class="fas fa-plus"></i>
                 <span id="btnAddGeneralText">Agregar nuevo espacio</span>
               </button>
-
-              <div class="action-buttons">
-                <button class="btn btn-primary" id="btnGuardarEspacios">
-                  <i class="fas fa-save"></i>
-                  Guardar Cambios
-                </button>
-              </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Tab 3: Recursos Médicos (Especialidades + Ocupantes) -->
-          <div class="tab-content" id="tab-recursos-medicos">
+          <!-- Tab 3: Recursos (Especialidades + Ocupantes) -->
+          <section class="tab-content" 
+                   id="tab-recursos-medicos" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-recursos-medicos"
+                   hidden>
             <div class="instrumentos-layout">
               <!-- Columna izquierda: Especialidades -->
               <div class="tipos-column">
@@ -206,9 +203,9 @@
                     <div>
                       <h2 class="section-title">
                         <i class="fas fa-stethoscope"></i>
-                        Especialidades
+                        <span id="especialidades-title">Especialidades</span>
                       </h2>
-                      <p class="section-description">
+                      <p class="section-description" id="especialidades-subtitle">
                         Categorías de especialidades médicas
                       </p>
                     </div>
@@ -225,9 +222,9 @@
                       id="nuevaEspecialidadNombre"
                       placeholder="Nombre de especialidad"
                     >
-                    <button class="btn btn-primary" data-action="add-especialidad">
+                    <button class="btn btn-primary" data-action="add-especialidad" id="btnAgregarEspecialidad">
                       <i class="fas fa-plus"></i>
-                      Agregar
+                      <span id="btnAgregarEspecialidadText">Agregar</span>
                     </button>
                   </div>
                 </div>
@@ -270,10 +267,14 @@
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           <!-- Tab 4: Instrumentos -->
-          <div class="tab-content" id="tab-instrumentos">
+          <section class="tab-content" 
+                   id="tab-instrumentos" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-instrumentos"
+                   hidden>
             <div class="instrumentos-layout">
               <!-- Columna izquierda: Tipos de Instrumentos -->
               <div class="tipos-column">
@@ -346,10 +347,14 @@
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           <!-- Tab 5: Miembros -->
-          <div class="tab-content" id="tab-miembros">
+          <section class="tab-content" 
+                   id="tab-miembros" 
+                   role="tabpanel" 
+                   aria-labelledby="tab-btn-miembros"
+                   hidden>
             <div class="members-layout">
               <!-- Invite Form -->
               <div class="section-card">
@@ -572,9 +577,10 @@
                 </div>
                 </div>
             </div>
-            </div>
+          </section>
         </div>
-      </div>
+      </main>
+      
       <%- include('footer') %>
     </div>
   </div>

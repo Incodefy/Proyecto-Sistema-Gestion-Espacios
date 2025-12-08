@@ -72,10 +72,11 @@ function setCSPHeaders(req, res, next) {
       "data:"
     ],
     
-    // Conexiones AJAX: self, WebSocket AWS y source maps CDN
+    // Conexiones AJAX: self, WebSocket AWS, API Gateway Lambda y source maps CDN
     "connect-src": [
       "'self'",
-      "wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com",
+      "wss://byl64liyj8.execute-api.us-east-1.amazonaws.com",
+      "https://izvc1mjvh2.execute-api.us-east-1.amazonaws.com",
       "https://cdn.jsdelivr.net"
     ],
     

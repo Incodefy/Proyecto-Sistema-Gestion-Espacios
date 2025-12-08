@@ -174,7 +174,7 @@ if (togglePassword && passwordInput) {
 
 // --- Forgot password temporal ---
 function showForgotPassword() {
-  showToast('Funcionalidad de recuperación de contraseña próximamente', 'warning');
+  window.location.href = '/auth/forgot-password';
 }
 
 // --- Desvanecer alertas del backend ---

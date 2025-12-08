@@ -4,5 +4,5 @@
 
 module.exports = {
     // Reemplazar con la URL real después del despliegue
-    WS_ENDPOINT: process.env.WS_ENDPOINT || 'wss://TU_WS_ID.execute-api.us-east-2.amazonaws.com/dev'
+    WS_ENDPOINT: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
 };

@@ -1,14 +1,43 @@
-// public/js/box.js
-// Obtener estado inicial desde el servidor (renderizado en la vista)
+// ============================================================
+// CONFIGURACIÓN Y ESTADO GLOBAL
+// ============================================================
+
 let detallesVisibles = window.detallesVisiblesInicial !== undefined ? window.detallesVisiblesInicial : false;
 let filtroTimeout;
 
-// Función helper para establecer cookies
+// ============================================================
+// UTILIDADES
+// ============================================================
+
+/**
+ * Establece una cookie con el valor especificado
+ */
 function setCookie(name, value, days = 365) {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
     document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/';
 }
 
+/**
+ * Obtiene el valor de una cookie
+ */
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+/**
+ * Parsea rangos de texto (ej: "1-5,8,10-12" -> [1,2,3,4,5,8,10,11,12])
+ */
 function parseRangos(texto) {
     const valores = new Set();
 
@@ -33,8 +62,16 @@ function parseRangos(texto) {
     return Array.from(valores);
 }
 
+// ============================================================
+// ACTUALIZACIÓN DE ESTADOS
+// ============================================================
+
+/**
+ * Actualiza los estados de todos los espacios específicos
+ */
 function actualizarEspecificos() {
     console.log('🔄 Actualizando estados de espacios...');
+    
     fetch('/estado-boxes')
         .then(response => {
             if (!response.ok) {
@@ -45,27 +82,15 @@ function actualizarEspecificos() {
         .then(data => {
             console.log('📦 Datos recibidos:', data);
             let actualizados = 0;
+            
             for (const [id, info] of Object.entries(data)) {
                 const contenedor = document.getElementById(`info-especifico-${id}`);
                 if (contenedor) {
-                    const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
-                    const claseOculto = detallesVisibles ? '' : 'oculto';
-                    contenedor.innerHTML = `
-                        <div class="contenido-especifico ${claseOculto}">
-                            ${info.estado === "Libre" && (!info.proxima_consulta || info.proxima_consulta.trim() === '') 
-                                ? `<p>${window.translations.notNextAppointment}</p>`
-                                : (info.proxima_consulta 
-                                    ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` 
-                                    : '')}
-                            ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
-                            ${info.medico ? `<p>${window.nomenclatura.ocupante}: ${info.medico}</p>` : ''}
-                            ${info.especialidad ? `<p>${window.nomenclatura.especialidad}: ${info.especialidad}</p>` : ''}
-                        </div>
-                        <div class="estado-bar ${estadoClassName}">${info.estado}</div>
-                    `;
+                    actualizarContenedorEspacio(contenedor, info);
                     actualizados++;
                 }
             }
+            
             console.log(`✅ ${actualizados} espacios actualizados`);
             aplicarFiltrosLocales();
         })
@@ -74,82 +99,97 @@ function actualizarEspecificos() {
         });
 }
 
-document.addEventListener('click', function (e) {
-    if (e.target.closest('.btn-confirmar')) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const btn = e.target.closest('.btn-confirmar');
-        const agendaId = btn.getAttribute('data-agenda-id');
-
-        fetch(`/actualizar-estado/${agendaId}/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Estado actualizado correctamente');
-                actualizarEspecificos();
-            } else {
-                console.error('Error:', data.error);
-            }
-        })
-        .catch(err => console.error('Error:', err));
+/**
+ * Actualiza el contenido de un contenedor de espacio
+ */
+function actualizarContenedorEspacio(contenedor, info) {
+    const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
+    const claseOculto = detallesVisibles ? '' : 'oculto';
+    
+    let detallesHTML = '';
+    
+    // Mostrar información según disponibilidad
+    if (info.estado === "Libre" && (!info.proxima_consulta || info.proxima_consulta.trim() === '')) {
+        detallesHTML += `
+            <div class="info-item info-empty">
+                <i class="fas fa-calendar-check"></i>
+                <span>${window.translations.notNextAppointment}</span>
+            </div>
+        `;
+    } else if (info.proxima_consulta) {
+        detallesHTML += `
+            <div class="info-item">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="info-content">
+                    <span class="info-label">${window.translations.nextAppointment}</span>
+                    <span class="info-value">${info.proxima_consulta}</span>
+                </div>
+            </div>
+        `;
     }
-});
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
+    
+    if (info.medico) {
+        detallesHTML += `
+            <div class="info-item">
+                <i class="fas fa-user-md"></i>
+                <div class="info-content">
+                    <span class="info-label">${window.nomenclatura.ocupante}</span>
+                    <span class="info-value">${info.medico}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (info.especialidad) {
+        detallesHTML += `
+            <div class="info-item">
+                <i class="fas fa-stethoscope"></i>
+                <div class="info-content">
+                    <span class="info-label">${window.nomenclatura.especialidad}</span>
+                    <span class="info-value">${info.especialidad}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (info.consulta_actual) {
+        detallesHTML += `
+            <div class="info-item">
+                <i class="fas fa-clock"></i>
+                <div class="info-content">
+                    <span class="info-label">${window.translations.time}</span>
+                    <span class="info-value">${info.consulta_actual}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    contenedor.innerHTML = `
+        <div class="space-details ${claseOculto}">
+            ${detallesHTML}
+        </div>
+        <div class="space-status-bar ${estadoClassName}">
+            <span class="status-text">${info.estado}</span>
+        </div>
+    `;
+    
+    // Actualizar indicador de estado en el header
+    const card = contenedor.closest('.space-card');
+    if (card) {
+        const statusIndicator = card.querySelector('.space-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.className = `space-status-indicator ${estadoClassName}`;
         }
     }
-    return cookieValue;
 }
 
-function actualizarBoxesBatch(boxIds) {
-    if (!Array.isArray(boxIds) || boxIds.length === 0) {
-        console.warn('⚠️ actualizarBoxesBatch: lista de boxIds vacía');
-        return;
-    }
+// ============================================================
+// SISTEMA DE FILTROS
+// ============================================================
 
-    fetch('/estado-boxes-batch/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ box_ids: boxIds })
-    })
-    .then(response => response.json())
-    .then(data => {
-        for (const [id, info] of Object.entries(data)) {
-            const contenedor = document.getElementById(`info-box-${id}`);
-            if (contenedor) {
-                const estadoClassName = info.estado.replace(/\s+/g, '-').toLowerCase();
-                const claseOculto = detallesVisibles ? '' : 'oculto';
-                contenedor.innerHTML = `
-                    <div class="contenido-box ${claseOculto}">
-                        ${info.proxima_consulta ? `<p>${window.translations.nextAppointment}: ${info.proxima_consulta}</p>` : ''}
-                        ${info.consulta_actual ? `<p>${window.translations.time}: ${info.consulta_actual}</p>` : ''}
-                        ${info.medico ? `<p>${window.nomenclatura.ocupante}: ${info.medico}</p>` : ''}
-                        ${info.especialidad ? `<p>${window.nomenclatura.especialidad}: ${info.especialidad}</p>` : ''}
-                    </div>
-                    <div class="estado-bar ${estadoClassName}">${info.estado}</div>
-                `;
-            }
-        }
-        aplicarFiltrosLocales();
-    })
-    .catch(error => {
-        console.error('Error al obtener estados batch:', error);
-    });
-}
-
+/**
+ * Aplica filtros locales a los espacios mostrados
+ */
 function aplicarFiltrosLocales() {
     const filtroGeneral = document.getElementById('filtroPasillo').value.trim().toLowerCase();
     const filtroEspecifico = document.getElementById('filtroBox').value.trim().toLowerCase();
@@ -160,10 +200,12 @@ function aplicarFiltrosLocales() {
 
     let tieneResultados = false;
     
-    document.querySelectorAll('.general-bloque').forEach(generalBloque => {
-        const nombreGeneral = generalBloque.dataset.generalNombre.toLowerCase();
+    // Procesar cada sección general
+    document.querySelectorAll('.space-section').forEach(seccionGeneral => {
+        const nombreGeneral = seccionGeneral.dataset.generalNombre.toLowerCase();
         let generalTieneEspecificosVisibles = false;
 
+        // Verificar si el general coincide con el filtro
         let generalCoincide = true;
         if (filtroGeneral) {
             if (rangosGeneral.length > 0) {
@@ -178,16 +220,18 @@ function aplicarFiltrosLocales() {
             }
         }
 
+        // Procesar espacios específicos dentro de este general
         if (generalCoincide) {
-            generalBloque.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(colEspecifico => {
-                const especificoCard = colEspecifico.querySelector('.especifico-card');
-                if (especificoCard) {
-                    const nombreEspecifico = especificoCard.dataset.especificoNombre.toLowerCase();
-                    const estadoBar = especificoCard.querySelector('.estado-bar');
-                    const estadoActual = estadoBar ? estadoBar.textContent.trim().toLowerCase().replace(' ', '-') : '';
+            seccionGeneral.querySelectorAll('.space-card-wrapper').forEach(wrapper => {
+                const card = wrapper.querySelector('.space-card');
+                if (card) {
+                    const nombreEspecifico = card.dataset.especificoNombre.toLowerCase();
+                    const statusBar = card.querySelector('.space-status-bar');
+                    const estadoActual = statusBar ? statusBar.querySelector('.status-text').textContent.trim().toLowerCase().replace(' ', '-') : '';
 
                     let especificoCoincide = true;
 
+                    // Filtro por nombre específico
                     if (filtroEspecifico) {
                         if (rangosEspecifico.length > 0) {
                             const numeroEspecifico = nombreEspecifico.match(/\d+/);
@@ -201,28 +245,32 @@ function aplicarFiltrosLocales() {
                         }
                     }
 
+                    // Filtro por estado
                     if (filtroEstado && especificoCoincide) {
                         especificoCoincide = estadoActual === filtroEstado;
                     }
                 
+                    // Mostrar/ocultar según resultado
                     if (especificoCoincide) {
-                        colEspecifico.classList.remove('filtrado-oculto');
+                        wrapper.classList.remove('filtrado-oculto');
                         generalTieneEspecificosVisibles = true;
                         tieneResultados = true;
                     } else {
-                        colEspecifico.classList.add('filtrado-oculto');
+                        wrapper.classList.add('filtrado-oculto');
                     }
                 }
             });
         }
 
+        // Mostrar/ocultar sección general
         if (generalCoincide && generalTieneEspecificosVisibles) {
-            generalBloque.classList.remove('filtrado-oculto');
+            seccionGeneral.classList.remove('filtrado-oculto');
         } else {
-            generalBloque.classList.add('filtrado-oculto');
+            seccionGeneral.classList.add('filtrado-oculto');
         }
     });
 
+    // Mostrar/ocultar mensaje de sin resultados
     const mensajeNoResultados = document.getElementById('mensaje-no-resultados');
     if (tieneResultados) {
         mensajeNoResultados.classList.add('hidden');
@@ -230,40 +278,78 @@ function aplicarFiltrosLocales() {
         mensajeNoResultados.classList.remove('hidden');
     }
 
+    // Actualizar contadores
     contarEstadosVisibles();
 }
 
+/**
+ * Aplica filtros con un retraso (debounce)
+ */
 function aplicarFiltrosConRetraso() {
     clearTimeout(filtroTimeout);
     filtroTimeout = setTimeout(aplicarFiltrosLocales, 300);
 }
 
+/**
+ * Reinicia todos los filtros
+ */
 function reiniciarFiltros() {
     document.getElementById('filtroPasillo').value = '';
     document.getElementById('filtroBox').value = '';
     document.getElementById('filtroEstado').value = '';
     
-    document.querySelectorAll('.general-bloque').forEach(el => el.classList.remove('filtrado-oculto'));
-    document.querySelectorAll('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2').forEach(el => el.classList.remove('filtrado-oculto'));
+    document.querySelectorAll('.space-section').forEach(el => el.classList.remove('filtrado-oculto'));
+    document.querySelectorAll('.space-card-wrapper').forEach(el => el.classList.remove('filtrado-oculto'));
     document.getElementById('mensaje-no-resultados').classList.add('hidden');
     
     contarEstadosVisibles();
 }
 
+// ============================================================
+// GESTIÓN DE DETALLES
+// ============================================================
+
+/**
+ * Aplica el estado visual de expansión/colapso de detalles
+ */
 function aplicarEstadoVisual() {
-    const elementos = document.querySelectorAll('.contenido-especifico');
+    const elementos = document.querySelectorAll('.space-details');
     elementos.forEach(el => {
         el.classList.toggle('oculto', !detallesVisibles);
     });
+    
+    // Guardar preferencia
     localStorage.setItem('detallesVisibles', detallesVisibles);
+    
+    // Actualizar texto del botón
+    const botonToggle = document.getElementById('toggle-detalles');
+    if (botonToggle) {
+        const iconElement = botonToggle.querySelector('i');
+        const textElement = botonToggle.querySelector('.btn-text');
+        
+        if (detallesVisibles) {
+            iconElement.className = 'fas fa-eye-slash';
+            textElement.textContent = window.translations.hideDetails;
+        } else {
+            iconElement.className = 'fas fa-eye';
+            textElement.textContent = window.translations.showDetails;
+        }
+    }
 }
 
+// ============================================================
+// CONTADORES
+// ============================================================
+
+/**
+ * Cuenta y actualiza los contadores de estados visibles
+ */
 function contarEstadosVisibles() {
     const estados = { 'libre': 0, 'en-espera': 0, 'en-uso': 0, 'inhabilitado': 0 };
 
-    document.querySelectorAll('.estado-bar').forEach(el => {
-        const colContainer = el.closest('.col-12, .col-sm-6, .col-md-4, .col-lg-4, .col-xl-3, .col-xxl-2');
-        if (colContainer && !colContainer.classList.contains('filtrado-oculto')) {
+    document.querySelectorAll('.space-status-bar').forEach(el => {
+        const wrapper = el.closest('.space-card-wrapper');
+        if (wrapper && !wrapper.classList.contains('filtrado-oculto')) {
             const estado = el.classList.contains('libre') ? 'libre' :
                         el.classList.contains('en-espera') ? 'en-espera' :
                         el.classList.contains('en-uso') ? 'en-uso' :
@@ -280,115 +366,132 @@ function contarEstadosVisibles() {
     document.getElementById('count-inhabilitado').textContent = estados['inhabilitado'];
 }
 
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+
 document.addEventListener('DOMContentLoaded', function () {
-    const botonToggle = document.getElementById('toggle-detalles');
-
-    // Actualizar el texto del botón según estado inicial
-    botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
-
-    // Agregar el evento click
-    botonToggle.addEventListener('click', function () {
-        detallesVisibles = !detallesVisibles;
-        
-        // Guardar en localStorage y cookie
-        localStorage.setItem('detallesVisibles', detallesVisibles);
-        setCookie('detallesVisibles', detallesVisibles);
-        
-        botonToggle.textContent = detallesVisibles ? window.translations.hideDetails : window.translations.showDetails;
-        aplicarEstadoVisual();
-    });
-
-    document.getElementById('filtroPasillo').addEventListener('input', aplicarFiltrosConRetraso);
-    document.getElementById('filtroBox').addEventListener('input', aplicarFiltrosConRetraso);
-    document.getElementById('filtroEstado').addEventListener('change', aplicarFiltrosLocales);
-
-    const params = new URLSearchParams(window.location.search);
-    document.getElementById('filtroPasillo').value = params.get('pasillo') || '';
-    document.getElementById('filtroBox').value = params.get('box') || '';
-    document.getElementById('filtroEstado').value = params.get('estado') || '';
-
-    aplicarEstadoVisual();
-    actualizarEspecificos();
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // ========= Event Listeners (refactorizado para CSP sin unsafe-inline) =========
+    console.log('🚀 Inicializando interfaz de espacios...');
     
-    // Reiniciar filtros
+    // Configurar botón de toggle de detalles
+    const botonToggle = document.getElementById('toggle-detalles');
+    if (botonToggle) {
+        botonToggle.addEventListener('click', function () {
+            detallesVisibles = !detallesVisibles;
+            setCookie('detallesVisibles', detallesVisibles);
+            aplicarEstadoVisual();
+        });
+    }
+
+    // Configurar filtros
+    const inputGeneral = document.getElementById('filtroPasillo');
+    const inputEspecifico = document.getElementById('filtroBox');
+    const selectEstado = document.getElementById('filtroEstado');
+    
+    if (inputGeneral) inputGeneral.addEventListener('input', aplicarFiltrosConRetraso);
+    if (inputEspecifico) inputEspecifico.addEventListener('input', aplicarFiltrosConRetraso);
+    if (selectEstado) selectEstado.addEventListener('change', aplicarFiltrosLocales);
+
+    // Configurar botón de reset
     const btnResetFilters = document.querySelector('[data-action="reset-filters"]');
     if (btnResetFilters) {
         btnResetFilters.addEventListener('click', reiniciarFiltros);
     }
+
+    // Cargar valores de filtros desde URL
+    const params = new URLSearchParams(window.location.search);
+    if (inputGeneral) inputGeneral.value = params.get('pasillo') || '';
+    if (inputEspecifico) inputEspecifico.value = params.get('box') || '';
+    if (selectEstado) selectEstado.value = params.get('estado') || '';
+
+    // Aplicar estado inicial
+    aplicarEstadoVisual();
     
-    // ========= Fin Event Listeners =========
+    // Cargar datos iniciales
+    actualizarEspecificos();
     
-    const t = document.querySelector('.fab-consultas');
-    if (t) new bootstrap.Tooltip(t);
+    console.log('✅ Interfaz inicializada correctamente');
 });
 
-(function(){
-  const btn = document.getElementById('backToTop');
-  if (!btn) return;
+// ============================================================
+// BOTÓN BACK TO TOP
+// ============================================================
 
-  const threshold = 500;
-  let ticking = false;
+(function() {
+    const btn = document.getElementById('backToTop');
+    if (!btn) return;
 
-  function onScroll(){
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const show = window.scrollY > threshold;
-      if (show) {
-        if (!btn.classList.contains('is-visible')){
-          btn.classList.add('is-visible');
-          btn.setAttribute('aria-hidden','false');
-        }
-      } else {
-        if (btn.classList.contains('is-visible')){
-          btn.classList.remove('is-visible');
-          btn.setAttribute('aria-hidden','true');
-        }
-      }
-      ticking = false;
-    });
-  }
+    const threshold = 500;
+    let ticking = false;
 
-  window.addEventListener('scroll', onScroll, { passive:true });
-  onScroll();
-
-  btn.addEventListener('click', () => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) { window.scrollTo(0,0); return; }
-
-    const startY = window.scrollY || window.pageYOffset;
-    if (startY <= 0) return;
-
-    const MIN = 180;
-    const MAX = 500;
-    const duration = Math.max(MIN, Math.min(MAX, startY / 4));
-
-    const startTime = performance.now();
-    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
-
-    function step(now){
-      const t = Math.min(1, (now - startTime) / duration);
-      const eased = easeOutCubic(t);
-      const y = Math.round(startY * (1 - eased));
-      window.scrollTo(0, y);
-      if (t < 1) requestAnimationFrame(step);
+    function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        
+        requestAnimationFrame(() => {
+            const show = window.scrollY > threshold;
+            
+            if (show) {
+                if (!btn.classList.contains('is-visible')) {
+                    btn.classList.add('is-visible');
+                    btn.setAttribute('aria-hidden', 'false');
+                }
+            } else {
+                if (btn.classList.contains('is-visible')) {
+                    btn.classList.remove('is-visible');
+                    btn.setAttribute('aria-hidden', 'true');
+                }
+            }
+            
+            ticking = false;
+        });
     }
 
-    requestAnimationFrame(step);
-  });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    btn.addEventListener('click', () => {
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        if (prefersReduced) { 
+            window.scrollTo(0, 0); 
+            return; 
+        }
+
+        const startY = window.scrollY || window.pageYOffset;
+        if (startY <= 0) return;
+
+        const MIN = 180;
+        const MAX = 500;
+        const duration = Math.max(MIN, Math.min(MAX, startY / 4));
+        const startTime = performance.now();
+        const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = easeOutCubic(t);
+            const y = Math.round(startY * (1 - eased));
+            window.scrollTo(0, y);
+            if (t < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+    });
 })();
 
-// ============ WEBSOCKET PARA ACTUALIZACIONES EN TIEMPO REAL ============
+// ============================================================
+// WEBSOCKET PARA ACTUALIZACIONES EN TIEMPO REAL
+// ============================================================
 
 let websocket = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
-const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+const wsEndpointElement = document.querySelector('[data-ws-endpoint]');
+const WS_URL = wsEndpointElement ? wsEndpointElement.dataset.wsEndpoint : 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev';
 
+/**
+ * Conecta al servidor WebSocket
+ */
 function connectWebSocket() {
     if (!window.grupoId) {
         console.warn('⚠️ No hay grupoId disponible, no se puede conectar WebSocket');
@@ -433,6 +536,9 @@ function connectWebSocket() {
     }
 }
 
+/**
+ * Maneja mensajes recibidos del WebSocket
+ */
 function handleWebSocketMessage(message) {
     console.log('📨 Mensaje WebSocket recibido:', message);
 
@@ -528,9 +634,12 @@ function handleWebSocketMessage(message) {
     }
 }
 
+/**
+ * Invalida la caché del servidor y actualiza los datos
+ */
 function invalidarCacheYActualizar() {
     console.log('🔄 Iniciando invalidación de caché...');
-    // Invalidar ambos cachés: estados y agendas
+    
     Promise.all([
         fetch('/invalidar-cache', {
             method: 'POST',
@@ -545,21 +654,22 @@ function invalidarCacheYActualizar() {
     ])
     .then(() => {
         console.log('🗑️ Cachés invalidados en servidor (estados + agendas)');
-        // Esperar un momento antes de actualizar para asegurar que el caché se limpió
         setTimeout(() => {
             actualizarEspecificos();
         }, 300);
     })
     .catch(err => {
         console.error('❌ Error invalidando caché:', err);
-        // Actualizar de todas formas
         actualizarEspecificos();
     });
 }
 
+/**
+ * Desconecta el WebSocket
+ */
 function disconnectWebSocket() {
     if (websocket) {
-        reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Evitar reconexión automática
+        reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
         websocket.close();
         websocket = null;
     }

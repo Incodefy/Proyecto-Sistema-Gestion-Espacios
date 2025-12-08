@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OperationStore - Rastrea estado de operaciones asíncronas
  * 
  * Implementa Async Request-Reply Pattern:
@@ -31,7 +31,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { retryDB } = require("./retry");
-const Logger = require("./logger");
+const { Logger } = require("./logger");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});

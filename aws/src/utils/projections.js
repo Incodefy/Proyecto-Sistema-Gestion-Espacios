@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Projections - Read Models para CQRS
  * Proyectan eventos del event store a modelos optimizados para lectura
  */
@@ -6,7 +6,7 @@
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { retryDB } = require("./retry");
-const Logger = require("./logger");
+const { Logger } = require("./logger");
 const { encryptPII } = require("./encryption");
 
 const client = new DynamoDBClient({});

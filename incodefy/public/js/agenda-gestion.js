@@ -9,14 +9,13 @@ const state = {
     occupants: [],
     bookings: [],
     editingBooking: null,
-    groupId: null, // Se debe obtener del contexto
-    bookingsCache: new Map(), // Cache: key = "spaceId:dateFrom:dateTo", value = bookings array
+    groupId: null,
     currentAbortController: null, // Para cancelar requests anteriores
     loadBookingsTimeout: null, // Para debouncing
-    isLoadingBookings: false, // Flag de carga
-    websocket: null, // Conexión WebSocket
-    wsReconnectAttempts: 0, // Intentos de reconexión
-    wsMaxReconnectAttempts: 5 // Máximo de intentos
+    isLoadingBookings: false,
+    websocket: null,
+    wsReconnectAttempts: 0,
+    wsMaxReconnectAttempts: 5
 };
 
 // Constantes
@@ -32,14 +31,12 @@ const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-    // Obtener groupId del contexto (puede venir del servidor o URL)
     state.groupId = getGroupIdFromContext();
     
     initializeEventListeners();
     loadInitialData();
     populateTimeSelects();
     
-    // Restaurar estado desde URL
     restoreStateFromURL();
 });
 
@@ -231,14 +228,45 @@ async function loadGeneralSpaces() {
 
 async function loadSpecificSpaces(generalSpaceId) {
     try {
+        console.log('[LOAD SPECIFIC] Iniciando carga para:', generalSpaceId);
+        
+        // Mostrar loading en el select de espacios específicos
+        const specificSelect = document.getElementById('specificSpaceSelect');
+        const originalHtml = specificSelect.innerHTML;
+        specificSelect.innerHTML = '<option value="">Cargando espacios...</option>';
+        specificSelect.disabled = true;
+        
         const encodedGeneralId = encodeURIComponent(generalSpaceId);
+        const startTime = Date.now();
+        
         const response = await fetch(`/api/groups/${state.groupId}/spaces/specific?general_id=${encodedGeneralId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
-        console.log('[FRONT] Espacios específicos recibidos del backend:', data);
+        const loadTime = Date.now() - startTime;
+        
+        console.log('[LOAD SPECIFIC] Espacios recibidos:', data.length, 'en', loadTime, 'ms');
+        
         state.specificSpaces = data;
         renderSpecificSpacesSelect();
+        
+        // Habilitar el select solo después de renderizar
+        specificSelect.disabled = false;
+        
+        console.log('[LOAD SPECIFIC] Select habilitado con', data.length, 'opciones');
     } catch (error) {
-        console.error('Error cargando espacios específicos:', error);
+        console.error('[LOAD SPECIFIC ERROR] Error cargando espacios específicos:', error);
+        
+        // En caso de error, mostrar mensaje y restaurar
+        const specificSelect = document.getElementById('specificSpaceSelect');
+        specificSelect.innerHTML = '<option value="">Error al cargar - Intenta de nuevo</option>';
+        specificSelect.disabled = false;
+        
+        // Limpiar estado
+        state.specificSpaces = [];
     }
 }
 
@@ -291,25 +319,10 @@ async function loadBookingsImmediate() {
     const days = getDaysForView();
     const dateFrom = formatDate(days[0]);
     const dateTo = formatDate(days[days.length - 1]);
-    const cacheKey = `${state.selectedSpecificSpace}:${dateFrom}:${dateTo}`;
     
     console.log('[LOAD BOOKINGS] Modo:', state.viewMode);
-    console.log('[LOAD BOOKINGS] Días:', days.length);
     console.log('[LOAD BOOKINGS] Rango:', dateFrom, 'a', dateTo);
     console.log('[LOAD BOOKINGS] Espacio:', state.selectedSpecificSpace);
-    console.log('[LOAD BOOKINGS] Cache key:', cacheKey);
-    console.log('[LOAD BOOKINGS] Entradas en caché:', state.bookingsCache.size);
-    
-    // Verificar caché primero
-    if (state.bookingsCache.has(cacheKey)) {
-        console.log('[CACHE HIT] Usando agendamientos del caché');
-        state.bookings = state.bookingsCache.get(cacheKey);
-        console.log('[CACHE HIT] Bookings desde caché:', state.bookings.length);
-        renderCalendar();
-        return;
-    }
-    
-    console.log('[CACHE MISS] Cargando desde API');
     
     // Mostrar skeleton loader
     state.isLoadingBookings = true;
@@ -321,34 +334,49 @@ async function loadBookingsImmediate() {
     
     try {
         const encodedSpaceId = encodeURIComponent(state.selectedSpecificSpace);
-        const url = `/api/groups/${state.groupId}/bookings?space_id=${encodedSpaceId}&date_from=${dateFrom}&date_to=${dateTo}`;
-        console.log('[API REQUEST] URL:', url);
         
-        const response = await fetch(url, { signal: abortController.signal });
+        // SIEMPRE usar cache-busting para garantizar datos frescos
+        const url = `/api/groups/${state.groupId}/bookings?space_id=${encodedSpaceId}&date_from=${dateFrom}&date_to=${dateTo}&_t=${Date.now()}`;
         
-        // Si fue abortado, no continuar
+        console.log('[API REQUEST] Cargando datos frescos...');
+        
+        const response = await fetch(url, { 
+            signal: abortController.signal,
+            cache: 'no-store' // Nunca usar caché HTTP
+        });
+        
         if (abortController.signal.aborted) {
-            console.log('[ABORT] Request abortado antes de procesar respuesta');
+            console.log('[ABORT] Request abortado');
+            return;
+        }
+        
+        if (!response.ok) {
+            console.error('[API ERROR] HTTP', response.status);
+            state.bookings = [];
+            renderCalendar();
             return;
         }
         
         const data = await response.json();
         
-        console.log('[API RESPONSE] Bookings recibidos:', data.length);
-        console.log('[API RESPONSE] Datos:', data);
+        console.log('[API RESPONSE] Bookings recibidos:', data.length || 0);
         
-        // Guardar en caché
-        state.bookingsCache.set(cacheKey, data);
-        console.log('[CACHE] Guardado en caché. Total entradas:', state.bookingsCache.size);
+        // Validar datos básicos
+        const validatedBookings = (data || [])
+            .filter(booking => booking && booking.date && booking.startTime && booking.endTime)
+            .map(booking => ({
+                ...booking,
+                startTime: booking.startTime.trim(),
+                endTime: booking.endTime.trim(),
+                date: booking.date.trim()
+            }));
         
-        // Limitar tamaño del caché (máximo 20 entradas)
-        if (state.bookingsCache.size > 20) {
-            const firstKey = state.bookingsCache.keys().next().value;
-            state.bookingsCache.delete(firstKey);
+        if (validatedBookings.length < (data || []).length) {
+            console.warn('[VALIDATION] Descartados', (data || []).length - validatedBookings.length, 'bookings inválidos');
         }
         
-        state.bookings = data;
-        console.log('[RENDER] Renderizando calendario con', data.length, 'bookings');
+        state.bookings = validatedBookings;
+        console.log('[RENDER] Renderizando con', validatedBookings.length, 'bookings');
         renderCalendar();
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -394,8 +422,6 @@ async function saveBooking() {
     
     // Obtener datos completos del ocupante seleccionado
     const selectedOccupant = state.occupants.find(o => o.occupant_id === form.occupant_id);
-    
-    console.log('[SAVE BOOKING] Ocupante seleccionado completo:', selectedOccupant);
     
     console.log('[SAVE BOOKING] Ocupante seleccionado completo:', selectedOccupant);
     console.log('[SAVE BOOKING] Especialidad (nombre):', selectedOccupant?.especialidad);
@@ -484,12 +510,9 @@ async function saveBooking() {
         }
         
         console.log('Cerrando modal y recargando bookings...');
-        
-        // Invalidar caché para forzar recarga de datos frescos
-        state.bookingsCache.clear();
-        
         closeModal();
-        await loadBookings();
+        await loadBookingsImmediate();
+        
         console.log('Bookings recargados');
     } catch (error) {
         console.error('Error guardando agendación:', error);
@@ -500,14 +523,27 @@ async function saveBooking() {
 async function deleteBooking() {
     if (!state.editingBooking) return;
     
-    if (!confirm('¿Estás seguro de eliminar esta agendación?')) return;
+    // Mostrar modal de confirmación personalizado
+    const confirmed = await showConfirmModal({
+        title: '¿Eliminar agendación?',
+        message: 'Esta acción no se puede deshacer',
+        booking: state.editingBooking
+    });
+    
+    if (!confirmed) return;
     
     try {
         const bookingId = encodeURIComponent(state.editingBooking.id || state.editingBooking.appointment_id);
         const fecha = state.editingBooking.date;
-        const horaInicio = state.editingBooking.start_time;
+        const horaInicio = state.editingBooking.startTime; // CORREGIDO: era start_time
         
         console.log('[DELETE] bookingId:', bookingId, 'fecha:', fecha, 'hora:', horaInicio);
+        
+        if (!horaInicio) {
+            console.error('[DELETE ERROR] horaInicio es undefined!', state.editingBooking);
+            alert('Error: No se pudo obtener la hora de inicio del agendamiento');
+            return;
+        }
         
         const response = await fetch(
             `/api/groups/${state.groupId}/bookings/${bookingId}?fecha=${fecha}&hora_inicio=${horaInicio}`,
@@ -516,11 +552,8 @@ async function deleteBooking() {
         
         if (!response.ok) throw new Error('Error al eliminar');
         
-        // Invalidar caché para forzar recarga de datos frescos
-        state.bookingsCache.clear();
-        
         closeModal();
-        await loadBookings();
+        await loadBookingsImmediate();
     } catch (error) {
         console.error('Error eliminando agendación:', error);
         alert('Error al eliminar la agendación');
@@ -529,32 +562,41 @@ async function deleteBooking() {
 
 // Handlers
 async function handleGeneralSpaceChange(e) {
-    state.selectedGeneralSpace = e.target.value;
+    const newGeneralSpace = e.target.value;
+    
+    console.log('[GENERAL SPACE CHANGE] De', state.selectedGeneralSpace, 'a', newGeneralSpace);
+    
+    state.selectedGeneralSpace = newGeneralSpace;
     state.selectedSpecificSpace = '';
     
-    document.getElementById('specificSpaceSelect').value = '';
-    document.getElementById('specificSpaceSelect').disabled = !state.selectedGeneralSpace;
+    // Limpiar selección de espacio específico
+    const specificSelect = document.getElementById('specificSpaceSelect');
+    specificSelect.value = '';
+    
+    // Actualizar URL INMEDIATAMENTE (antes de cargar espacios específicos)
+    updateURL();
     
     if (state.selectedGeneralSpace) {
+        console.log('[GENERAL SPACE CHANGE] Cargando espacios específicos...');
+        
+        // Cargar espacios específicos (loadSpecificSpaces ya maneja el loading state)
         await loadSpecificSpaces(state.selectedGeneralSpace);
+        
+        console.log('[GENERAL SPACE CHANGE] Carga completada');
     } else {
+        // No hay espacio general seleccionado
         state.specificSpaces = [];
         renderSpecificSpacesSelect();
+        specificSelect.disabled = true;
         hideCalendar();
     }
-    
-    updateURL();
 }
 
 async function handleSpecificSpaceChange(e) {
     state.selectedSpecificSpace = e.target.value;
     
     if (state.selectedSpecificSpace) {
-        // Limpiar caché al cambiar de espacio (diferentes agendamientos)
-        state.bookingsCache.clear();
-        
         showCalendar();
-        // Cargar inmediatamente sin debouncing al cambiar de espacio
         loadBookingsImmediate();
     } else {
         hideCalendar();
@@ -608,23 +650,11 @@ function navigateDate(direction) {
     
     state.currentDate = newDate;
     
-    // Feedback visual instantáneo: renderizar calendario vacío con nueva fecha
-    const oldBookings = state.bookings;
+    // Renderizar calendario vacío inmediatamente (feedback visual)
     state.bookings = [];
     renderCalendar();
     
-    // Restaurar bookings temporalmente si no hay en caché (evita parpadeo)
-    const days = getDaysForView();
-    const dateFrom = formatDate(days[0]);
-    const dateTo = formatDate(days[days.length - 1]);
-    const cacheKey = `${state.selectedSpecificSpace}:${dateFrom}:${dateTo}`;
-    
-    if (!state.bookingsCache.has(cacheKey)) {
-        // Mostrar skeleton inmediatamente si no hay caché
-        showSkeletonLoader();
-    }
-    
-    // Usar debouncing para navegación (permite clics rápidos)
+    // Cargar datos (con debouncing para navegación rápida)
     loadBookings();
     updateURL();
 }
@@ -661,6 +691,9 @@ function renderGeneralSpacesSelect() {
 
 function renderSpecificSpacesSelect() {
     const select = document.getElementById('specificSpaceSelect');
+    
+    console.log('[RENDER SPECIFIC] Renderizando', state.specificSpaces.length, 'espacios');
+    
     select.innerHTML = '<option value="">Selecciona un espacio específico</option>';
     
     state.specificSpaces.forEach(space => {
@@ -669,6 +702,8 @@ function renderSpecificSpacesSelect() {
         option.textContent = space.name;
         select.appendChild(option);
     });
+    
+    console.log('[RENDER SPECIFIC] Select actualizado con', select.options.length - 1, 'opciones');
 }
 
 function renderOccupantsSelect() {
@@ -734,40 +769,54 @@ function renderTimelineView() {
     const days = getDaysForView();
     const container = document.getElementById('timelineContent');
     
+    console.log('[TIMELINE VIEW] Renderizando con', state.bookings.length, 'bookings');
+    console.log('[TIMELINE VIEW] Días a mostrar:', days.length);
+    
+    // Contar cuántos bookings hay por día para debugging
+    const bookingsByDay = {};
+    state.bookings.forEach(b => {
+        bookingsByDay[b.date] = (bookingsByDay[b.date] || 0) + 1;
+    });
+    console.log('[TIMELINE VIEW] Bookings por día:', bookingsByDay);
+    
     // Header
-    let html = '<div class="timeline-header">';
-    html += '<div class="timeline-time-col"></div>';
+    let html = '<table class="timeline-table">';
+    html += '<thead><tr>';
+    html += '<th class="timeline-time-col"></th>';
     
     days.forEach(day => {
         const isToday = formatDate(day) === formatDate(new Date());
-        html += `<div class="timeline-day-header">
+        html += `<th class="timeline-day-header">
             <div class="day-name">${DAYS_ES[(day.getDay() + 6) % 7]}</div>
             <div class="day-number ${isToday ? 'today' : ''}">${day.getDate()}</div>
-        </div>`;
+        </th>`;
     });
     
-    html += '</div>';
+    html += '</tr></thead>';
     
     // Body
-    html += '<div class="timeline-body">';
+    html += '<tbody>';
+    
+    let totalBookingsRendered = 0;
     
     TIME_SLOTS.forEach(time => {
-        html += '<div class="timeline-row">';
-        html += `<div class="time-label">${time}</div>`;
+        html += '<tr class="timeline-row">';
+        html += `<td class="time-label">${time}</td>`;
         
         days.forEach(day => {
             const booking = getBookingForSlot(day, time);
             
-            html += '<div class="timeline-cell">';
+            html += '<td class="timeline-cell">';
             
             if (booking) {
                 const isFirstSlot = booking.startTime === time;
                 
                 if (isFirstSlot) {
+                    totalBookingsRendered++;
                     const duration = calculateDuration(booking.startTime, booking.endTime);
                     const height = (duration / 30) * 40 - 8;
                     
-                    html += `<div class="booking-block booking-dynamic-height" data-booking-id="${booking.id}" data-height="${height}">
+                    html += `<div class="booking-block booking-dynamic-height" data-booking-id="${booking.id}" data-computed-height="${height}">
                         <div class="booking-name">${booking.occupant_name || booking.patient_name || 'Sin nombre'}</div>
                         <div class="booking-time">${booking.startTime} - ${booking.endTime}</div>
                     </div>`;
@@ -784,23 +833,31 @@ function renderTimelineView() {
                 </button>`;
             }
             
-            html += '</div>';
+            html += '</td>';
         });
         
-        html += '</div>';
+        html += '</tr>';
     });
     
-    html += '</div>';
+    html += '</tbody></table>';
     
     container.innerHTML = html;
     
-    // Aplicar alturas dinámicas a los bookings después de renderizar (CSP-safe)
-    document.querySelectorAll('.booking-dynamic-height').forEach(block => {
-        const height = block.getAttribute('data-height');
-        if (height) {
-            block.style.height = height + 'px';
-        }
-    });
+    console.log('[TIMELINE VIEW] Bookings renderizados en vista:', totalBookingsRendered, 'de', state.bookings.length);
+    
+    if (totalBookingsRendered < state.bookings.length) {
+        console.warn('[TIMELINE VIEW] ADVERTENCIA: No se renderizaron todos los bookings!');
+        console.warn('[TIMELINE VIEW] Faltan:', state.bookings.length - totalBookingsRendered);
+        
+        // Identificar cuáles no se renderizaron
+        const renderedIds = new Set();
+        document.querySelectorAll('.booking-block, .booking-continuation').forEach(el => {
+            renderedIds.add(el.getAttribute('data-booking-id'));
+        });
+        
+        const notRendered = state.bookings.filter(b => !renderedIds.has(b.id));
+        console.warn('[TIMELINE VIEW] Bookings no renderizados:', notRendered);
+    }
 }
 
 function renderMonthView() {
@@ -811,6 +868,23 @@ function renderMonthView() {
     console.log('[MONTH VIEW] Total de bookings:', state.bookings.length);
     console.log('[MONTH VIEW] Bookings:', state.bookings);
     console.log('[MONTH VIEW] Días a mostrar:', days.length);
+    
+    // Wrapper para scroll horizontal
+    const monthContainer = document.getElementById('monthView');
+    let wrapperDiv = monthContainer.querySelector('.month-view-container');
+    
+    if (!wrapperDiv) {
+        wrapperDiv = document.createElement('div');
+        wrapperDiv.className = 'month-view-container';
+        
+        // Mover monthHeader y monthGrid dentro del wrapper
+        const monthHeader = document.getElementById('monthHeader');
+        const monthGrid = document.getElementById('monthGrid');
+        
+        monthContainer.insertBefore(wrapperDiv, monthHeader);
+        wrapperDiv.appendChild(monthHeader);
+        wrapperDiv.appendChild(monthGrid);
+    }
     
     // Header
     const headerHtml = DAYS_ES.map(day => 
@@ -983,11 +1057,23 @@ function formatDate(date) {
 
 function getBookingForSlot(date, time) {
     const dateStr = formatDate(date);
-    return state.bookings.find(b => 
-        b.date === dateStr &&
-        b.startTime <= time &&
-        b.endTime > time
-    );
+    
+    // Validar que bookings sea un array
+    if (!Array.isArray(state.bookings)) {
+        console.error('[getBookingForSlot] state.bookings no es un array:', typeof state.bookings);
+        state.bookings = [];
+        return null;
+    }
+    
+    return state.bookings.find(b => {
+        // Validar que el booking tenga los campos necesarios
+        if (!b || !b.date || !b.startTime || !b.endTime) {
+            console.warn('[getBookingForSlot] Booking inválido encontrado:', b);
+            return false;
+        }
+        
+        return b.date === dateStr && b.startTime <= time && b.endTime > time;
+    });
 }
 
 function getOccupant(occupantId) {
@@ -1038,7 +1124,7 @@ function showSkeletonLoader() {
                     </div>
                 </div>
             `;
-            calendarContainer.style.position = 'relative';
+            calendarContainer.classList.add('calendar-loading');
             calendarContainer.appendChild(overlay);
         }
     }
@@ -1059,7 +1145,8 @@ function hideSkeletonLoader() {
 
 function connectWebSocket() {
     // URL del WebSocket (se obtendrá después del despliegue)
-    const WS_URL = 'wss://erwiw5frx8.execute-api.us-east-2.amazonaws.com/dev';
+    const wsEndpointElement = document.querySelector('[data-ws-endpoint]');
+    const WS_URL = wsEndpointElement ? wsEndpointElement.dataset.wsEndpoint : 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev';
     
     if (!state.groupId) {
         console.warn('[WS] No se puede conectar: falta groupId');
@@ -1117,9 +1204,7 @@ function handleWebSocketMessage(message) {
             if (window.notificationManager) {
                 window.notificationManager.showAppointmentCreated(eventData);
             }
-            // Invalidar caché y recargar
-            state.bookingsCache.clear();
-            loadBookings();
+            loadBookingsImmediate();
             break;
             
         case 'MODIFY':
@@ -1127,9 +1212,7 @@ function handleWebSocketMessage(message) {
             if (window.notificationManager) {
                 window.notificationManager.showAppointmentModified(eventData);
             }
-            // Invalidar caché y recargar
-            state.bookingsCache.clear();
-            loadBookings();
+            loadBookingsImmediate();
             break;
             
         case 'REMOVE':
@@ -1137,9 +1220,7 @@ function handleWebSocketMessage(message) {
             if (window.notificationManager) {
                 window.notificationManager.showAppointmentCancelled(eventData);
             }
-            // Invalidar caché y recargar
-            state.bookingsCache.clear();
-            loadBookings();
+            loadBookingsImmediate();
             break;
         
         // === Eventos de Spaces ===
@@ -1248,3 +1329,119 @@ window.addEventListener('load', () => {
 window.addEventListener('beforeunload', () => {
     disconnectWebSocket();
 });
+
+// ============================================================================
+// MODAL DE CONFIRMACIÓN PERSONALIZADO
+// ============================================================================
+
+/**
+ * Muestra un modal de confirmación personalizado
+ * @param {Object} options - Opciones del modal
+ * @param {string} options.title - Título del modal
+ * @param {string} options.message - Mensaje descriptivo
+ * @param {Object} options.booking - Datos del agendamiento (opcional)
+ * @returns {Promise<boolean>} - true si confirma, false si cancela
+ */
+function showConfirmModal(options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirmModal');
+        const titleEl = document.getElementById('confirmTitle');
+        const messageEl = document.getElementById('confirmMessage');
+        const detailsEl = document.getElementById('confirmDetails');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+        const deleteBtn = document.getElementById('confirmDeleteBtn');
+        
+        // Establecer título y mensaje
+        titleEl.textContent = options.title || '¿Confirmar acción?';
+        messageEl.textContent = options.message || 'Esta acción no se puede deshacer';
+        
+        // Limpiar detalles previos
+        detailsEl.innerHTML = '';
+        
+        // Si hay datos del booking, mostrar detalles
+        if (options.booking) {
+            const details = [
+                { 
+                    icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+                    label: 'Ocupante:',
+                    value: options.booking.occupant_name || options.booking.patient_name || 'Sin nombre'
+                },
+                { 
+                    icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
+                    label: 'Fecha:',
+                    value: formatDateForDisplay(options.booking.date)
+                },
+                { 
+                    icon: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
+                    label: 'Horario:',
+                    value: `${options.booking.startTime} - ${options.booking.endTime}`
+                }
+            ];
+            
+            details.forEach(detail => {
+                const item = document.createElement('div');
+                item.className = 'confirm-detail-item';
+                item.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        ${detail.icon}
+                    </svg>
+                    <span class="confirm-detail-label">${detail.label}</span>
+                    <span>${detail.value}</span>
+                `;
+                detailsEl.appendChild(item);
+            });
+        }
+        
+        // Handlers
+        const handleCancel = () => {
+            modal.classList.remove('active');
+            cleanup();
+            resolve(false);
+        };
+        
+        const handleConfirm = () => {
+            modal.classList.remove('active');
+            cleanup();
+            resolve(true);
+        };
+        
+        const handleOutsideClick = (e) => {
+            if (e.target === modal) {
+                handleCancel();
+            }
+        };
+        
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                handleCancel();
+            }
+        };
+        
+        const cleanup = () => {
+            cancelBtn.removeEventListener('click', handleCancel);
+            deleteBtn.removeEventListener('click', handleConfirm);
+            modal.removeEventListener('click', handleOutsideClick);
+            document.removeEventListener('keydown', handleEscape);
+        };
+        
+        // Event listeners
+        cancelBtn.addEventListener('click', handleCancel);
+        deleteBtn.addEventListener('click', handleConfirm);
+        modal.addEventListener('click', handleOutsideClick);
+        document.addEventListener('keydown', handleEscape);
+        
+        // Mostrar modal
+        modal.classList.add('active');
+    });
+}
+
+/**
+ * Formatea una fecha para mostrar
+ * @param {string} dateStr - Fecha en formato YYYY-MM-DD
+ * @returns {string} - Fecha formateada (ej: "Lunes, 5 de Diciembre de 2025")
+ */
+function formatDateForDisplay(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('es-ES', options);
+}

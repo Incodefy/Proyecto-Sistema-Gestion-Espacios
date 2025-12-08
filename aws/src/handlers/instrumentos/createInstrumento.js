@@ -1,8 +1,8 @@
-// aws/src/handlers/instrumentos/createInstrumento.js
+﻿// aws/src/handlers/instrumentos/createInstrumento.js
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const crypto = require("crypto");
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");

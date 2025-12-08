@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Önizleme",
       "save": "Değişiklikleri Kaydet",
-      "reset": "Değişiklikleri sıfırla"
+      "reset": "Değişiklikleri sıfırla",
+      "cancel": "İptal"
     },
     "messages": {
       "saving": "Kaydediliyor...",
@@ -68,6 +69,70 @@
       "save_success": "Değişiklikler kaydedildi. Sayfa yeniden yüklenecek...",
       "preview_disabled": "Önizleme devre dışı. Uygulamak için değişiklikleri kaydedin.",
       "unsaved": "Kaydedilmemiş değişiklikler"
+    },
+    "workspace": {
+      "title": "Çalışma Alanı",
+      "active_group": "Aktif Grup",
+      "loading": "Grup bilgileri yükleniyor...",
+      "change_group": "Grubu Değiştir",
+      "select_group": "Grup Seç",
+      "manage_spaces": "Alanları Yönet",
+      "loading_groups": "Gruplar yükleniyor...",
+      "active_badge": "Aktif",
+      "select_badge": "Seç"
+    },
+    "color_picker": {
+      "current_color": "Geçerli renk:",
+      "preview_aria": "Geçerli rengin önizlemesi",
+      "open_picker_aria": "Renk seçiciyi aç",
+      "explore_colors": "Daha fazla renk keşfedin",
+      "select_color": "Renk Seç",
+      "select_a_color": "Bir renk seçin",
+      "search_placeholder": "Ada göre renk arayın...",
+      "apply_color": "Rengi Uygula",
+      "categories": {
+        "popular": "Popüler Renkler",
+        "vibrant": "Canlı",
+        "pastel": "Pastel",
+        "dark": "Koyu"
+      },
+      "color_names": {
+        "Azul": "Mavi",
+        "Rojo": "Kırmızı",
+        "Verde": "Yeşil",
+        "Púrpura": "Mor",
+        "Naranja": "Turuncu",
+        "Rojo Vibrante": "Canlı Kırmızı",
+        "Naranja Intenso": "Yoğun Turuncu",
+        "Ámbar": "Kehribar",
+        "Lima": "Limon Yeşili",
+        "Esmeralda": "Zümrüt",
+        "Cian": "Camgöbeği",
+        "Azul Rey": "Kraliyet Mavisi",
+        "Violeta": "Menekşe",
+        "Rosa Fucsia": "Fuşya Pembe",
+        "Rosa Intenso": "Yoğun Pembe",
+        "Rosa Pastel": "Pastel Pembe",
+        "Melocotón": "Şeftali",
+        "Amarillo Suave": "Yumuşak Sarı",
+        "Lima Pastel": "Pastel Limon",
+        "Verde Menta": "Nane Yeşili",
+        "Celeste": "Gök Mavisi",
+        "Azul Cielo": "Açık Mavi",
+        "Lavanda": "Lavanta",
+        "Rosa Claro": "Açık Pembe",
+        "Coral Suave": "Yumuşak Mercan",
+        "Pizarra": "Arde",
+        "Azul Marino": "Lacivert",
+        "Rosa Oscuro": "Koyu Pembe",
+        "Púrpura Oscuro": "Koyu Mor",
+        "Marrón": "Kahverengi",
+        "Verde Oscuro": "Koyu Yeşil",
+        "Verde Azulado": "Turkuaz",
+        "Azul Profundo": "Derin Mavi",
+        "Índigo Oscuro": "Koyu Çivit Mavisi",
+        "Carmesí": "Crimson"
+      }
     }
   },
   "navbar": {

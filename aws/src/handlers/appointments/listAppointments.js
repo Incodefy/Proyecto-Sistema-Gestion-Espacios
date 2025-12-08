@@ -1,10 +1,9 @@
-// handlers/appointments/listAppointments.js
+﻿// handlers/appointments/listAppointments.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { decryptPII } = require("../../utils/encryption");
 
@@ -12,7 +11,8 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const APPOINTMENTS_TABLE = process.env.APPOINTMENTS_TABLE;
 
-const appointmentsCache = new Cache({ ttl: 180, maxSize: 500 }); // 3 min
+// Cache eliminado: evita race conditions entre Lambda containers
+// DynamoDB es suficientemente rápido para queries directas
 
 /**
  * Lista appointments de un grupo
@@ -25,60 +25,7 @@ const listAppointments = async (event) => {
   
   validate('listAppointments', { grupo_id: grupoId });
   
-  const cacheKey = `appointments:${grupoId}:${fecha || 'all'}:${espacio_id || 'all'}:${ocupante_id || 'all'}`;
-  const cached = appointmentsCache.get(cacheKey);
-  
-  if (cached) {
-    logger.info('Appointments obtenidos desde cache', { count: cached.length });
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ ok: true, appointments: cached, count: cached.length, cached: true })
-    };
-  }
-
-    let result;
-
-    // Query por ocupante usando GSI1 (OcupanteIndex)
-    if (ocupante_id) {
-      const params = {
-        TableName: APPOINTMENTS_TABLE,
-        IndexName: 'OcupanteIndex',
-        KeyConditionExpression: 'GSI1PK = :ocupante',
-        ExpressionAttributeValues: {
-          ':ocupante': ocupante_id.startsWith('OCCUPANT#') ? ocupante_id : `OCCUPANT#${ocupante_id}`,
-          ':grupo': grupoId
-        },
-        FilterExpression: 'grupo_id = :grupo'
-      };
-
-      if (fecha) {
-        params.KeyConditionExpression += ' AND begins_with(GSI1SK, :fecha)';
-        params.ExpressionAttributeValues[':fecha'] = fecha;
-      }
-
-      result = await docClient.send(new QueryCommand(params));
-    }
-    // Query por espacio usando GSI2 (EspacioIndex)
-    else if (espacio_id) {
-      const params = {
-        TableName: APPOINTMENTS_TABLE,
-        IndexName: 'EspacioIndex',
-        KeyConditionExpression: 'GSI2PK = :espacio',
-        ExpressionAttributeValues: {
-          ':espacio': espacio_id.startsWith('SUBSPACE#') ? espacio_id : `SUBSPACE#${espacio_id}`,
-          ':grupo': grupoId
-        },
-        FilterExpression: 'grupo_id = :grupo'
-      };
-
-      if (fecha) {
-        params.KeyConditionExpression += ' AND begins_with(GSI2SK, :fecha)';
-        params.ExpressionAttributeValues[':fecha'] = fecha;
-      }
-
-      result = await docClient.send(new QueryCommand(params));
-    }
-  logger.info('Consultando appointments', { grupo_id: grupoId, fecha, espacio_id, ocupante_id });
+  logger.info('Consultando appointments desde DynamoDB', { grupo_id: grupoId, fecha, espacio_id, ocupante_id });
   
   let params;
   
@@ -132,9 +79,7 @@ const listAppointments = async (event) => {
     rawAppointments.map(async (apt) => await decryptPII(apt))
   );
   
-  appointmentsCache.set(cacheKey, appointments);
-  
-  logger.info('Appointments obtenidos, desencriptados y cacheados', { count: appointments.length });
+  logger.info('Appointments obtenidos y desencriptados', { count: appointments.length });
   
   return {
     statusCode: 200,

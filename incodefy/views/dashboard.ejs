@@ -24,7 +24,7 @@
         <div class="row">
             <%- include('navbar') %>
 
-            <main class="main" role="main" aria-label="Contenido principal" data-grupo-id="<%= grupoActivo.grupo_id %>">
+            <main class="main" role="main" aria-label="Contenido principal" data-grupo-id="<%= grupoActivo.grupo_id %>" data-ws-endpoint="<%= wsEndpoint %>">
                 <header class="header-section">
                     <h1>
                         <i class="fas fa-chart-line me-2 header-icon" aria-hidden="true"></i>
@@ -126,7 +126,7 @@
                             -->
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- KPIs -->
                 <div class="dashboard-section-title-container dashboard-animate-on-load" style="animation-delay: 100ms;" nonce="<%= cspNonce %>">
@@ -200,7 +200,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
 
             <%- include('footer') %>
         </div>

@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Предпросмотр",
       "save": "Сохранить",
-      "reset": "Сбросить"
+      "reset": "Сбросить",
+      "cancel": "Отмена"
     },
     "messages": {
       "saving": "Сохранение...",
@@ -68,6 +69,70 @@
       "save_success": "Изменения сохранены. Страница будет перезагружена...",
       "preview_disabled": "Предпросмотр отключен. Сохраните изменения, чтобы применить их.",
       "unsaved": "Несохранённые изменения"
+    },
+    "workspace": {
+      "title": "Рабочее пространство",
+      "active_group": "Активная группа",
+      "loading": "Загрузка информации о группе...",
+      "change_group": "Изменить группу",
+      "select_group": "Выбрать группу",
+      "manage_spaces": "Управление пространствами",
+      "loading_groups": "Загрузка групп...",
+      "active_badge": "Активный",
+      "select_badge": "Выбрать"
+    },
+    "color_picker": {
+      "current_color": "Текущий цвет:",
+      "preview_aria": "Предпросмотр текущего цвета",
+      "open_picker_aria": "Открыть палитру цветов",
+      "explore_colors": "Исследовать больше цветов",
+      "select_color": "Выбрать Цвет",
+      "select_a_color": "Выберите цвет",
+      "search_placeholder": "Поиск цвета по названию...",
+      "apply_color": "Применить Цвет",
+      "categories": {
+        "popular": "Популярные Цвета",
+        "vibrant": "Яркие",
+        "pastel": "Пастельные",
+        "dark": "Тёмные"
+      },
+      "color_names": {
+        "Azul": "Синий",
+        "Rojo": "Красный",
+        "Verde": "Зелёный",
+        "Púrpura": "Фиолетовый",
+        "Naranja": "Оранжевый",
+        "Rojo Vibrante": "Ярко-красный",
+        "Naranja Intenso": "Насыщенный оранжевый",
+        "Ámbar": "Янтарный",
+        "Lima": "Лаймовый",
+        "Esmeralda": "Изумрудный",
+        "Cian": "Голубой",
+        "Azul Rey": "Королевский синий",
+        "Violeta": "Фиалковый",
+        "Rosa Fucsia": "Фуксия",
+        "Rosa Intenso": "Ярко-розовый",
+        "Rosa Pastel": "Пастельно-розовый",
+        "Melocotón": "Персиковый",
+        "Amarillo Suave": "Нежно-жёлтый",
+        "Lima Pastel": "Пастельный лайм",
+        "Verde Menta": "Мятный",
+        "Celeste": "Небесно-голубой",
+        "Azul Cielo": "Небесно-синий",
+        "Lavanda": "Лавандовый",
+        "Rosa Claro": "Светло-розовый",
+        "Coral Suave": "Нежный коралловый",
+        "Pizarra": "Сланцевый",
+        "Azul Marino": "Тёмно-синий",
+        "Rosa Oscuro": "Тёмно-розовый",
+        "Púrpura Oscuro": "Тёмно-фиолетовый",
+        "Marrón": "Коричневый",
+        "Verde Oscuro": "Тёмно-зелёный",
+        "Verde Azulado": "Бирюзовый",
+        "Azul Profundo": "Глубокий синий",
+        "Índigo Oscuro": "Тёмно-индиго",
+        "Carmesí": "Багровый"
+      }
     }
   },
   "navbar": {

@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "రద్దు చేయండి"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "పని ప్రదేశం",
+      "active_group": "క్రియాశీల సమూహం",
+      "loading": "సమూహ సమాచారం లోడ్ అవుతోంది...",
+      "change_group": "సమూహాన్ని మార్చండి",
+      "select_group": "సమూహాన్ని ఎంచుకోండి",
+      "manage_spaces": "స్థలాలను నిర్వహించండి",
+      "loading_groups": "గ్రూపులు లోడ్ అవుతున్నాయి...",
+      "active_badge": "సక్రియం",
+      "select_badge": "ఎంచుకోండి"
+    },
+    "color_picker": {
+      "current_color": "ప్రస్తుత రంగు:",
+      "preview_aria": "ప్రస్తుత రంగు ప్రివ్యూ",
+      "open_picker_aria": "రంగు ఎంపికలని తెరవండి",
+      "explore_colors": "మరిన్ని రంగులను అన్వేషించండి",
+      "select_color": "రంగు ఎంపిక చేయండి",
+      "select_a_color": "ఒక రంగును ఎంపిక చేయండి",
+      "search_placeholder": "పేరు ద్వారా రంగు సెర్చ్ చేయండి...",
+      "apply_color": "రంగు వినియోగించండి",
+      "categories": {
+        "popular": "ప్రసిద్ధ రంగులు",
+        "vibrant": "జీవంతం",
+        "pastel": "పాస్టల్",
+        "dark": "చీకటి"
+      },
+      "color_names": {
+        "Azul": "నీలం",
+        "Rojo": "ఎరుపు",
+        "Verde": "ఆకుపచ్చ",
+        "Púrpura": "ఊదా",
+        "Naranja": "నారింజ",
+        "Rojo Vibrante": "ప్రకాశవంతమైన ఎరుపు",
+        "Naranja Intenso": "గాఢ నారింజ",
+        "Ámbar": "కాషాయం",
+        "Lima": "నిమ్మ",
+        "Esmeralda": "పచ్చ",
+        "Cian": "సియాన్",
+        "Azul Rey": "రాజ నీలం",
+        "Violeta": "వైలెట్",
+        "Rosa Fucsia": "ఫ్యూషియా గులాబీ",
+        "Rosa Intenso": "గాఢ గులాబీ",
+        "Rosa Pastel": "పాస్టల్ గులాబీ",
+        "Melocotón": "పీచ్",
+        "Amarillo Suave": "మెత్తని పసుపు",
+        "Lima Pastel": "పాస్టల్ నిమ్మ",
+        "Verde Menta": "పుదీనా ఆకుపచ్చ",
+        "Celeste": "ఆకాశ నీలం",
+        "Azul Cielo": "స్కై బ్లూ",
+        "Lavanda": "లావెండర్",
+        "Rosa Claro": "లేత గులాబీ",
+        "Coral Suave": "మెత్తని పగడపు",
+        "Pizarra": "స్లేట్",
+        "Azul Marino": "నేవీ బ్లూ",
+        "Rosa Oscuro": "ముదురు గులాబీ",
+        "Púrpura Oscuro": "ముదురు ఊదా",
+        "Marrón": "గోధుమ",
+        "Verde Oscuro": "ముదురు ఆకుపచ్చ",
+        "Verde Azulado": "టీల్",
+        "Azul Profundo": "లోతైన నీలం",
+        "Índigo Oscuro": "ముదురు నీలిమందు",
+        "Carmesí": "కార్మిన్"
+      }
     }
   },
   "navbar": {

@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "ยกเลิก"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "พื้นที่ทำงาน",
+      "active_group": "กลุ่มที่ใช้งาน",
+      "loading": "กำลังโหลดข้อมูลกลุ่ม...",
+      "change_group": "เปลี่ยนกลุ่ม",
+      "select_group": "เลือกกลุ่ม",
+      "manage_spaces": "จัดการพื้นที่",
+      "loading_groups": "กำลังโหลดกลุ่ม...",
+      "active_badge": "ใช้งาน",
+      "select_badge": "เลือก"
+    },
+    "color_picker": {
+      "current_color": "สีปัจจุบัน:",
+      "preview_aria": "ดูตัวอย่างสีปัจจุบัน",
+      "open_picker_aria": "เปิดตัวเลือกสี",
+      "explore_colors": "สำรวจสีเพิ่มเติม",
+      "select_color": "เลือกสี",
+      "select_a_color": "เลือกสีหนึ่งสี",
+      "search_placeholder": "ค้นหาสีตามชื่อ...",
+      "apply_color": "ใช้สี",
+      "categories": {
+        "popular": "สียอดนิยม",
+        "vibrant": "สดใส",
+        "pastel": "พาสเทล",
+        "dark": "เข้ม"
+      },
+      "color_names": {
+        "Azul": "สีน้ำเงิน",
+        "Rojo": "สีแดง",
+        "Verde": "สีเขียว",
+        "Púrpura": "สีม่วง",
+        "Naranja": "ส้ม",
+        "Rojo Vibrante": "แดงสด",
+        "Naranja Intenso": "ส้มเข้ม",
+        "Ámbar": "อำพัน",
+        "Lima": "มะนาว",
+        "Esmeralda": "สีเขียวมรกต",
+        "Cian": "ฟ้า",
+        "Azul Rey": "น้ำเงินเข้ม",
+        "Violeta": "ไวโอเลต",
+        "Rosa Fucsia": "ชมพูฟักเซีย",
+        "Rosa Intenso": "ชมพูเข้ม",
+        "Rosa Pastel": "ชมพูพาสเทล",
+        "Melocotón": "ลูกพีช",
+        "Amarillo Suave": "เหลืองอ่อน",
+        "Lima Pastel": "มะนาวพาสเทล",
+        "Verde Menta": "เขียวมินต์",
+        "Celeste": "ฟ้าอ่อน",
+        "Azul Cielo": "ฟ้าอ่อน",
+        "Lavanda": "ลาเวนเดอร์",
+        "Rosa Claro": "ชมพูอ่อน",
+        "Coral Suave": "ปะการังอ่อน",
+        "Pizarra": "หินแผ่น",
+        "Azul Marino": "น้ำเงินแก่",
+        "Rosa Oscuro": "ชมพูเข้ม",
+        "Púrpura Oscuro": "ม่วงเข้ม",
+        "Marrón": "น้ำตาล",
+        "Verde Oscuro": "เขียวเข้ม",
+        "Verde Azulado": "เขียวอมฟ้า",
+        "Azul Profundo": "น้ำเงินเข้ม",
+        "Índigo Oscuro": "คราม เข้ม",
+        "Carmesí": "แดงเข้ม"
+      }
     }
   },
   "navbar": {

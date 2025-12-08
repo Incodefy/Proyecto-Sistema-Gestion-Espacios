@@ -59,8 +59,9 @@
     },
     "buttons": {
       "preview": "Aperçu",
-      "save": "Enregistrer les modifications",
-      "reset": "Réinitialiser les modifications"
+      "save": "Enregistrer les Modifications",
+      "reset": "Réinitialiser les Modifications",
+      "cancel": "Annuler"
     },
     "messages": {
       "saving": "Enregistrement...",
@@ -68,6 +69,70 @@
       "save_success": "Modifications enregistrées. La page va se recharger...",
       "preview_disabled": "L'aperçu est désactivé. Enregistrez les modifications pour les appliquer.",
       "unsaved": "Modifications non enregistrées"
+    },
+    "workspace": {
+      "title": "Espace de Travail",
+      "active_group": "Groupe Actif",
+      "loading": "Chargement des informations du groupe...",
+      "change_group": "Changer de Groupe",
+      "select_group": "Sélectionner un Groupe",
+      "manage_spaces": "Gérer les Espaces",
+      "loading_groups": "Chargement des groupes...",
+      "active_badge": "Actif",
+      "select_badge": "Sélectionner"
+    },
+    "color_picker": {
+      "current_color": "Couleur actuelle:",
+      "preview_aria": "Aperçu de la couleur actuelle",
+      "open_picker_aria": "Ouvrir le sélecteur de couleurs",
+      "explore_colors": "Explorer plus de couleurs",
+      "select_color": "Sélectionner une Couleur",
+      "select_a_color": "Sélectionnez une couleur",
+      "search_placeholder": "Rechercher une couleur par nom...",
+      "apply_color": "Appliquer la Couleur",
+      "categories": {
+        "popular": "Couleurs Populaires",
+        "vibrant": "Vives",
+        "pastel": "Pastel",
+        "dark": "Sombres"
+      },
+      "color_names": {
+        "Azul": "Bleu",
+        "Rojo": "Rouge",
+        "Verde": "Vert",
+        "Púrpura": "Violet",
+        "Naranja": "Orange",
+        "Rojo Vibrante": "Rouge Vibrant",
+        "Naranja Intenso": "Orange Intense",
+        "Ámbar": "Ambre",
+        "Lima": "Citron Vert",
+        "Esmeralda": "Émeraude",
+        "Cian": "Cyan",
+        "Azul Rey": "Bleu Royal",
+        "Violeta": "Violet",
+        "Rosa Fucsia": "Rose Fuchsia",
+        "Rosa Intenso": "Rose Intense",
+        "Rosa Pastel": "Rose Pastel",
+        "Melocotón": "Pêche",
+        "Amarillo Suave": "Jaune Doux",
+        "Lima Pastel": "Citron Pastel",
+        "Verde Menta": "Vert Menthe",
+        "Celeste": "Céleste",
+        "Azul Cielo": "Bleu Ciel",
+        "Lavanda": "Lavande",
+        "Rosa Claro": "Rose Clair",
+        "Coral Suave": "Corail Doux",
+        "Pizarra": "Ardoise",
+        "Azul Marino": "Bleu Marine",
+        "Rosa Oscuro": "Rose Foncé",
+        "Púrpura Oscuro": "Violet Foncé",
+        "Marrón": "Marron",
+        "Verde Oscuro": "Vert Foncé",
+        "Verde Azulado": "Bleu-Vert",
+        "Azul Profundo": "Bleu Profond",
+        "Índigo Oscuro": "Indigo Foncé",
+        "Carmesí": "Cramoisi"
+      }
     }
   },
   "navbar": {

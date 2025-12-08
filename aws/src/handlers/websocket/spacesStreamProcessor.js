@@ -1,9 +1,9 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+﻿const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 const { unmarshall } = require("@aws-sdk/util-dynamodb");
 const { notifyEspacioCreado, notifyEspacioModificado, notifyEspacioEliminado } = require("../../utils/notificationHelper");
-const Logger = require('../../utils/logger');
+const { Logger } = require('../../utils/logger');
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE;

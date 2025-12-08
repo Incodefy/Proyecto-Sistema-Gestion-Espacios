@@ -94,6 +94,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Ruta para favicon (evitar error 404)
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Servir Font Awesome localmente desde node_modules (evitar CDN externos con CORS permisivo)
 app.use('/fontawesome', express.static(path.join(__dirname, 'node_modules/@fortawesome/fontawesome-free')));
 
@@ -286,8 +289,8 @@ app.get('/', async (req, res) => {
 
   // Usuario autenticado - verificar si tiene grupo activo
   try {
-    const ApiClient = require('./apiClient');
-    const apiClient = new ApiClient(req.session.user.idToken);
+    const ApiClientV2 = require('./apiClientV2');
+    const apiClient = new ApiClientV2(req.session.user.idToken);
     
     const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
     
@@ -308,6 +311,7 @@ app.get('/', async (req, res) => {
 // Auth routes (públicas)
 const authRoutes = require('./routes/auth');
 app.use('/', authRoutes);
+app.use('/auth', authRoutes); // Montaje adicional en /auth para consistencia
 
 // Rutas de registro y verificación de email (públicas)
 const signupRoutes = require('./routes/signup');

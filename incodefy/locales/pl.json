@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Podgląd",
       "save": "Zapisz Zmiany",
-      "reset": "Resetuj zmiany"
+      "reset": "Zresetuj Zmiany",
+      "cancel": "Anuluj"
     },
     "messages": {
       "saving": "Zapisywanie...",
@@ -68,6 +69,70 @@
       "save_success": "Zmiany zapisane. Strona zostanie przeładowana...",
       "preview_disabled": "Podgląd jest wyłączony. Zapisz zmiany, aby je zastosować.",
       "unsaved": "Niezapisane zmiany"
+    },
+    "workspace": {
+      "title": "Obszar Roboczy",
+      "active_group": "Aktywna Grupa",
+      "loading": "Ładowanie informacji o grupie...",
+      "change_group": "Zmień Grupę",
+      "select_group": "Wybierz Grupę",
+      "manage_spaces": "Zarządzaj Przestrzeniami",
+      "loading_groups": "Ładowanie grup...",
+      "active_badge": "Aktywna",
+      "select_badge": "Wybierz"
+    },
+    "color_picker": {
+      "current_color": "Aktualny kolor:",
+      "preview_aria": "Podgląd aktualnego koloru",
+      "open_picker_aria": "Otwórz selektor kolorów",
+      "explore_colors": "Odkryj więcej kolorów",
+      "select_color": "Wybierz Kolor",
+      "select_a_color": "Wybierz kolor",
+      "search_placeholder": "Wyszukaj kolor według nazwy...",
+      "apply_color": "Zastosuj Kolor",
+      "categories": {
+        "popular": "Popularne Kolory",
+        "vibrant": "Żywe",
+        "pastel": "Pastelowe",
+        "dark": "Ciemne"
+      },
+      "color_names": {
+        "Azul": "Niebieski",
+        "Rojo": "Czerwony",
+        "Verde": "Zielony",
+        "Púrpura": "Fioletowy",
+        "Naranja": "Pomarańczowy",
+        "Rojo Vibrante": "Żywa Czerwień",
+        "Naranja Intenso": "Intensywny Pomarańcz",
+        "Ámbar": "Bursztynowy",
+        "Lima": "Limonkowy",
+        "Esmeralda": "Szmaragdowy",
+        "Cian": "Cyjan",
+        "Azul Rey": "Królewski Niebieski",
+        "Violeta": "Fiolet",
+        "Rosa Fucsia": "Różowy Fuksja",
+        "Rosa Intenso": "Intensywny Różowy",
+        "Rosa Pastel": "Pastelowy Różowy",
+        "Melocotón": "Brzoskwiniowy",
+        "Amarillo Suave": "Delikatny Żółty",
+        "Lima Pastel": "Pastelowa Limonka",
+        "Verde Menta": "Miętowy",
+        "Celeste": "Niebieski Nieba",
+        "Azul Cielo": "Jasnoniebieski",
+        "Lavanda": "Lawenda",
+        "Rosa Claro": "Jasny Różowy",
+        "Coral Suave": "Delikatny Koralowy",
+        "Pizarra": "Łupkowy",
+        "Azul Marino": "Granatowy",
+        "Rosa Oscuro": "Ciemny Różowy",
+        "Púrpura Oscuro": "Ciemny Fioletowy",
+        "Marrón": "Brązowy",
+        "Verde Oscuro": "Ciemnozielony",
+        "Verde Azulado": "Turkusowy",
+        "Azul Profundo": "Głęboki Niebieski",
+        "Índigo Oscuro": "Ciemny Indygo",
+        "Carmesí": "Karmazynowy"
+      }
     }
   },
   "navbar": {

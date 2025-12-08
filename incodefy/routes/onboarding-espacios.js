@@ -95,6 +95,7 @@ router.get('/api/grupos/:id', async (req, res) => {
   const { asignar_activo } = req.query;
 
   console.log(`\n=== [Express] GET /api/grupos/${id} | ${TRACE_ID} ===`);
+  console.log(`[${TRACE_ID}] Query params:`, { asignar_activo });
 
   try {
     const response = await req.apiClient.obtenerGrupo(id);
@@ -104,23 +105,48 @@ router.get('/api/grupos/:id', async (req, res) => {
       return res.status(404).json(response);
     }
 
-    // Si se solicita asignar como activo y el grupo está configurado
-    if (asignar_activo === 'true' && response.group && response.group.configured === true) {
+    console.log(`[${TRACE_ID}] Grupo obtenido:`, { 
+      grupo_id: response.group?.grupo_id,
+      configured: response.group?.configured,
+      tiene_nomenclatura: !!response.group?.nomenclatura
+    });
+
+    // SOLO asignar como activo si el grupo YA está configurado
+    if (asignar_activo === 'true' && response.group?.configured === true) {
       try {
-        console.log(`[${TRACE_ID}] 🔄 Asignando grupo como activo...`);
-        await req.apiClient.asignarGrupoActivo(id);
-        console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo`);
+        console.log(`[${TRACE_ID}] 🔄 Grupo configurado, asignando como activo...`);
+        const assignResponse = await req.apiClient.asignarGrupoActivo(id);
+        console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo:`, assignResponse);
         
-        // Invalidar cache del middleware
-        const checkGrupoActivo = require('../middleware/checkGrupoActivo');
-        checkGrupoActivo.invalidarCache(req);
+        // ACTUALIZAR SESIÓN con el grupo activo
+        if (assignResponse && assignResponse.grupo_activo) {
+          req.session.grupoActivo = assignResponse.grupo_activo;
+          req.session.grupoActivoVerificado = true;
+          req.session.grupoActivoVerificadoEn = Date.now();
+          console.log(`[${TRACE_ID}] ✅ Sesión actualizada con grupo activo`);
+          
+          // Guardar la sesión explícitamente
+          await new Promise((resolve, reject) => {
+            req.session.save((err) => {
+              if (err) {
+                console.error(`[${TRACE_ID}] ❌ Error guardando sesión:`, err);
+                reject(err);
+              } else {
+                console.log(`[${TRACE_ID}] ✅ Sesión guardada`);
+                resolve();
+              }
+            });
+          });
+        }
       } catch (assignErr) {
         console.warn(`[${TRACE_ID}] ⚠️ No se pudo asignar grupo como activo:`, assignErr.message);
         // No bloqueamos, continuamos
       }
+    } else if (asignar_activo === 'true' && response.group?.configured === false) {
+      console.log(`[${TRACE_ID}] ℹ️ Grupo no configurado, NO se asigna como activo todavía`);
     }
 
-    console.log(`[${TRACE_ID}] ✅ Grupo obtenido exitosamente`);
+    console.log(`[${TRACE_ID}] ✅ Retornando información del grupo`);
     return res.json(response);
   } catch (err) {
     console.error(`[${TRACE_ID}] ❌ Error consultando grupo:`, err.message);
@@ -203,13 +229,16 @@ router.post('/api/espacios/configuracion', async (req, res) => {
     if (response && response.ok && response.grupo_id) {
       try {
         console.log(`[${TRACE_ID}] 🔄 Asignando grupo como activo...`);
-        await req.apiClient.asignarGrupoActivo(response.grupo_id);
-        console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo`);
+        const assignResponse = await req.apiClient.asignarGrupoActivo(response.grupo_id);
+        console.log(`[${TRACE_ID}] ✅ Grupo asignado como activo:`, assignResponse);
         
-        // Invalidar el cache del middleware checkGrupoActivo
-        const checkGrupoActivo = require('../middleware/checkGrupoActivo');
-        checkGrupoActivo.invalidarCache(req);
-        console.log(`[${TRACE_ID}] 🔄 Cache de grupo activo invalidado`);
+        // ACTUALIZAR SESIÓN con el grupo activo
+        if (assignResponse && assignResponse.grupo_activo) {
+          req.session.grupoActivo = assignResponse.grupo_activo;
+          req.session.grupoActivoVerificado = true;
+          req.session.grupoActivoVerificadoEn = Date.now();
+          console.log(`[${TRACE_ID}] ✅ Sesión actualizada con grupo activo`);
+        }
         
         // REFRESCAR PERMISOS: Obtener los permisos del usuario en el nuevo grupo
         try {

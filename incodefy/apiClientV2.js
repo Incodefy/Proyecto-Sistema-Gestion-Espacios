@@ -433,10 +433,11 @@ class ApiClientV2 {
   async guardarEspacios(grupo_id, espacios, ocupantes = [], especialidades = [], tiposInstrumentos = [], instrumentos = []) {
     try {
       const response = await this.client.post(`/groups/${grupo_id}/spaces`, {
+        grupo_id,
         espacios,
-        ocupantes,
         especialidades,
-        tiposInstrumentos,
+        ocupantes,
+        tipos_instrumentos: tiposInstrumentos,
         instrumentos
       });
       return this._extractData(response);
@@ -469,6 +470,658 @@ class ApiClientV2 {
     } catch (error) {
       console.error('Error eliminando configuración espacios:', error.apiError || error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Crea un espacio individual
+   */
+  async crearEspacio(data) {
+    try {
+      const response = await this.client.post('/api/espacios/espacio', data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error creando espacio:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza un espacio individual
+   */
+  async actualizarEspacio(espacioId, data) {
+    try {
+      const encodedId = encodeURIComponent(espacioId);
+      const response = await this.client.put(`/api/espacios/espacio/${encodedId}`, data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando espacio:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina un espacio individual
+   */
+  async eliminarEspacio(espacioId, grupoId) {
+    try {
+      const encodedId = encodeURIComponent(espacioId);
+      const response = await this.client.delete(`/api/espacios/espacio/${encodedId}?grupo_id=${grupoId}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error eliminando espacio:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de espacios de un grupo
+   */
+  async obtenerEstadisticasEspacios(grupo_id) {
+    try {
+      const response = await this.client.get(`/api/espacios/estadisticas?grupo_id=${grupo_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo estadísticas espacios:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  // ============ GESTIÓN DE MIEMBROS ============
+
+  /**
+   * Lista miembros de un grupo
+   */
+  async listarMiembrosGrupo(grupoId) {
+    try {
+      const response = await this.client.get(`/api/grupos/${grupoId}/miembros`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error listando miembros:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Invita un miembro a un grupo
+   */
+  async invitarMiembro(grupo_id, email, rol) {
+    try {
+      const response = await this.client.post('/api/grupos/invitar', {
+        grupo_id,
+        email,
+        rol
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error invitando miembro:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza el rol de un miembro
+   */
+  async actualizarRolMiembro(miembroId, grupo_id, rol) {
+    try {
+      const response = await this.client.put(`/api/grupos/miembro/${miembroId}/rol?grupo_id=${grupo_id}`, { rol });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando rol miembro:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Remueve un miembro de un grupo
+   */
+  async removerMiembro(miembroId, grupo_id) {
+    try {
+      const response = await this.client.delete(`/api/grupos/miembro/${miembroId}?grupo_id=${grupo_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error removiendo miembro:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifica una invitación
+   */
+  async verificarInvitacion(token) {
+    try {
+      const response = await this.client.get(`/api/invitaciones/verificar?token=${token}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error verificando invitación:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Acepta una invitación
+   */
+  async aceptarInvitacion(token) {
+    try {
+      const response = await this.client.post('/api/invitaciones/aceptar', { token });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error aceptando invitación:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifica si el usuario tiene un permiso específico
+   */
+  async checkPermission(grupo_id, permission) {
+    try {
+      const response = await this.client.post('/check-permission', {
+        group_id: grupo_id,
+        permission
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error verificando permiso:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  // ============ GESTIÓN DE ESPECIALIDADES ============
+
+  /**
+   * Lista especialidades de un grupo
+   */
+  async listarEspecialidades(grupoId) {
+    try {
+      const response = await this.client.get(`/groups/${grupoId}/especialidades`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error listando especialidades:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Crea una nueva especialidad
+   */
+  async crearEspecialidad(grupoId, data) {
+    try {
+      const response = await this.client.post(`/groups/${grupoId}/especialidades`, data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error creando especialidad:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza una especialidad
+   */
+  async actualizarEspecialidad(grupoId, especialidadId, data) {
+    try {
+      const response = await this.client.put(`/groups/${grupoId}/especialidades/${especialidadId}`, data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando especialidad:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina una especialidad
+   */
+  async eliminarEspecialidad(grupoId, especialidadId) {
+    try {
+      const response = await this.client.delete(`/groups/${grupoId}/especialidades/${especialidadId}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error eliminando especialidad:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  // ============ GESTIÓN DE OCUPANTES ============
+
+  /**
+   * Lista ocupantes de un grupo
+   */
+  async listarOcupantes(grupoId) {
+    try {
+      const response = await this.client.get(`/groups/${grupoId}/ocupantes`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error listando ocupantes:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Crea un nuevo ocupante
+   */
+  async crearOcupante(grupoId, data) {
+    try {
+      const response = await this.client.post(`/groups/${grupoId}/ocupantes`, data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error creando ocupante:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza un ocupante
+   */
+  async actualizarOcupante(grupoId, ocupanteId, data) {
+    try {
+      const response = await this.client.put(`/groups/${grupoId}/ocupantes/${ocupanteId}`, data);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando ocupante:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina un ocupante
+   */
+  async eliminarOcupante(grupoId, ocupanteId) {
+    try {
+      const response = await this.client.delete(`/groups/${grupoId}/ocupantes/${ocupanteId}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error eliminando ocupante:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  // ============ MÉTODOS DE AGENDA ============
+
+  /**
+   * Obtiene pasillos
+   */
+  async obtenerPasillos() {
+    try {
+      const response = await this.client.get('/api/pasillos');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo pasillos:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene boxes
+   */
+  async obtenerBoxes() {
+    try {
+      const response = await this.client.get('/api/boxes');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo boxes:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene especialidades
+   */
+  async obtenerEspecialidades() {
+    try {
+      const response = await this.client.get('/api/especialidades');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo especialidades:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene médicos
+   */
+  async obtenerMedicos() {
+    try {
+      const response = await this.client.get('/api/medicos');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo médicos:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene agenda por box
+   */
+  async obtenerAgendaPorBox(box_id) {
+    try {
+      const response = await this.client.get(`/api/agenda/box/${box_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo agenda por box:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene agenda por médico
+   */
+  async obtenerAgendaPorMedico(medico_id) {
+    try {
+      const response = await this.client.get(`/api/agenda/medico/${medico_id}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo agenda por médico:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene agenda por ID
+   */
+  async obtenerAgendaPorId(idAgenda) {
+    try {
+      const response = await this.client.get(`/api/agenda/${idAgenda}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo agenda por ID:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene agenda por box y fecha
+   */
+  async obtenerAgendaPorBoxYFecha(boxId, fecha) {
+    try {
+      const response = await this.client.get(`/api/agenda/box/${boxId}/fecha/${fecha}`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo agenda por box y fecha:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifica conflicto de box
+   */
+  async verificarConflictoBox(box_id, fecha, hora_inicio, hora_fin) {
+    try {
+      const response = await this.client.get('/api/agenda/conflicto/box', {
+        params: { box_id, fecha, hora_inicio, hora_fin }
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error verificando conflicto box:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifica conflicto de médico
+   */
+  async verificarConflictoMedico(medico_id, fecha, hora_inicio, hora_fin) {
+    try {
+      const response = await this.client.get('/api/agenda/conflicto/medico', {
+        params: { medico_id, fecha, hora_inicio, hora_fin }
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error verificando conflicto médico:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Inserta una agenda
+   */
+  async insertarAgenda(agendaInput) {
+    try {
+      const response = await this.client.post('/api/agenda', agendaInput);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error insertando agenda:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza estado de agenda
+   */
+  async actualizarEstadoAgenda(idAgenda, nuevoEstado) {
+    try {
+      const response = await this.client.put(`/api/agenda/${idAgenda}/estado`, {
+        estado: nuevoEstado
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error actualizando estado agenda:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene estado no atendido
+   */
+  async obtenerEstadoNoAtendido() {
+    try {
+      const response = await this.client.get('/api/estados/no-atendido');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo estado no atendido:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene consultas en curso
+   */
+  async obtenerConsultasEnCurso(hora_actual, estadosPermitidos) {
+    try {
+      const response = await this.client.get('/api/agenda/en-curso', {
+        params: { hora_actual, estados: estadosPermitidos }
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo consultas en curso:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene instrumentos por box
+   */
+  async obtenerInstrumentosPorBox(boxId) {
+    try {
+      const response = await this.client.get(`/api/boxes/${boxId}/instrumentos`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo instrumentos por box:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene box y pasillo
+   */
+  async obtenerBoxYPasillo(boxId) {
+    try {
+      const response = await this.client.get(`/api/boxes/${boxId}/pasillo`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo box y pasillo:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene nombre de médico
+   */
+  async obtenerMedicoNombre(medicoId) {
+    try {
+      const response = await this.client.get(`/api/medicos/${medicoId}/nombre`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo nombre médico:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene nombre de box
+   */
+  async obtenerBoxNombre(boxId) {
+    try {
+      const response = await this.client.get(`/api/boxes/${boxId}/nombre`);
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo nombre box:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Marca todas las notificaciones como leídas
+   */
+  async marcarTodasLeidas() {
+    try {
+      const response = await this.client.put('/api/notificaciones/marcar-todas-leidas');
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error marcando todas como leídas:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  // ============ ESTADÍSTICAS Y REPORTES ============
+
+  /**
+   * Obtiene total de consultas
+   */
+  async obtenerTotalConsultas(filtros) {
+    try {
+      const response = await this.client.get('/api/estadisticas/total-consultas', {
+        params: filtros
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo total consultas:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene especialidad más demandada
+   */
+  async obtenerEspecialidadMasDemandada(filtros) {
+    try {
+      const response = await this.client.get('/api/estadisticas/especialidad-mas-demandada', {
+        params: filtros
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo especialidad más demandada:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene consultas por especialidad
+   */
+  async obtenerConsultasPorEspecialidad(filtros) {
+    try {
+      const response = await this.client.get('/api/estadisticas/consultas-por-especialidad', {
+        params: filtros
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo consultas por especialidad:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene consultas por día
+   */
+  async obtenerConsultasPorDia(filtros) {
+    try {
+      const response = await this.client.get('/api/estadisticas/consultas-por-dia', {
+        params: filtros
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo consultas por día:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene rendimiento de médicos
+   */
+  async obtenerRendimientoMedicos(filtros) {
+    try {
+      const response = await this.client.get('/api/estadisticas/rendimiento-medicos', {
+        params: filtros
+      });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo rendimiento médicos:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene appointments en un rango de fechas
+   */
+  async obtenerAppointmentsRango(grupo_id, fechaInicio, fechaFin) {
+    try {
+      const response = await this.client.get(`/groups/${grupo_id}/appointments`, {
+        params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
+      });
+      const data = this._extractData(response);
+      // El Lambda devuelve { ok, appointments, count }, necesitamos el array
+      return data.appointments || [];
+    } catch (error) {
+      console.error('Error obteniendo appointments rango:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene boxes disponibles
+   */
+  async obtenerBoxesDisponibles(boxes) {
+    try {
+      const response = await this.client.post('/api/boxes/disponibles', { boxes });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo boxes disponibles:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene médicos por especialidades
+   */
+  async obtenerMedicosPorEspecialidades(especialidades) {
+    try {
+      const response = await this.client.post('/api/medicos/por-especialidades', { especialidades });
+      return this._extractData(response);
+    } catch (error) {
+      console.error('Error obteniendo médicos por especialidades:', error.apiError || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Método genérico fetch (compatibilidad con apiClient original)
+   */
+  async fetch(path, options = {}) {
+    try {
+      const response = await this.client.get(path, options);
+      return this._extractData(response);
+    } catch (error) {
+      console.error(`Error en fetch(${path}):`, error.apiError || error.message);
+      return { ok: false, error: error.message };
     }
   }
 

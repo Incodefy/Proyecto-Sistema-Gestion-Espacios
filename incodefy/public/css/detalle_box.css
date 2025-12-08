@@ -272,7 +272,7 @@ body {
 
 .tab-btn:not(.active):hover {
     background: var(--primary-color);
-    color: var(--text-color);
+    color: white!important;
 }
 
 /* Tabla mejorada */
@@ -693,7 +693,11 @@ body {
 }
 
 .tab-content.active {
-    display: block; /* Muestra solo la tab activa */
+    display: block !important; /* Muestra solo la tab activa */
+}
+
+.tab-content[hidden] {
+    display: none !important; /* Asegurar que hidden siempre oculte */
 }
 
 
@@ -1303,14 +1307,15 @@ body {
 }
 
 /* ========================================
-   ESTILOS DEL CALENDARIO - MEJORADOS
-   Reemplazar la sección de calendario en detalle_box.css
+   ESTILOS DEL CALENDARIO - RÉPLICA EXACTA DE AGENDA-GESTION
+   Sistema de tabla HTML con border-collapse
 ======================================== */
 
-/* Timeline View (Día/Semana) - Mejoras en hover y espaciado */
+/* Timeline View - Sistema de Tabla */
 .timeline-scroll {
     overflow-x: auto;
     overflow-y: auto;
+    position: relative;
     max-height: 700px;
     min-height: 700px;
 }
@@ -1333,101 +1338,148 @@ body {
     background: var(--primary-color-dark);
 }
 
-#timelineContent {
-    min-width: 800px;
+/* Table base */
+.timeline-table {
+    border-collapse: collapse;
+    min-width: 100%;
+    width: max-content;
 }
 
-.timeline-header {
-    display: flex;
-    border-bottom: 2px solid var(--border-color);
-    background: var(--card-background);
+/* Header fijo */
+.timeline-table thead th {
     position: sticky;
     top: 0;
-    z-index: 30;
-}
-
-.timeline-time-col {
-    width: 80px;
-    flex-shrink: 0;
+    background-color: var(--card-background);
+    z-index: 20;
+    border-bottom: 2px solid var(--border-color);
     border-right: 1px solid var(--border-color);
-    background: var(--card-background);
-}
-
-.timeline-day-header {
-    flex: 1;
+    padding: 0;
     min-width: 120px;
-    padding: 1rem 0.75rem;
-    text-align: center;
-    border-right: 1px solid var(--border-color);
-    background: var(--card-background);
 }
 
-.timeline-day-header:last-child {
+/* CORRECCIÓN CRÍTICA: Primera columna del header sticky con z-index máximo */
+.timeline-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 300;
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    background-color: var(--card-background);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Sombra a la derecha para efecto de profundidad */
+.timeline-table thead th:first-child::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+    pointer-events: none;
+    z-index: 301;
+}
+
+.timeline-table thead th:last-child {
     border-right: none;
 }
 
-.day-name {
-    font-size: 0.875rem;
-    font-weight: 600;
+/* Body cells con bordes nativos */
+.timeline-table tbody td {
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    padding: 0;
+    height: 40px;
+    vertical-align: top;
+    min-width: 120px;
+    background-color: var(--card-background);
+}
+
+/* CORRECCIÓN CRÍTICA: Primera columna del body sticky con z-index alto */
+.timeline-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    background-color: var(--card-background);
+    border-right: 1px solid var(--border-color);
+    z-index: 200;
+    padding: 0.2rem 0.4rem 0 0!important;
+}
+
+/* Sombra a la derecha para efecto de profundidad */
+.timeline-table tbody td:first-child::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+    pointer-events: none;
+    z-index: 201;
+}
+
+/* Asegurar que el contenido de la celda de tiempo tenga fondo sólido */
+.time-label {
+    position: relative;
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+    font-size: 0.75rem;
     color: var(--secondary-text-color);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    text-align: right;
+    background-color: var(--card-background);
+    z-index: 202;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.timeline-table tbody td:last-child {
+    border-right: none;
+}
+
+.timeline-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Columna de tiempo - SOLO para el contenedor en timeline-header */
+.timeline-time-col {
+    width: 80px;
+    min-width: 80px;
+}
+
+.timeline-day-header {
+    text-align: center;
+    padding: 0.75rem;
+}
+
+.day-name {
+    padding-top: 0.5rem!important;
+    font-size: 0.9375rem!important;
+    font-weight: 500;
+    color: var(--text-color);
 }
 
 .day-number {
-    font-size: 1.75rem;
-    font-weight: 700;
+    padding-bottom: 0.4rem!important;
+    font-size: 1.2rem!important;
+    font-weight: 600;
     color: var(--text-color);
-    margin-top: 0.25rem;
 }
 
 .day-number.today {
     color: var(--primary-color);
 }
 
-.timeline-body {
-    position: relative;
-}
-
-.timeline-row {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    min-height: 50px;
-    /* REMOVIDO: transition y hover de toda la fila */
-}
-
-/* REMOVIDO el hover de timeline-row para evitar resaltar toda la fila */
-
-.time-label {
-    width: 80px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--border-color);
-    padding: 0.75rem 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--secondary-text-color);
-    text-align: right;
-    background: var(--card-background);
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-}
-
 .timeline-cell {
-    flex: 1;
-    min-width: 120px;
-    min-height: 50px;
-    border-right: 1px solid var(--border-color);
     position: relative;
-    background: var(--card-background);
+    cursor: pointer;
     transition: background-color 0.15s ease;
 }
 
-.timeline-cell:last-child {
-    border-right: none;
-}
-
-/* Hover solo en la celda individual */
 .timeline-cell:hover {
     background-color: rgba(26, 60, 124, 0.03);
 }
@@ -1450,6 +1502,7 @@ html[data-theme="dark"] .timeline-cell:hover {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
 }
 
 .cell-button:hover {
@@ -1473,40 +1526,62 @@ html[data-theme="dark"] .cell-button:hover {
     opacity: 0.6;
 }
 
-/* Bloques de agendamiento - Mejor espaciado y sin tireteo */
+/* CORRECCIÓN: Bookings con z-index MUCHO menor que la columna de horas */
 .booking-block {
     position: absolute;
     left: 2px;
     top: 2px;
     right: 2px;
-    background: var(--primary-color)!important;
+    background: var(--primary-color);
     border-left: 3px solid var(--primary-color-dark);
     border-radius: 4px;
     padding: 6px 8px;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
     z-index: 10;
+    /* z-index MUCHO menor que td:first-child (200) y time-label (202) */
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Desactivar pointer events en TODOS los hijos para evitar tireteo */
+/* Altura dinámica usando atributo data (CSP-compliant) - igual que agenda-gestion */
+.booking-dynamic-height[data-computed-height="32"] { height: 32px; }
+.booking-dynamic-height[data-computed-height="72"] { height: 72px; }
+.booking-dynamic-height[data-computed-height="112"] { height: 112px; }
+.booking-dynamic-height[data-computed-height="152"] { height: 152px; }
+.booking-dynamic-height[data-computed-height="192"] { height: 192px; }
+.booking-dynamic-height[data-computed-height="232"] { height: 232px; }
+.booking-dynamic-height[data-computed-height="272"] { height: 272px; }
+.booking-dynamic-height[data-computed-height="312"] { height: 312px; }
+.booking-dynamic-height[data-computed-height="352"] { height: 352px; }
+.booking-dynamic-height[data-computed-height="392"] { height: 392px; }
+.booking-dynamic-height[data-computed-height="432"] { height: 432px; }
+.booking-dynamic-height[data-computed-height="472"] { height: 472px; }
+.booking-dynamic-height[data-computed-height="512"] { height: 512px; }
+.booking-dynamic-height[data-computed-height="552"] { height: 552px; }
+.booking-dynamic-height[data-computed-height="592"] { height: 592px; }
+.booking-dynamic-height[data-computed-height="632"] { height: 632px; }
+.booking-dynamic-height[data-computed-height="672"] { height: 672px; }
+.booking-dynamic-height[data-computed-height="712"] { height: 712px; }
+.booking-dynamic-height[data-computed-height="752"] { height: 752px; }
+.booking-dynamic-height[data-computed-height="792"] { height: 792px; }
+
+/* Desactivar pointer events en TODOS los hijos */
 .booking-block * {
     pointer-events: none;
 }
 
 .booking-block:hover {
-    background: var(--primary-color);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    z-index: 20;
+    z-index: 15;
+    /* Incluso al hover, sigue siendo MUCHO menor que la columna fija */
 }
 
 .booking-continuation {
     position: absolute;
     inset: 0;
     cursor: pointer;
-    z-index: 5;
+    z-index: 3;
 }
 
 .booking-continuation:hover {
@@ -1520,31 +1595,51 @@ html[data-theme="dark"] .booking-continuation:hover {
 }
 
 .booking-name {
-    font-size: 0.8rem;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: 600;
     color: white;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     pointer-events: none;
     margin-bottom: 2px;
 }
 
 .booking-time {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.95);
-    font-weight: 600;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.9);
     pointer-events: none;
     white-space: nowrap;
 }
 
-/* Month View - Mejoras en hover */
+/* Month View - Réplica exacta de agenda-gestion */
+.month-view-container {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.month-view-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.month-view-container::-webkit-scrollbar-track {
+    background: var(--border-color);
+}
+
+.month-view-container::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.month-view-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color-dark);
+}
+
 .month-header {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
     border-bottom: 1px solid var(--border-color);
-    background: var(--card-background);
+    min-width: max-content;
 }
 
 .month-day-name {
@@ -1562,17 +1657,22 @@ html[data-theme="dark"] .booking-continuation:hover {
 
 .month-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
+    min-width: max-content;
 }
 
 .month-cell {
-    min-height: 100px;
+    min-height: 120px;
     padding: 0.5rem;
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     transition: background-color 0.15s ease;
-    background: var(--card-background);
     cursor: pointer;
+    overflow: hidden;
+}
+
+.month-cell:nth-child(7n) {
+    border-right: none;
 }
 
 .month-cell:hover {
@@ -1585,6 +1685,7 @@ html[data-theme="dark"] .month-cell:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
+/* Celdas fuera del mes actual - más tenues */
 .month-cell-outside {
     background-color: rgba(0, 0, 0, 0.02);
 }
@@ -1607,6 +1708,7 @@ html[data-theme="dark"] .month-cell-outside {
     font-weight: 700;
 }
 
+/* Días fuera del mes actual - texto más tenue */
 .month-cell-date.outside-month {
     color: var(--secondary-text-color);
     opacity: 0.5;
@@ -1645,12 +1747,6 @@ html[data-theme="dark"] .month-cell-outside {
 }
 
 /* Responsive para el calendario */
-@media (max-width: 992px) {
-    .timeline-scroll {
-        max-height: 650px;
-        min-height: 650px;
-    }
-}
 
 @media (max-width: 768px) {
     .timeline-scroll {
@@ -2213,4 +2309,165 @@ html[data-theme="dark"] .skeleton-overlay {
 
 .canvas-chart {
     max-height: 350px;
+}
+
+/* ========================================================================= */
+/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */
+/* ========================================================================= */
+
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.confirm-modal.active {
+    display: flex;
+}
+
+.confirm-content {
+    background-color: var(--card-background);
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 400px;
+    width: 90%;
+    animation: confirmSlideIn 0.2s ease-out;
+}
+
+@keyframes confirmSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.confirm-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.confirm-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #fee2e2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .confirm-icon,
+body[data-theme="dark"] .confirm-icon,
+html[data-theme="dark"] .confirm-icon {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+
+.confirm-icon svg {
+    color: #dc2626;
+    width: 24px;
+    height: 24px;
+}
+
+.confirm-text h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 0.25rem 0;
+}
+
+.confirm-text p {
+    font-size: 0.875rem;
+    color: var(--secondary-text-color);
+    margin: 0;
+}
+
+.confirm-body {
+    padding: 1.5rem;
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .confirm-body,
+body[data-theme="dark"] .confirm-body,
+html[data-theme="dark"] .confirm-body {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.confirm-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.confirm-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-color);
+}
+
+.confirm-detail-item svg {
+    color: var(--secondary-text-color);
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.confirm-detail-label {
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    min-width: 60px;
+}
+
+.confirm-actions {
+    padding: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.confirm-btn {
+    padding: 0.625rem 1.25rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.confirm-btn-cancel {
+    background-color: var(--card-background);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.confirm-btn-cancel:hover {
+    background-color: var(--border-color);
+}
+
+.confirm-btn-delete {
+    background-color: #dc2626;
+    color: white;
+}
+
+.confirm-btn-delete:hover {
+    background-color: #b91c1c;
+}
+
+.confirm-btn-delete:active {
+    transform: scale(0.98);
 }

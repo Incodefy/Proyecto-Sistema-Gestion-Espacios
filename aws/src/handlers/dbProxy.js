@@ -1,10 +1,10 @@
-/**
+﻿/**
  * DB Proxy Handler - Enruta peticiones a funciones Lambda específicas
  */
 
 const { findTargetFunction, getFullFunctionName, listAvailableRoutes } = require('./dbProxy/routeMapper');
 const { invokeLambda } = require('./dbProxy/lambdaInvoker');
-const Logger = require('../utils/logger');
+const { Logger } = require('../utils/logger');
 
 module.exports.handler = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'dbProxy' });

@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "منسوخ کریں"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "کام کی جگہ",
+      "active_group": "فعال گروپ",
+      "loading": "گروپ کی معلومات لوڈ ہو رہی ہے...",
+      "change_group": "گروپ تبدیل کریں",
+      "select_group": "گروپ منتخب کریں",
+      "manage_spaces": "جگہوں کا انتظام کریں",
+      "loading_groups": "گروپ لوڈ ہو رہے ہیں...",
+      "active_badge": "فعال",
+      "select_badge": "منتخب کریں"
+    },
+    "color_picker": {
+      "current_color": "موجودہ رنگ:",
+      "preview_aria": "موجودہ رنگ کی پیش نمائش",
+      "open_picker_aria": "رنگ چننے والا کھولیں",
+      "explore_colors": "مزید رنگ دریافت کریں",
+      "select_color": "رنگ منتخب کریں",
+      "select_a_color": "ایک رنگ منتخب کریں",
+      "search_placeholder": "نام کے ذریعے رنگ تلاش کریں...",
+      "apply_color": "رنگ لاگو کریں",
+      "categories": {
+        "popular": "مقبول رنگ",
+        "vibrant": "خوشرنگ",
+        "pastel": "ہلکا",
+        "dark": "گہرا"
+      },
+      "color_names": {
+        "Azul": "نیلا",
+        "Rojo": "سرخ",
+        "Verde": "سبز",
+        "Púrpura": "جامنی",
+        "Naranja": "نارنجی",
+        "Rojo Vibrante": "روشن سرخ",
+        "Naranja Intenso": "گہرا نارنجی",
+        "Ámbar": "عنبر",
+        "Lima": "لیموں",
+        "Esmeralda": "زمرد",
+        "Cian": "فیروزی",
+        "Azul Rey": "شاہی نیلا",
+        "Violeta": "بنفشی",
+        "Rosa Fucsia": "فیوشیا گلابی",
+        "Rosa Intenso": "گہرا گلابی",
+        "Rosa Pastel": "پیسٹل گلابی",
+        "Melocotón": "آڑو",
+        "Amarillo Suave": "ہلکا پیلا",
+        "Lima Pastel": "پیسٹل لیموں",
+        "Verde Menta": "پودینہ سبز",
+        "Celeste": "آسمانی",
+        "Azul Cielo": "آسمانی نیلا",
+        "Lavanda": "لیوینڈر",
+        "Rosa Claro": "ہلکا گلابی",
+        "Coral Suave": "ہلکا مرجانی",
+        "Pizarra": "سلیٹی",
+        "Azul Marino": "نیوی بلیو",
+        "Rosa Oscuro": "گہرا گلابی",
+        "Púrpura Oscuro": "گہرا جامنی",
+        "Marrón": "بھورا",
+        "Verde Oscuro": "گہرا سبز",
+        "Verde Azulado": "ٹیل",
+        "Azul Profundo": "گہرا نیلا",
+        "Índigo Oscuro": "گہرا نیلگوں",
+        "Carmesí": "قرمزی"
+      }
     }
   },
   "navbar": {

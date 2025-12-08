@@ -60,14 +60,79 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "إلغاء"
     },
     "messages": {
-      "saving": "جارٍ الحفظ...",
+      "saving": "جارِ الحفظ...",
       "save_error": "خطأ في حفظ التغييرات.",
       "save_success": "تم حفظ التغييرات. سيتم إعادة تحميل الصفحة...",
       "preview_disabled": "المعاينة معطلة. احفظ التغييرات لتطبيقها.",
       "unsaved": "تغييرات غير محفوظة"
+    },
+    "workspace": {
+      "title": "مساحة العمل",
+      "active_group": "المجموعة النشطة",
+      "loading": "تحميل معلومات المجموعة...",
+      "change_group": "تغيير المجموعة",
+      "select_group": "اختر مجموعة",
+      "manage_spaces": "إدارة الفضاءات",
+      "loading_groups": "تحميل المجموعات...",
+      "active_badge": "نشط",
+      "select_badge": "اختر"
+    },
+    "color_picker": {
+      "current_color": "اللون الحالي:",
+      "preview_aria": "معاينة اللون الحالي",
+      "open_picker_aria": "فتح منتقي الألوان",
+      "explore_colors": "استكشاف المزيد من الألوان",
+      "select_color": "اختر اللون",
+      "select_a_color": "اختر لونًا",
+      "search_placeholder": "ابحث عن لون بالاسم...",
+      "apply_color": "تطبيق اللون",
+      "categories": {
+        "popular": "ألوان شائعة",
+        "vibrant": "نابضة بالحياة",
+        "pastel": "باستيل",
+        "dark": "داكن"
+      },
+      "color_names": {
+        "Azul": "أزرق",
+        "Rojo": "أحمر",
+        "Verde": "أخضر",
+        "Púrpura": "أرجواني",
+        "Naranja": "برتقالي",
+        "Rojo Vibrante": "أحمر نابض",
+        "Naranja Intenso": "برتقالي داكن",
+        "Ámbar": "عنبر",
+        "Lima": "ليموني",
+        "Esmeralda": "زمردي",
+        "Cian": "سماوي",
+        "Azul Rey": "أزرق ملكي",
+        "Violeta": "بنفسجي",
+        "Rosa Fucsia": "وردي فوشيا",
+        "Rosa Intenso": "وردي داكن",
+        "Rosa Pastel": "وردي باستيل",
+        "Melocotón": "خوخي",
+        "Amarillo Suave": "أصفر فاتح",
+        "Lima Pastel": "ليموني باستيل",
+        "Verde Menta": "أخضر نعناع",
+        "Celeste": "سماوي فاتح",
+        "Azul Cielo": "أزرق سماوي",
+        "Lavanda": "لافندر",
+        "Rosa Claro": "وردي فاتح",
+        "Coral Suave": "مرجاني فاتح",
+        "Pizarra": "رمادي داكن",
+        "Azul Marino": "أزرق بحري",
+        "Rosa Oscuro": "وردي غامق",
+        "Púrpura Oscuro": "أرجواني غامق",
+        "Marrón": "بني",
+        "Verde Oscuro": "أخضر داكن",
+        "Verde Azulado": "أخضر مزرق",
+        "Azul Profundo": "أزرق عميق",
+        "Índigo Oscuro": "نيلي غامق",
+        "Carmesí": "قرمزي"
+      }
     }
   },
   "navbar": {

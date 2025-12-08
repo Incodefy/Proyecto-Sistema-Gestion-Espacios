@@ -102,7 +102,8 @@ router.get('/dashboard', checkPermission('dashboard.read'), async (req, res) => 
     currentPath: req.path,
     personalization: res.locals.personalization || {},
     user: req.session.user,
-    grupoActivo: req.session.grupoActivo
+    grupoActivo: req.session.grupoActivo,
+    wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
   });
   
   console.log('🎨 [DASHBOARD HANDLER] Vista renderizada exitosamente\n');

@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "预览",
       "save": "保存更改",
-      "reset": "重置更改"
+      "reset": "重置更改",
+      "cancel": "取消"
     },
     "messages": {
       "saving": "保存中...",
@@ -68,6 +69,70 @@
       "save_success": "更改已保存。页面将重新加载...",
       "preview_disabled": "预览已禁用。保存更改以应用它们。",
       "unsaved": "未保存的更改"
+    },
+    "workspace": {
+      "title": "工作区",
+      "active_group": "活动组",
+      "loading": "加载组信息...",
+      "change_group": "切换组",
+      "select_group": "选择组",
+      "manage_spaces": "管理空间",
+      "loading_groups": "加载组...",
+      "active_badge": "活动",
+      "select_badge": "选择"
+    },
+    "color_picker": {
+      "current_color": "当前颜色：",
+      "preview_aria": "当前颜色预览",
+      "open_picker_aria": "打开颜色选择器",
+      "explore_colors": "探索更多颜色",
+      "select_color": "选择颜色",
+      "select_a_color": "选择一个颜色",
+      "search_placeholder": "按名称搜索颜色...",
+      "apply_color": "应用颜色",
+      "categories": {
+        "popular": "流行颜色",
+        "vibrant": "鲜艳",
+        "pastel": "柔和",
+        "dark": "深色"
+      },
+      "color_names": {
+        "Azul": "蓝色",
+        "Rojo": "红色",
+        "Verde": "绿色",
+        "Púrpura": "紫色",
+        "Naranja": "橙色",
+        "Rojo Vibrante": "鲜红",
+        "Naranja Intenso": "浓橙",
+        "Ámbar": "琼珀色",
+        "Lima": "青柠色",
+        "Esmeralda": "翡翠绿",
+        "Cian": "青色",
+        "Azul Rey": "皇家蓝",
+        "Violeta": "紫罗兰",
+        "Rosa Fucsia": "紫红色",
+        "Rosa Intenso": "浓粉",
+        "Rosa Pastel": "柔粉",
+        "Melocotón": "桃色",
+        "Amarillo Suave": "淡黄",
+        "Lima Pastel": "柔青柠",
+        "Verde Menta": "薄荷绿",
+        "Celeste": "天蓝",
+        "Azul Cielo": "淡蓝",
+        "Lavanda": "薇衣草色",
+        "Rosa Claro": "淡粉",
+        "Coral Suave": "柔珊瑚",
+        "Pizarra": "石板灰",
+        "Azul Marino": "海军蓝",
+        "Rosa Oscuro": "深粉",
+        "Púrpura Oscuro": "深紫",
+        "Marrón": "棕色",
+        "Verde Oscuro": "深绿",
+        "Verde Azulado": "青绿",
+        "Azul Profundo": "深蓝",
+        "Índigo Oscuro": "深靳蓝",
+        "Carmesí": "纯红"
+      }
     }
   },
   "navbar": {

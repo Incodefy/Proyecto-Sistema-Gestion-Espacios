@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "プレビュー",
       "save": "変更を保存",
-      "reset": "変更をリセット"
+      "reset": "変更をリセット",
+      "cancel": "キャンセル"
     },
     "messages": {
       "saving": "保存中...",
@@ -68,6 +69,70 @@
       "save_success": "変更が保存されました。ページが再読み込みされます...",
       "preview_disabled": "プレビューは無効です。変更を保存して適用してください。",
       "unsaved": "未保存の変更"
+    },
+    "workspace": {
+      "title": "ワークスペース",
+      "active_group": "アクティブグループ",
+      "loading": "グループ情報を読み込んでいます...",
+      "change_group": "グループを変更",
+      "select_group": "グループを選択",
+      "manage_spaces": "スペースを管理",
+      "loading_groups": "グループを読み込んでいます...",
+      "active_badge": "アクティブ",
+      "select_badge": "選択"
+    },
+    "color_picker": {
+      "current_color": "現在の色：",
+      "preview_aria": "現在の色のプレビュー",
+      "open_picker_aria": "カラーピッカーを開く",
+      "explore_colors": "もっと色を探索",
+      "select_color": "色を選択",
+      "select_a_color": "色を選択してください",
+      "search_placeholder": "名前で色を検索...",
+      "apply_color": "色を適用",
+      "categories": {
+        "popular": "人気の色",
+        "vibrant": "ビビッド",
+        "pastel": "パステル",
+        "dark": "ダーク"
+      },
+      "color_names": {
+        "Azul": "青",
+        "Rojo": "赤",
+        "Verde": "緑",
+        "Púrpura": "紫",
+        "Naranja": "オレンジ",
+        "Rojo Vibrante": "鮮やかな赤",
+        "Naranja Intenso": "濃いオレンジ",
+        "Ámbar": "琥珀色",
+        "Lima": "ライム",
+        "Esmeralda": "エメラルド",
+        "Cian": "シアン",
+        "Azul Rey": "ロイヤルブルー",
+        "Violeta": "菫",
+        "Rosa Fucsia": "フクシアピンク",
+        "Rosa Intenso": "濃いピンク",
+        "Rosa Pastel": "パステルピンク",
+        "Melocotón": "桃色",
+        "Amarillo Suave": "柔らかい黄色",
+        "Lima Pastel": "パステルライム",
+        "Verde Menta": "ミントグリーン",
+        "Celeste": "空色",
+        "Azul Cielo": "水色",
+        "Lavanda": "ラベンダー",
+        "Rosa Claro": "淡いピンク",
+        "Coral Suave": "柔らかい珊瑚色",
+        "Pizarra": "石板色",
+        "Azul Marino": "紺色",
+        "Rosa Oscuro": "濃いピンク",
+        "Púrpura Oscuro": "濃い紫",
+        "Marrón": "茶色",
+        "Verde Oscuro": "濃い緑",
+        "Verde Azulado": "ターコイズ",
+        "Azul Profundo": "深い青",
+        "Índigo Oscuro": "濃い藍色",
+        "Carmesí": "深紅"
+      }
     }
   },
   "navbar": {

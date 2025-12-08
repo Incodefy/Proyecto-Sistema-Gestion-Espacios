@@ -60,14 +60,79 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "বাতিল"
     },
     "messages": {
       "saving": "সংরক্ষণ করা হচ্ছে...",
-      "save_error": "পরিবর্তন সংরক্ষণে ত্রুটি।",
-      "save_success": "পরিবর্তনগুলি সংরক্ষিত হয়েছে। পৃষ্ঠা পুনরায় লোড হবে...",
-      "preview_disabled": "প্রিভিউ নিষ্ক্রিয়। সেগুলি প্রয়োগ করতে পরিবর্তনগুলি সংরক্ষণ করুন।",
+      "save_error": "পরিবর্তন সংরে ত্রুটি।",
+      "save_success": "পরিবর্তনগুলি সংরক্ষিত হয়েছে। পৃষ্ঠা পুনরায় লোড হবে...",
+      "preview_disabled": "প্রিভিউ নিষ্ক্রিয়। সেগুলি প্রয়োগ করতে পরিবর্তনগুলি সংরক্ষণ করুন।",
       "unsaved": "অসংরক্ষিত পরিবর্তন"
+    },
+    "workspace": {
+      "title": "কর্মক্ষেত্র",
+      "active_group": "সক্রিয় গ্রুপ",
+      "loading": "গ্রুপ তথ্য লোড হচ্ছে...",
+      "change_group": "গ্রুপ পরিবর্তন করুন",
+      "select_group": "গ্রুপ নির্বাচন করুন",
+      "manage_spaces": "স্থান পরিচালনা করুন",
+      "loading_groups": "গ্রুপ লোড হচ্ছে...",
+      "active_badge": "সক্রিয়",
+      "select_badge": "নির্বাচন"
+    },
+    "color_picker": {
+      "current_color": "বর্তমান রঙ:",
+      "preview_aria": "বর্তমান রঙ পূর্বরূপ",
+      "open_picker_aria": "রঙ চয়নকারী খুলুন",
+      "explore_colors": "আরও রঙ দেখুন",
+      "select_color": "রঙ নির্বাচন করুন",
+      "select_a_color": "একটি রঙ নির্বাচন করুন",
+      "search_placeholder": "নাম দিয়ে রঙ খুঁজুন...",
+      "apply_color": "রঙ প্রয়োগ করুন",
+      "categories": {
+        "popular": "জনপ্রিয়",
+        "vibrant": "প্রাণবন্ত",
+        "pastel": "প্যাস্টেল",
+        "dark": "গাঢ়"
+      },
+      "color_names": {
+        "Azul": "নীল",
+        "Rojo": "লাল",
+        "Verde": "সবুজ",
+        "Púrpura": "বেগুনি",
+        "Naranja": "কমলা",
+        "Rojo Vibrante": "উজ্জ্বল লাল",
+        "Naranja Intenso": "গাঢ় কমলা",
+        "Ámbar": "অ্যাম্বার",
+        "Lima": "লেবু",
+        "Esmeralda": "পান্না",
+        "Cian": "সায়ান",
+        "Azul Rey": "রাজকীয় নীল",
+        "Violeta": "ভায়োলেট",
+        "Rosa Fucsia": "ফুকসিয়া গোলাপী",
+        "Rosa Intenso": "গাঢ় গোলাপী",
+        "Rosa Pastel": "প্যাস্টেল গোলাপী",
+        "Melocotón": "পীচ",
+        "Amarillo Suave": "হালকা হলুদ",
+        "Lima Pastel": "প্যাস্টেল লেবু",
+        "Verde Menta": "পুদিনা সবুজ",
+        "Celeste": "আকাশী",
+        "Azul Cielo": "আকাশ নীল",
+        "Lavanda": "ল্যাভেন্ডার",
+        "Rosa Claro": "হালকা গোলাপী",
+        "Coral Suave": "হালকা প্রবাল",
+        "Pizarra": "স্লেট",
+        "Azul Marino": "নেভি নীল",
+        "Rosa Oscuro": "গাঢ় গোলাপী",
+        "Púrpura Oscuro": "গাঢ় বেগুনি",
+        "Marrón": "বাদামী",
+        "Verde Oscuro": "গাঢ় সবুজ",
+        "Verde Azulado": "সবুজ-নীল",
+        "Azul Profundo": "গভীর নীল",
+        "Índigo Oscuro": "গাঢ় নীল",
+        "Carmesí": "গাঢ় লাল"
+      }
     }
   },
   "navbar": {

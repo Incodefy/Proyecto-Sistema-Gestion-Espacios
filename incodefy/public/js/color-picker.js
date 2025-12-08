@@ -140,7 +140,11 @@ class ColorPicker {
       const colorItem = document.createElement('div');
       colorItem.className = 'color-item';
       colorItem.setAttribute('data-color', color.hex);
-      colorItem.setAttribute('data-name', color.name);
+      // Usar traducción si está disponible
+      const translatedName = window.COLOR_TRANSLATIONS && window.COLOR_TRANSLATIONS[color.name] 
+        ? window.COLOR_TRANSLATIONS[color.name] 
+        : color.name;
+      colorItem.setAttribute('data-name', translatedName);
       colorItem.setAttribute('data-item-color', color.hex);
       
       // Marcar como seleccionado si es el color actual
@@ -148,7 +152,7 @@ class ColorPicker {
         colorItem.classList.add('selected');
       }
 
-      colorItem.addEventListener('click', () => this.selectColor(color.hex, color.name));
+      colorItem.addEventListener('click', () => this.selectColor(color.hex, translatedName));
       
       container.appendChild(colorItem);
     });
@@ -206,7 +210,13 @@ class ColorPicker {
     ];
 
     const found = allColors.find(c => c.hex.toLowerCase() === hex.toLowerCase());
-    return found ? found.name : 'Color personalizado';
+    if (found) {
+      // Usar traducción si está disponible
+      return window.COLOR_TRANSLATIONS && window.COLOR_TRANSLATIONS[found.name] 
+        ? window.COLOR_TRANSLATIONS[found.name] 
+        : found.name;
+    }
+    return 'Color personalizado';
   }
 
   setupEventListeners() {
@@ -288,27 +298,143 @@ class ColorPicker {
     // Cerrar el modal
     this.hideModal();
 
-    // Mostrar mensaje de confirmación
-    this.showTemporaryMessage('Color seleccionado correctamente. Recuerda guardar los cambios.', 'info');
+    // Aplicar color inmediatamente y guardar en el servidor
+    this.aplicarColorInmediato(this.selectedColor);
   }
 
-  showTemporaryMessage(text, type = 'info') {
-    // Crear mensaje temporal
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type} d-flex`;
-    messageDiv.textContent = text;
-
-    // Insertar después del botón de abrir selector
-    const openBtn = document.getElementById('openColorPicker');
-    if (openBtn && openBtn.parentNode) {
-      openBtn.parentNode.insertBefore(messageDiv, openBtn.nextSibling);
-
-      // Eliminar después de 3 segundos
-      setTimeout(() => {
-        messageDiv.classList.add('opacity-0');
-        setTimeout(() => messageDiv.remove(), 300);
-      }, 3000);
+  async aplicarColorInmediato(color) {
+    try {
+      // 1. Aplicar cambio visual inmediato
+      const root = document.documentElement;
+      
+      // Generar variantes del color (light y dark)
+      const colorVariants = this.generarVariantesColor(color);
+      
+      root.style.setProperty('--primary-color', color, 'important');
+      root.style.setProperty('--primary-color-light', colorVariants.light, 'important');
+      root.style.setProperty('--primary-color-dark', colorVariants.dark, 'important');
+      
+      console.log('🎨 Aplicando color:', {
+        primary: color,
+        light: colorVariants.light,
+        dark: colorVariants.dark
+      });
+      
+      // 2. Guardar en el servidor (en background)
+      const response = await fetch('/api/personalization', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          parameters: {
+            'theme.primary_color': color
+          }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.ok && !result.success) {
+        console.error('Error guardando color:', result);
+        this.mostrarNotificacion('Error al guardar color', 'error');
+      } else {
+        console.log('✅ Color guardado correctamente');
+        this.mostrarNotificacion('Color actualizado', 'success');
+      }
+    } catch (error) {
+      console.error('Error aplicando color:', error);
+      this.mostrarNotificacion('Error al guardar color', 'error');
     }
+  }
+
+  // Generar variantes de color (light y dark) - cliente
+  generarVariantesColor(hex) {
+    // Convertir hex a RGB
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    // Generar variante light (más brillante)
+    const lightR = Math.min(255, Math.floor(r + (255 - r) * 0.4));
+    const lightG = Math.min(255, Math.floor(g + (255 - g) * 0.4));
+    const lightB = Math.min(255, Math.floor(b + (255 - b) * 0.4));
+    
+    // Generar variante dark (más oscura)
+    const darkR = Math.floor(r * 0.6);
+    const darkG = Math.floor(g * 0.6);
+    const darkB = Math.floor(b * 0.6);
+    
+    return {
+      light: `#${lightR.toString(16).padStart(2, '0')}${lightG.toString(16).padStart(2, '0')}${lightB.toString(16).padStart(2, '0')}`,
+      dark: `#${darkR.toString(16).padStart(2, '0')}${darkG.toString(16).padStart(2, '0')}${darkB.toString(16).padStart(2, '0')}`
+    };
+  }
+
+  mostrarNotificacion(mensaje, tipo = 'info') {
+    // Remover notificación anterior si existe
+    const notifExistente = document.querySelector('.theme-notification');
+    if (notifExistente) {
+      notifExistente.remove();
+    }
+    
+    // Crear notificación
+    const notif = document.createElement('div');
+    notif.className = `theme-notification theme-notification-${tipo}`;
+    
+    // Definir colores según tipo
+    const colores = {
+      success: '#10b981',
+      error: '#ef4444',
+      info: '#3b82f6'
+    };
+    
+    // Definir iconos según tipo
+    const iconos = {
+      success: 'check-circle',
+      error: 'exclamation-circle',
+      info: 'info-circle'
+    };
+    
+    notif.innerHTML = `
+      <i class="fas fa-${iconos[tipo] || 'info-circle'}"></i>
+      <span>${mensaje}</span>
+    `;
+    
+    // Agregar estilos inline para CSP-safe
+    notif.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: ${colores[tipo] || colores.info};
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease-out;
+      opacity: 0;
+      transform: translateY(20px);
+    `;
+    
+    document.body.appendChild(notif);
+    
+    // Animar entrada
+    requestAnimationFrame(() => {
+      notif.style.opacity = '1';
+      notif.style.transform = 'translateY(0)';
+    });
+    
+    // Auto-remover después de 2 segundos
+    setTimeout(() => {
+      notif.style.opacity = '0';
+      notif.style.transform = 'translateY(20px)';
+      setTimeout(() => notif.remove(), 300);
+    }, 2000);
   }
 }
 

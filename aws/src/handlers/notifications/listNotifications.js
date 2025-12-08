@@ -1,6 +1,6 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+﻿const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { Cache } = require("../../utils/cache");

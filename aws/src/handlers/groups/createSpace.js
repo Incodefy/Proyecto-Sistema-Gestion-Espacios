@@ -1,7 +1,7 @@
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+﻿const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
 const { notifyEspacioCreado } = require('../../utils/notificationHelper');
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { ValidationError, ConflictError } = require("../../utils/errorHandler");
 const { retryDB } = require("../../utils/retry");

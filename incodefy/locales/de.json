@@ -59,8 +59,9 @@
     },
     "buttons": {
       "preview": "Vorschau",
-      "save": "Änderungen speichern",
-      "reset": "Änderungen zurücksetzen"
+      "save": "Änderungen Speichern",
+      "reset": "Änderungen Zurücksetzen",
+      "cancel": "Abbrechen"
     },
     "messages": {
       "saving": "Speichern...",
@@ -68,6 +69,70 @@
       "save_success": "Änderungen gespeichert. Die Seite wird neu geladen...",
       "preview_disabled": "Die Vorschau ist deaktiviert. Speichern Sie die Änderungen, um sie anzuwenden.",
       "unsaved": "Nicht gespeicherte Änderungen"
+    },
+    "workspace": {
+      "title": "Arbeitsbereich",
+      "active_group": "Aktive Gruppe",
+      "loading": "Gruppeninformationen werden geladen...",
+      "change_group": "Gruppe Wechseln",
+      "select_group": "Gruppe Auswählen",
+      "manage_spaces": "Bereiche Verwalten",
+      "loading_groups": "Gruppen werden geladen...",
+      "active_badge": "Aktiv",
+      "select_badge": "Auswählen"
+    },
+    "color_picker": {
+      "current_color": "Aktuelle Farbe:",
+      "preview_aria": "Vorschau der aktuellen Farbe",
+      "open_picker_aria": "Farbwähler öffnen",
+      "explore_colors": "Weitere Farben erkunden",
+      "select_color": "Farbe Auswählen",
+      "select_a_color": "Wählen Sie eine Farbe",
+      "search_placeholder": "Farbe nach Namen suchen...",
+      "apply_color": "Farbe Anwenden",
+      "categories": {
+        "popular": "Beliebte Farben",
+        "vibrant": "Lebhaft",
+        "pastel": "Pastell",
+        "dark": "Dunkel"
+      },
+      "color_names": {
+        "Azul": "Blau",
+        "Rojo": "Rot",
+        "Verde": "Grün",
+        "Púrpura": "Lila",
+        "Naranja": "Orange",
+        "Rojo Vibrante": "Leuchtendes Rot",
+        "Naranja Intenso": "Intensives Orange",
+        "Ámbar": "Bernstein",
+        "Lima": "Limette",
+        "Esmeralda": "Smaragd",
+        "Cian": "Cyan",
+        "Azul Rey": "Königsblau",
+        "Violeta": "Violett",
+        "Rosa Fucsia": "Fuchsia Rosa",
+        "Rosa Intenso": "Intensives Rosa",
+        "Rosa Pastel": "Pastellrosa",
+        "Melocotón": "Pfirsich",
+        "Amarillo Suave": "Sanftes Gelb",
+        "Lima Pastel": "Pastell-Limette",
+        "Verde Menta": "Minzgrün",
+        "Celeste": "Himmelblau",
+        "Azul Cielo": "Hellblau",
+        "Lavanda": "Lavendel",
+        "Rosa Claro": "Hellrosa",
+        "Coral Suave": "Sanftes Koralle",
+        "Pizarra": "Schiefer",
+        "Azul Marino": "Marineblau",
+        "Rosa Oscuro": "Dunkelrosa",
+        "Púrpura Oscuro": "Dunkellila",
+        "Marrón": "Braun",
+        "Verde Oscuro": "Dunkelgrün",
+        "Verde Azulado": "Blaugrün",
+        "Azul Profundo": "Tiefblau",
+        "Índigo Oscuro": "Dunkelindigo",
+        "Carmesí": "Karmesin"
+      }
     }
   },
   "navbar": {

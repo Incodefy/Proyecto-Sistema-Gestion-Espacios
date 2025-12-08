@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GET /operations/{operationId}
  * 
  * Status Endpoint para Async Request-Reply Pattern
@@ -37,9 +37,9 @@
  */
 
 const { getOperationStore } = require("../../utils/operationStore");
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { getSecurityHeaders } = require("../../middleware/securityHeaders");
-const { ValidationError, AuthorizationError, NotFoundError } = require("../../utils/errors");
+const { ValidationError, AuthorizationError, NotFoundError } = require("../../utils/errorHandler");
 
 /**
  * Handler para GET /operations/{operationId}

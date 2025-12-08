@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="<%= i18n.language %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Acceso denegado">
+  <title>Acceso Denegado - 403</title>
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+<div class="wrapper">
+  <main class="login-box error-box" role="main" aria-labelledby="error-heading">
+    <h1 id="error-heading" class="error-title">🔒 Acceso Denegado</h1>
+    <p class="error-mensaje" role="alert">
+      No tienes permisos para acceder a esta sección.
+    </p>
+    <% if (locals.grupo) { %>
+    <p class="error-details">
+      <strong>Grupo:</strong> <%= grupo.nombre || grupo.grupo_id %><br>
+      <strong>Permiso requerido:</strong> <%= locals.permission || 'N/A' %>
+    </p>
+    <% } %>
+    <div class="error-actions">
+      <a href="/dashboard" class="btn volver">Ir al Dashboard</a>
+      <a href="/logout" class="btn btn-secondary">Cerrar Sesión</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

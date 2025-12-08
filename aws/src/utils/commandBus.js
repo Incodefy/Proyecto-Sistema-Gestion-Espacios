@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Command Bus - Sistema de enrutamiento de comandos para CQRS
  * Separa la intención (command) de la ejecución (handler)
  * 
@@ -8,7 +8,7 @@
  * - Notificaciones WebSocket opcionales
  */
 
-const Logger = require("./logger");
+const { Logger } = require("./logger");
 const { EventStore, EventTypes } = require("./eventStore");
 const { getOperationStore } = require("./operationStore");
 const crypto = require("crypto");

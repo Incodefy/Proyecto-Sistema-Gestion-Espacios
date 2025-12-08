@@ -1,7 +1,7 @@
-// handlers/appointments/deleteAppointment.js
+﻿// handlers/appointments/deleteAppointment.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");

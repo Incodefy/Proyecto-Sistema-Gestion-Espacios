@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "Hủy"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "Không gian làm việc",
+      "active_group": "Nhóm Hoạt động",
+      "loading": "Đang tải thông tin nhóm...",
+      "change_group": "Đổi Nhóm",
+      "select_group": "Chọn Nhóm",
+      "manage_spaces": "Quản lý Không gian",
+      "loading_groups": "Đang tải nhóm...",
+      "active_badge": "Hoạt động",
+      "select_badge": "Chọn"
+    },
+    "color_picker": {
+      "current_color": "Màu hiện tại:",
+      "preview_aria": "Xem trước màu hiện tại",
+      "open_picker_aria": "Mở bộ chọn màu",
+      "explore_colors": "Khám phá thêm màu sắc",
+      "select_color": "Chọn Màu",
+      "select_a_color": "Chọn một màu",
+      "search_placeholder": "Tìm kiếm màu theo tên...",
+      "apply_color": "Áp Dụng Màu",
+      "categories": {
+        "popular": "Màu Phổ Biến",
+        "vibrant": "Sống Động",
+        "pastel": "Pastel",
+        "dark": "Tối"
+      },
+      "color_names": {
+        "Azul": "Xanh dương",
+        "Rojo": "Đỏ",
+        "Verde": "Xanh lá",
+        "Púrpura": "Tím",
+        "Naranja": "Cam",
+        "Rojo Vibrante": "Đỏ rực rỡ",
+        "Naranja Intenso": "Cam đậm",
+        "Ámbar": "Hổ phách",
+        "Lima": "Xanh chanh",
+        "Esmeralda": "Lục bảo",
+        "Cian": "Xanh lam",
+        "Azul Rey": "Xanh hoàng gia",
+        "Violeta": "Tím hoa cà",
+        "Rosa Fucsia": "Hồng tím",
+        "Rosa Intenso": "Hồng đậm",
+        "Rosa Pastel": "Hồng pastel",
+        "Melocotón": "Màu đào",
+        "Amarillo Suave": "Vàng nhạt",
+        "Lima Pastel": "Xanh chanh pastel",
+        "Verde Menta": "Xanh bạc hà",
+        "Celeste": "Xanh thiên thanh",
+        "Azul Cielo": "Xanh nhạt",
+        "Lavanda": "Hoa oai hương",
+        "Rosa Claro": "Hồng nhạt",
+        "Coral Suave": "San hô nhạt",
+        "Pizarra": "Xám đá phiến",
+        "Azul Marino": "Xanh hải quân",
+        "Rosa Oscuro": "Hồng sậm",
+        "Púrpura Oscuro": "Tím sậm",
+        "Marrón": "Nâu",
+        "Verde Oscuro": "Xanh đậm",
+        "Verde Azulado": "Xanh lam mục",
+        "Azul Profundo": "Xanh sâu",
+        "Índigo Oscuro": "Chàm sậm",
+        "Carmesí": "Đỏ thậm"
+      }
     }
   },
   "navbar": {

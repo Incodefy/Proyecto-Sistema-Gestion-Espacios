@@ -1,8 +1,8 @@
-//Proyecto-Hospital-Padre-Hurtado\aws\src\handlers\health.js
+﻿//Proyecto-Hospital-Padre-Hurtado\aws\src\handlers\health.js
 const { DynamoDBClient, ListTablesCommand } = require('@aws-sdk/client-dynamodb');
-const Logger = require('../utils/logger');
-const { createAPIHandler } = require('../utils/interceptors');
-const { successResponse } = require('../utils/response');
+const { Logger } = require('../utils/logger');
+const { createAPIHandler } = require('../middleware/interceptors');
+const { successResponse } = require('../utils/errorHandler');
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
 

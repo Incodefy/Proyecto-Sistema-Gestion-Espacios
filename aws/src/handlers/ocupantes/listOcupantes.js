@@ -7,11 +7,7 @@ const { Logger } = require("../../utils/logger");
 const { ValidationError, successResponse } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { decryptPII } = require("../../utils/encryption");
-
-// Cache para ocupantes de grupos (3 minutos TTL)
-const ocupantesCache = new Cache({ defaultTTL: 180000, maxSize: 500 });
 
 /**
  * GET /groups/{grupo_id}/ocupantes
@@ -35,51 +31,41 @@ async function listOcupantesHandler(event, context, logger) {
   logger = logger.child({ groupId: grupo_id });
   logger.info('Listing ocupantes');
 
-  // Obtener ocupantes con cache
-  const ocupantes = await ocupantesCache.getOrFetch(
-    `ocupantes:${grupo_id}`,
-    async () => {
-      logger.debug('Ocupantes not in cache, fetching from DB');
-      
-      const result = await retryDB(async () => {
-        return await db.send(
-          new QueryCommand({
-            TableName: process.env.OCCUPANTS_TABLE,
-            KeyConditionExpression: "PK = :gid AND begins_with(SK, :prefix)",
-            ExpressionAttributeValues: {
-              ":gid": grupo_id,
-              ":prefix": "OCCUPANT#"
-            }
-          })
-        );
-      });
+  logger.debug('Fetching ocupantes from DB');
+  
+  const result = await retryDB(async () => {
+    return await db.send(
+      new QueryCommand({
+        TableName: process.env.OCCUPANTS_TABLE,
+        KeyConditionExpression: "PK = :gid AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: {
+          ":gid": grupo_id,
+          ":prefix": "OCCUPANT#"
+        }
+      })
+    );
+  });
 
-      const items = result.Items || [];
-      
-      // Desencriptar PII de cada ocupante (v2.1)
-      const decryptedItems = await Promise.all(
-        items.map(async (item) => {
-          const decrypted = await decryptPII(item);
-          return {
-            id: item.SK.replace('OCCUPANT#', ''),
-            nombre: decrypted.nombre,
-            especialidad: decrypted.especialidad,
-            especialidad_id: decrypted.especialidad_id ? decrypted.especialidad_id.replace('ESP#', '') : null,
-            grupo_id: item.PK,
-            created_at: item.created_at,
-            updated_at: item.updated_at
-          };
-        })
-      );
-      
-      return decryptedItems;
-    },
-    180000 // 3 min TTL
+  const items = result.Items || [];
+  
+  // Desencriptar PII de cada ocupante (v2.1)
+  const ocupantes = await Promise.all(
+    items.map(async (item) => {
+      const decrypted = await decryptPII(item);
+      return {
+        id: item.SK.replace('OCCUPANT#', ''),
+        nombre: decrypted.nombre,
+        especialidad: decrypted.especialidad,
+        especialidad_id: decrypted.especialidad_id ? decrypted.especialidad_id.replace('ESP#', '') : null,
+        grupo_id: item.PK,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      };
+    })
   );
 
   logger.info('Ocupantes retrieved', { 
-    count: ocupantes.length,
-    cached: ocupantesCache.has(`ocupantes:${grupo_id}`)
+    count: ocupantes.length
   });
 
   return successResponse({ 

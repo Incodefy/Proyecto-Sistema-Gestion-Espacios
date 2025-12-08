@@ -1,4 +1,4 @@
-const ApiClient = require('../apiClient');
+const ApiClientV2 = require('../apiClientV2');
 
 const DEBUG = process.env.DEBUG_GRUPO_ACTIVO === 'true';
 
@@ -53,7 +53,7 @@ const checkGrupoActivo = async (req, res, next) => {
   // Si no hay cache válido, verificar con API
   try {
     if (DEBUG) console.log(`[checkGrupoActivo] 🔍 Verificando con API...`);
-    const apiClient = req.apiClient || new ApiClient(req.session.user.idToken);
+    const apiClient = req.apiClient || new ApiClientV2(req.session.user.idToken);
     const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
     
     if (grupoActivoResponse?.ok && grupoActivoResponse.grupo_activo) {

@@ -1,13 +1,13 @@
-// src/handlers/login.js
+﻿// src/handlers/login.js
 
 // ✅ ANTI-CORRUPTION LAYER: AuthAdapter reemplaza llamadas directas a Cognito
 const { getAuthAdapter, InvalidCredentialsError, MFARequiredError, PasswordResetRequiredError } = require('../../adapters/authAdapter');
 
-const { validate } = require('../../utils/validation');
-const { successResponse, errorResponse } = require('../../utils/response');
-const Logger = require('../../utils/logger');
-const { createAPIHandler } = require('../../utils/interceptors');
-const { ValidationError } = require('../../utils/errors');
+const { validate } = require('../../utils/validator');
+const { successResponse, errorResponse } = require('../../utils/errorHandler');
+const { Logger } = require('../../utils/logger');
+const { createAPIHandler } = require('../../middleware/interceptors');
+const { ValidationError } = require('../../utils/errorHandler');
 
 // AuthAdapter (ACL)
 const authAdapter = getAuthAdapter();

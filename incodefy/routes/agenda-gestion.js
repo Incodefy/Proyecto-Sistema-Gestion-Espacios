@@ -17,8 +17,8 @@ router.get('/agenda/gestion', async (req, res) => {
         
         // Pre-cargar datos si hay groupId
         if (groupId) {
-            const ApiClient = require('../apiClient');
-            const apiClient = new ApiClient(req.session.user?.idToken || '');
+            const ApiClientV2 = require('../apiClientV2');
+            const apiClient = new ApiClientV2(req.session.user?.idToken || '');
             
             try {
                 // Cargar espacios generales
@@ -64,6 +64,7 @@ router.get('/agenda/gestion', async (req, res) => {
             groupId: groupId,
             personalization: res.locals.personalization || {},
             idToken: req.session.user?.idToken || '',
+            wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev',
             initialData: {
                 generalSpaces,
                 occupants
@@ -88,8 +89,8 @@ router.get('/api/groups/:groupId/spaces/general', async (req, res) => {
         if (!groupId) {
             return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
         }
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         const response = await apiClient.listarEspacios(groupId);
         if (!response.ok) {
             return res.status(500).json({ error: 'Error al obtener espacios generales' });
@@ -125,8 +126,8 @@ router.get('/api/groups/:groupId/spaces/specific', async (req, res) => {
             return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
         }
         const { general_id } = req.query;
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         const response = await apiClient.listarEspacios(groupId);
         if (!response.ok) {
             return res.status(500).json({ error: 'Error al obtener espacios específicos' });
@@ -167,8 +168,8 @@ router.get('/api/groups/:groupId/occupants', async (req, res) => {
             return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
         }
         
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
         // Usar el endpoint de ocupantes del grupo
         const response = await apiClient.client.get(`/groups/${groupId}/ocupantes`);
@@ -228,8 +229,8 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
             return res.status(400).json({ error: 'space_id es requerido' });
         }
         
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
         // Obtener appointments para cada fecha en el rango - EN PARALELO
         const startDate = new Date(date_from);
@@ -260,13 +261,16 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
                 })
                 .then(response => {
                     const apts = response.data?.appointments || [];
-                    if (apts.length > 0) {
-                        console.log(`[BOOKINGS API] ${fecha}: ${apts.length} appointments`);
-                    }
+                    console.log(`[BOOKINGS API] ${fecha}: ${apts.length} appointments encontrados`);
                     return apts;
                 })
                 .catch(err => {
-                    console.log(`[BOOKINGS API] Error en ${fecha}:`, err.message);
+                    console.error(`[BOOKINGS API ERROR] Fecha ${fecha} falló:`, {
+                        message: err.message,
+                        status: err.response?.status,
+                        data: err.response?.data,
+                        stack: err.stack
+                    });
                     return [];
                 })
             );
@@ -277,26 +281,59 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
         
         console.log('[BOOKINGS API] Total appointments encontrados:', appointments.length);
         
-        // Adaptar formato de appointments a bookings
-        const bookings = appointments.map(apt => ({
-            id: apt.appointment_id || apt.SK,
-            space_id: apt.espacio_id,
-            occupant_id: apt.ocupante_id,
-            occupant_name: apt.ocupante_nombre,
-            date: apt.fecha,
-            startTime: apt.hora_inicio,
-            endTime: apt.hora_fin,
-            patient_name: apt.paciente_nombre,
-            patient_rut: apt.paciente_rut,
-            estado: apt.estado,
-            observaciones: apt.observaciones
-        }));
+        // Validar que appointments sea un array
+        if (!Array.isArray(appointments)) {
+            console.error('[BOOKINGS API ERROR] appointments no es un array:', typeof appointments);
+            return res.json([]);
+        }
         
-        console.log('[BOOKINGS API] Respondiendo con', bookings.length, 'bookings');
-        res.json(bookings);
+        // Adaptar formato de appointments a bookings
+        const bookings = appointments
+            .filter(apt => {
+                // Validar que cada appointment tenga los campos necesarios
+                if (!apt || !apt.fecha || !apt.hora_inicio || !apt.hora_fin) {
+                    console.warn('[BOOKINGS API] Appointment inválido descartado:', apt);
+                    return false;
+                }
+                return true;
+            })
+            .map(apt => {
+                const id = apt.appointment_id || apt.SK;
+                console.log('[BOOKINGS API] Mapeando appointment:', { 
+                    fecha: apt.fecha,
+                    appointment_id: apt.appointment_id, 
+                    SK: apt.SK,
+                    id_final: id 
+                });
+                return {
+                    id: id,
+                    space_id: apt.espacio_id,
+                    occupant_id: apt.ocupante_id,
+                    occupant_name: apt.ocupante_nombre,
+                    date: apt.fecha,
+                    startTime: apt.hora_inicio,
+                    endTime: apt.hora_fin,
+                    patient_name: apt.paciente_nombre,
+                    patient_rut: apt.paciente_rut,
+                    estado: apt.estado,
+                    observaciones: apt.observaciones
+                };
+            });
+        
+        console.log('[BOOKINGS API] Bookings válidos después de mapeo:', bookings.length);
+        console.log('[BOOKINGS API] TODOS los bookings:', bookings.map(b => ({ id: b.id, date: b.date, start: b.startTime })));
+        
+        // SIEMPRE devolver un array, incluso si está vacío
+        res.json(Array.isArray(bookings) ? bookings : []);
     } catch (error) {
-        console.error('Error obteniendo agendaciones:', error);
-        res.status(500).json({ error: 'Error al obtener agendaciones' });
+        console.error('[BOOKINGS API ERROR] Error crítico obteniendo agendaciones:', {
+            message: error.message,
+            stack: error.stack,
+            params: req.query
+        });
+        // En caso de error, devolver array vacío en lugar de error 500
+        // Esto evita que el frontend falle
+        res.json([]);
     }
 });
 
@@ -327,8 +364,8 @@ router.post('/api/groups/:groupId/bookings', async (req, res) => {
             return res.status(400).json({ error: 'La hora de fin debe ser posterior a la hora de inicio' });
         }
         
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
         // Usar el nombre del espacio enviado desde el frontend
         const espacioNombre = space_name || 'Espacio desconocido';
@@ -380,6 +417,9 @@ router.post('/api/groups/:groupId/bookings', async (req, res) => {
  * Actualiza una agendación existente
  */
 router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
+    let bookingId = req.params.bookingId; // Declarar fuera del try para que sea accesible en catch
+    let updateData = {}; // Declarar fuera del try para logging en catch
+    
     try {
         let groupId = req.params.groupId;
         if (!groupId || groupId === 'null') {
@@ -389,7 +429,6 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
             return res.status(400).json({ error: 'No se pudo determinar el grupo activo.' });
         }
         
-        let { bookingId } = req.params;
         console.log('BookingId recibido en Express:', bookingId);
         console.log('Params completos:', req.params);
         
@@ -400,6 +439,7 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
             startTime, 
             endTime, 
             current_date,
+            observaciones,
             occupant_name,
             occupant_especialidad_id,
             occupant_especialidad_nombre
@@ -410,6 +450,7 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
         console.log('  - occupant_name:', occupant_name);
         console.log('  - occupant_especialidad_id:', occupant_especialidad_id);
         console.log('  - occupant_especialidad_nombre:', occupant_especialidad_nombre);
+        console.log('  - observaciones:', observaciones);
         
         // Validaciones
         if (!occupant_id || !date || !startTime || !endTime) {
@@ -420,19 +461,24 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
             return res.status(400).json({ error: 'La hora de fin debe ser posterior a la hora de inicio' });
         }
         
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
         // Asegurar que el ocupante_id tiene el prefijo OCCUPANT#
         const fullOccupantId = occupant_id.startsWith('OCCUPANT#') ? occupant_id : `OCCUPANT#${occupant_id}`;
         
-        const updateData = {
+        updateData = {
             ocupante_id: fullOccupantId,
             fecha: date,
             hora_inicio: startTime,
             hora_fin: endTime,
             fecha_actual: current_date || date
         };
+        
+        // Agregar observaciones si existen
+        if (observaciones !== undefined && observaciones !== null) {
+            updateData.observaciones = observaciones;
+        }
         
         // Agregar campos adicionales del ocupante si están disponibles
         if (occupant_name) {
@@ -457,19 +503,39 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
         console.log('[UPDATE BOOKING] Datos a enviar al Lambda:');
         console.log(JSON.stringify(updateData, null, 2));
         
-        console.log('Enviando a Lambda - bookingId:', bookingId);
+        console.log('[UPDATE BOOKING] Enviando a Lambda:');
+        console.log('  - bookingId original:', bookingId);
+        console.log('  - groupId:', groupId);
         
         // Codificar el bookingId para la URL de Lambda
         const encodedBookingId = encodeURIComponent(bookingId);
-        console.log('BookingId codificado para Lambda:', encodedBookingId);
-        console.log('URL completa:', `/groups/${groupId}/appointments/${encodedBookingId}`);
+        console.log('  - bookingId codificado:', encodedBookingId);
         
-        const response = await apiClient.client.put(`/groups/${groupId}/appointments/${encodedBookingId}`, updateData);
+        const lambdaUrl = `/groups/${groupId}/appointments/${encodedBookingId}`;
+        console.log('  - URL Lambda:', lambdaUrl);
         
+        const response = await apiClient.client.put(lambdaUrl, updateData);
+        
+        console.log('[UPDATE BOOKING] ✅ Respuesta exitosa del Lambda');
         res.json(response.data);
     } catch (error) {
-        console.error('Error actualizando agendación:', error);
-        res.status(500).json({ error: error.response?.data?.message || 'Error al actualizar agendación' });
+        console.error('[UPDATE BOOKING] ❌ Error actualizando agendación:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            bookingId: bookingId,
+            payload: updateData
+        });
+        
+        const errorMessage = error.response?.data?.message 
+            || error.response?.data?.error 
+            || error.message 
+            || 'Error al actualizar agendación';
+        
+        res.status(error.response?.status || 500).json({ 
+            error: errorMessage,
+            details: error.response?.data 
+        });
     }
 });
 
@@ -496,8 +562,8 @@ router.delete('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
             return res.status(400).json({ error: 'Se requieren los parámetros fecha y hora_inicio' });
         }
         
-        const ApiClient = require('../apiClient');
-        const apiClient = new ApiClient(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
+        const ApiClientV2 = require('../apiClientV2');
+        const apiClient = new ApiClientV2(req.session.user?.idToken || req.headers.authorization?.replace('Bearer ', ''));
         
         // Codificar el bookingId para la URL de Lambda
         const encodedBookingId = encodeURIComponent(bookingId);

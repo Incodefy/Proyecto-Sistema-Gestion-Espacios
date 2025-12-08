@@ -1,4 +1,4 @@
-const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+﻿const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const crypto = require("crypto");
 const { notifyMiembroInvitado } = require('../../utils/notificationHelper');
@@ -8,14 +8,14 @@ const { getSecret } = require("../../utils/secretsManager");
 const { getUserAdapter, getEmailAdapter } = require("../../adapters");
 
 // ✅ MEJORAS IMPLEMENTADAS
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { 
   ValidationError, 
   NotFoundError, 
   ConflictError, 
   successResponse 
-} = require("../../utils/errors");
+} = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { retryDB } = require("../../utils/retry");
 const { cacheSystemConfig } = require("../../utils/cache");
@@ -47,10 +47,9 @@ async function inviteMemberHandler(event, context, logger) {
     return await getSecret();
   });
 
-  // Extraer parámetros del path y body
-  const grupo_id = event.pathParameters?.group_id;
+  // Extraer parámetros del body (grupo_id viene en body para esta ruta alternativa)
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-  const { email, rol } = body;
+  const { grupo_id, email, rol } = body;
 
   // 2️⃣ VALIDACIÓN CON JSON SCHEMA
   const validationResult = validate('inviteMember', { grupo_id, email, rol }, logger);
@@ -157,7 +156,7 @@ async function inviteMemberHandler(event, context, logger) {
 
   try {
     await logger.traceAsync('sendInvitationEmail', async () => {
-      // ✅ ACL: EmailAdapter maneja SES con Ambassador (circuit breaker, rate limit, retry)
+      // ✅ ACL: EmailAdapter maneja SES (circuit breaker, rate limit, retry)
       await emailAdapter.sendGroupInvitation(
         email,
         groupName,

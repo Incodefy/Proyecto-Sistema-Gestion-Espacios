@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "ரத்து செய்"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "பணி இடம்",
+      "active_group": "செயலில் உள்ள குழு",
+      "loading": "குழு தகவல் ஏற்றப்படுகிறது...",
+      "change_group": "குழுவை மாற்று",
+      "select_group": "குழுவைத் தேர்ந்தெடுக்கவும்",
+      "manage_spaces": "இடங்களை நிர்வகிக்கவும்",
+      "loading_groups": "குழுக்கள் ஏற்றப்படுகின்றன...",
+      "active_badge": "செயல்பாடு",
+      "select_badge": "தேர்வு"
+    },
+    "color_picker": {
+      "current_color": "தற்போதைய நிறம்:",
+      "preview_aria": "தற்போதைய நிறத்தின் முன்னோட்டம்",
+      "open_picker_aria": "நிற தேர்வாளர் திறக்கவும்",
+      "explore_colors": "மேலும் நிறங்களை ஆராயுங்கள்",
+      "select_color": "நிறம் தேர்வு செய்கவும்",
+      "select_a_color": "ஒரு நிறத்தை தேர்வு செய்கவும்",
+      "search_placeholder": "பெயர் மூலம் நிறத்தை தேடவும்...",
+      "apply_color": "நிறத்தை பயன்படுத்தவும்",
+      "categories": {
+        "popular": "பிரபலமான நிறங்கள்",
+        "vibrant": "உயிரான",
+        "pastel": "மெள்ளிய",
+        "dark": "இருள்"
+      },
+      "color_names": {
+        "Azul": "நீலம்",
+        "Rojo": "சிவப்பு",
+        "Verde": "பச்சை",
+        "Púrpura": "ஊதா",
+        "Naranja": "ஆரஞ்சு",
+        "Rojo Vibrante": "தெளிவான சிவப்பு",
+        "Naranja Intenso": "அடர் ஆரஞ்சு",
+        "Ámbar": "அம்பர்",
+        "Lima": "எலுமிச்சை",
+        "Esmeralda": "மரகதம்",
+        "Cian": "சியான்",
+        "Azul Rey": "அரச நீலம்",
+        "Violeta": "வயலட்",
+        "Rosa Fucsia": "ஃப்யூஷியா இளஞ்சிவப்பு",
+        "Rosa Intenso": "அடர் இளஞ்சிவப்பு",
+        "Rosa Pastel": "பாஸ்டல் இளஞ்சிவப்பு",
+        "Melocotón": "பீச்",
+        "Amarillo Suave": "மென்மையான மஞ்சள்",
+        "Lima Pastel": "பாஸ்டல் எலுமிச்சை",
+        "Verde Menta": "புதினா பச்சை",
+        "Celeste": "வான்நீலம்",
+        "Azul Cielo": "வானநீலம்",
+        "Lavanda": "லாவண்டர்",
+        "Rosa Claro": "வெளிர் இளஞ்சிவப்பு",
+        "Coral Suave": "மென்மையான பவளம்",
+        "Pizarra": "ஸ்லேட்",
+        "Azul Marino": "கடற்படை நீலம்",
+        "Rosa Oscuro": "இருண்ட இளஞ்சிவப்பு",
+        "Púrpura Oscuro": "இருண்ட ஊதா",
+        "Marrón": "பழுப்பு",
+        "Verde Oscuro": "இருண்ட பச்சை",
+        "Verde Azulado": "டீல்",
+        "Azul Profundo": "ஆழமான நீலம்",
+        "Índigo Oscuro": "இருண்ட இண்டிகோ",
+        "Carmesí": "கருஞ்சிவப்பு"
+      }
     }
   },
   "navbar": {

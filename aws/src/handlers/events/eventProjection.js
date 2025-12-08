@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Event Projection Handler - Lambda que procesa eventos del Event Bus
  * y actualiza los Read Models
  */
 
 const { getProjectionManager } = require("../utils/projections");
-const Logger = require("../utils/logger");
+const { Logger } = require("../utils/logger");
 
 /**
  * Handler para eventos SNS del Event Bus

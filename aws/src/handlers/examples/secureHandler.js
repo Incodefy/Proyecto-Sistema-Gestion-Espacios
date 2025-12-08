@@ -2,8 +2,8 @@
 // Este es un template que puedes usar para actualizar tus handlers existentes
 
 const { sanitizeEvent } = require('../../utils/sanitizer');
-const { validate } = require('../../utils/validation');
-const { successResponse, errorResponse, validationErrorResponse } = require('../../utils/response');
+const { validate } = require('../../utils/validator');
+const { successResponse, errorResponse, validationErrorResponse } = require('../../utils/errorHandler');
 const { getSecurityHeaders } = require('../../middleware/securityHeaders');
 const { checkRateLimit, addRateLimitHeaders } = require('../../middleware/rateLimiter');
 const { getSecret } = require('../../utils/secretsManager');

@@ -1,4 +1,4 @@
-const ApiClient = require('../apiClient');
+const ApiClientV2 = require('../apiClientV2');
 
 /**
  * Middleware para agregar el API client a req
@@ -9,8 +9,10 @@ const attachApiClient = (req, res, next) => {
     return res.status(401).json({ error: 'No autenticado' });
   }
 
-  // Agregar el cliente API a la request
-  req.apiClient = new ApiClient(req.session.user.idToken);
+  // Agregar el cliente API a la request (usando V2)
+  req.apiClient = new ApiClientV2(req.session.user.idToken, {
+    userSub: req.session.user.sub
+  });
   
   next();
 };

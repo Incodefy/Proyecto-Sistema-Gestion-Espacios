@@ -141,7 +141,8 @@ router.get('/especifico', checkPermission('box.read'), async (req, res) => {
       agendasError: agendasError, // Pasar el error a la vista para mostrar advertencia
       detallesVisibles: detallesVisibles, // Pasar estado inicial de expansión
       grupoActivo: req.session.grupoActivo, // Pasar grupoActivo para WebSocket
-      contadoresEstados: contadoresEstados // Pasar contadores iniciales
+      contadoresEstados: contadoresEstados, // Pasar contadores iniciales
+      wsEndpoint: process.env.WS_ENDPOINT || 'wss://byl64liyj8.execute-api.us-east-1.amazonaws.com/dev'
     });
   } catch (err) {
     console.error('❌ Error en /especifico:', err);

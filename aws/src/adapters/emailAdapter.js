@@ -24,7 +24,6 @@
  */
 
 const { SESClient, SendEmailCommand, SendRawEmailCommand } = require("@aws-sdk/client-ses");
-const { getAmbassador } = require("../utils/awsAmbassador");
 const Logger = require("../utils/logger");
 
 /**
@@ -150,14 +149,10 @@ class EmailQuotaExceededError extends Error {
  */
 class EmailAdapter {
   constructor(options = {}) {
-    // Usar Ambassador para SES (incluye circuit breaker, rate limiting, retry)
-    this.ambassador = options.ambassador || getAmbassador();
-    
-    // Fallback: SES client directo (si no se usa Ambassador)
+    // SES client directo
     this.sesClient = options.sesClient || new SESClient({});
     
     this.fromEmail = options.fromEmail || process.env.SES_FROM_EMAIL || 'noreply@incodefy.com';
-    this.useAmbassador = options.useAmbassador !== false; // Default: true
     this.logger = options.logger || Logger.create({ component: 'EmailAdapter' });
   }
 
@@ -340,21 +335,39 @@ class EmailAdapter {
   // ========== INTERNAL METHODS ==========
 
   /**
-   * Envía email via Ambassador (con circuit breaker, rate limiting, retry)
+   * Envía email directamente via SES
    */
   async _sendViaAmbassador(email) {
-    const result = await this.ambassador.sesSendEmail({
-      from: email.from,
-      to: email.to,
-      subject: email.subject,
-      body: email.body,
-      isHtml: email.isHtml,
-      cc: email.cc,
-      bcc: email.bcc,
-      replyTo: email.replyTo
+    const command = new SendEmailCommand({
+      Source: email.from,
+      Destination: {
+        ToAddresses: email.to,
+        CcAddresses: email.cc,
+        BccAddresses: email.bcc
+      },
+      Message: {
+        Subject: {
+          Data: email.subject,
+          Charset: 'UTF-8'
+        },
+        Body: email.isHtml ? {
+          Html: {
+            Data: email.body,
+            Charset: 'UTF-8'
+          }
+        } : {
+          Text: {
+            Data: email.body,
+            Charset: 'UTF-8'
+          }
+        }
+      },
+      ReplyToAddresses: email.replyTo
     });
 
-    // ✅ Traducción: Ambassador response → Domain EmailResult
+    const result = await this.sesClient.send(command);
+
+    // ✅ Traducción: SES response → Domain EmailResult
     return new EmailResult({
       messageId: result.MessageId,
       status: 'SENT',
@@ -362,7 +375,6 @@ class EmailAdapter {
       sentAt: new Date().toISOString(),
       recipient: email.to.join(', '),
       metadata: {
-        ambassador: true,
         requestId: result.$metadata?.requestId
       }
     });

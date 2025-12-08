@@ -1,7 +1,7 @@
-// handlers/appointments/updateAppointment.js
+﻿// handlers/appointments/updateAppointment.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { createAPIHandler } = require("../../middleware/interceptors");
@@ -29,11 +29,20 @@ const updateAppointment = async (event) => {
   const expressionAttributeValues = {};
   
   const updatableFields = {
-    estado: 'estado', notas: 'notas', tipo_consulta: 'tipo_consulta',
-    ocupante_id: 'ocupante_id', ocupante_nombre: 'ocupante_nombre',
-    especialidad_id: 'especialidad_id', especialidad_nombre: 'especialidad_nombre',
-    espacio_id: 'espacio_id', hora_inicio: 'hora_inicio', hora_fin: 'hora_fin',
-    paciente_nombre: 'paciente_nombre', paciente_rut: 'paciente_rut',
+    estado: 'estado', 
+    notas: 'notas', 
+    tipo_consulta: 'tipo_consulta',
+    ocupante_id: 'ocupante_id', 
+    ocupante_nombre: 'ocupante_nombre',
+    especialidad_id: 'especialidad_id', 
+    especialidad_nombre: 'especialidad_nombre',
+    espacio_id: 'espacio_id', 
+    espacio_nombre: 'espacio_nombre',
+    hora_inicio: 'hora_inicio', 
+    hora_fin: 'hora_fin',
+    fecha: 'fecha',
+    paciente_nombre: 'paciente_nombre', 
+    paciente_rut: 'paciente_rut',
     observaciones: 'observaciones'
   };
   
@@ -61,32 +70,18 @@ const updateAppointment = async (event) => {
     expressionAttributeValues[':GSI2PK'] = body.espacio_id;
   }
 
-    // Si se actualiza fecha u hora_inicio, actualizar los SK de los GSI
-    if (body.fecha || body.hora_inicio) {
-      const fecha = body.fecha;
-      const horaInicio = body.hora_inicio;
-      
-      if (fecha && horaInicio) {
-        const gsiSK = `${fecha}#${horaInicio}`;
-        updateFields.push('#GSI1SK = :GSI1SK', '#GSI2SK = :GSI2SK', '#GSI3SK = :GSI3SK');
-        expressionAttributeNames['#GSI1SK'] = 'GSI1SK';
-        expressionAttributeNames['#GSI2SK'] = 'GSI2SK';
-        expressionAttributeNames['#GSI3SK'] = 'GSI3SK';
-        expressionAttributeValues[':GSI1SK'] = gsiSK;
-        expressionAttributeValues[':GSI2SK'] = gsiSK;
-        expressionAttributeValues[':GSI3SK'] = gsiSK;
-        
-        // También actualizar el campo fecha si se cambió
-        if (body.fecha) {
-          updateFields.push('#fecha = :fecha');
-          expressionAttributeNames['#fecha'] = 'fecha';
-          expressionAttributeValues[':fecha'] = body.fecha;
-        }
-      }
-    }
+  // Si se actualiza fecha u hora_inicio, actualizar los SK de los GSI
+  if (body.fecha && body.hora_inicio) {
+    const gsiSK = `${body.fecha}#${body.hora_inicio}`;
+    updateFields.push('#GSI1SK = :GSI1SK', '#GSI2SK = :GSI2SK', '#GSI3SK = :GSI3SK');
+    expressionAttributeNames['#GSI1SK'] = 'GSI1SK';
+    expressionAttributeNames['#GSI2SK'] = 'GSI2SK';
+    expressionAttributeNames['#GSI3SK'] = 'GSI3SK';
+    expressionAttributeValues[':GSI1SK'] = gsiSK;
+    expressionAttributeValues[':GSI2SK'] = gsiSK;
+    expressionAttributeValues[':GSI3SK'] = gsiSK;
+  }
 
-    if (updateFields.length === 1) { // Solo updated_at
-      return {
   if (updateFields.length === 1) {
     logger.warn('No hay campos para actualizar');
     return {

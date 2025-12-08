@@ -1,7 +1,7 @@
-// aws/src/handlers/tipos-instrumentos/deleteTipoInstrumento.js
+﻿// aws/src/handlers/tipos-instrumentos/deleteTipoInstrumento.js
 const { DynamoDBDocumentClient, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
 const { NotFoundError } = require("../../utils/errorHandler");

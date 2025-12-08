@@ -25,14 +25,26 @@ function initializeTabs() {
   // Función para cambiar tab
   function changeTab(tabName, updateURL = true) {
     // Actualizar botones
-    tabButtons.forEach(b => b.classList.remove('active'));
+    tabButtons.forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
     const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.setAttribute('aria-selected', 'true');
+    }
     
     // Actualizar paneles
-    tabPanels.forEach(panel => panel.classList.remove('active'));
+    tabPanels.forEach(panel => {
+      panel.classList.remove('active');
+      panel.setAttribute('hidden', '');
+    });
     const activePanel = document.getElementById(`tab-${tabName}`);
-    if (activePanel) activePanel.classList.add('active');
+    if (activePanel) {
+      activePanel.classList.add('active');
+      activePanel.removeAttribute('hidden');
+    }
     
     // Actualizar URL sin recargar la página
     if (updateURL) {

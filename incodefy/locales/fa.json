@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "لغو"
     },
     "messages": {
       "saving": "Saving...",
@@ -68,6 +69,70 @@
       "save_success": "Changes saved. The page will reload...",
       "preview_disabled": "Preview is disabled. Save changes to apply them.",
       "unsaved": "Unsaved changes"
+    },
+    "workspace": {
+      "title": "فضای کاری",
+      "active_group": "گروه فعال",
+      "loading": "در حال بارگذاری اطلاعات گروه...",
+      "change_group": "تغییر گروه",
+      "select_group": "انتخاب گروه",
+      "manage_spaces": "مدیریت فضاها",
+      "loading_groups": "در حال بارگذاری گروه‌ها...",
+      "active_badge": "فعال",
+      "select_badge": "انتخاب"
+    },
+    "color_picker": {
+      "current_color": "رنگ فعلی:",
+      "preview_aria": "پیش‌نمایش رنگ فعلی",
+      "open_picker_aria": "باز کردن انتخابگر رنگ",
+      "explore_colors": "کشف رنگ‌های بیشتر",
+      "select_color": "انتخاب رنگ",
+      "select_a_color": "یک رنگ انتخاب کنید",
+      "search_placeholder": "جستجوی رنگ بر اساس نام...",
+      "apply_color": "اعمال رنگ",
+      "categories": {
+        "popular": "رنگ‌های محبوب",
+        "vibrant": "پرجنبوجوش",
+        "pastel": "پاستلی",
+        "dark": "تیره"
+      },
+      "color_names": {
+        "Azul": "آبی",
+        "Rojo": "قرمز",
+        "Verde": "سبز",
+        "Púrpura": "بنفش",
+        "Naranja": "نارنجی",
+        "Rojo Vibrante": "قرمز روشن",
+        "Naranja Intenso": "نارنجی پررنگ",
+        "Ámbar": "کهربایی",
+        "Lima": "لیمویی",
+        "Esmeralda": "زمردی",
+        "Cian": "فیروزه‌ای",
+        "Azul Rey": "آبی سلطنتی",
+        "Violeta": "بنفش",
+        "Rosa Fucsia": "صورتی فوشیا",
+        "Rosa Intenso": "صورتی پررنگ",
+        "Rosa Pastel": "صورتی پاستلی",
+        "Melocotón": "هلویی",
+        "Amarillo Suave": "زرد ملایم",
+        "Lima Pastel": "لیمویی پاستلی",
+        "Verde Menta": "سبز نعنایی",
+        "Celeste": "آسمانی",
+        "Azul Cielo": "آبی آسمانی",
+        "Lavanda": "اسطوخودوسی",
+        "Rosa Claro": "صورتی روشن",
+        "Coral Suave": "مرجانی ملایم",
+        "Pizarra": "خاکستری تیره",
+        "Azul Marino": "آبی دریایی",
+        "Rosa Oscuro": "صورتی تیره",
+        "Púrpura Oscuro": "بنفش تیره",
+        "Marrón": "قهوه‌ای",
+        "Verde Oscuro": "سبز تیره",
+        "Verde Azulado": "سبز مایل به آبی",
+        "Azul Profundo": "آبی عمیق",
+        "Índigo Oscuro": "نیلی تیره",
+        "Carmesí": "زرشکی"
+      }
     }
   },
   "navbar": {

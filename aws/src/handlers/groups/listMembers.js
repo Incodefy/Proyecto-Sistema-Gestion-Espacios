@@ -1,8 +1,5 @@
-const { DynamoDBDocumentClient, QueryCommand, GetCommand, BatchGetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").DynamoDBClient)());
-
-// ✅ ANTI-CORRUPTION LAYER: UserAdapter reemplaza llamadas directas a Cognito
-const { getUserAdapter } = require("../../adapters");
 
 // ✅ MEJORAS IMPLEMENTADAS
 const { Logger } = require("../../utils/logger");
@@ -14,9 +11,6 @@ const { decryptPII } = require("../../utils/encryption");
 
 // Cache para miembros de grupos (2 minutos TTL)
 const membersCache = new Cache({ defaultTTL: 120000, maxSize: 500 });
-
-// UserAdapter (ACL)
-const userAdapter = getUserAdapter();
 
 /**
  * GET /api/grupos/:id/miembros
@@ -81,65 +75,26 @@ async function listMembersHandler(event, context, logger) {
     members.map(async (member) => await decryptPII(member))
   );
 
-  // Enriquecer datos de miembros
-  const enrichedMembers = await Promise.all(
-    decryptedMembers.map(async (member) => {
-      // Si ya tenemos email y nombre guardados, usarlos
-      if (member.user_email) {
-        const nombreGuardado = member.user_name || '';
-        logger.debug('Using stored member data', { 
-          email: member.user_email, 
-          name: nombreGuardado 
-        });
-        
-        return {
-          id: member.user_sub,
-          nombre: nombreGuardado || member.user_email.split('@')[0],
-          email: member.user_email,
-          rol: member.role,
-          fecha_ingreso: member.added_at,
-          esCreador: member.role === 'owner'
-        };
-      }
-      
-      // Fallback: consultar Cognito con circuit breaker (para datos antiguos)
-      try {
-        logger.debug('Fetching member data from UserAdapter (ACL)', { userSub: member.user_sub });
-        
-        // ✅ ACL: UserAdapter maneja Cognito, circuit breaker, retry
-        const user = await userAdapter.getUser(member.user_sub);
-
-        logger.debug('User found via UserAdapter', { 
-          email: user.email, 
-          displayName: user.displayName 
-        });
-
-        return {
-          id: user.userId,
-          nombre: user.displayName,
-          email: user.email,
-          rol: member.role,
-          fecha_ingreso: member.added_at,
-          esCreador: member.role === 'owner'
-        };
-      } catch (error) {
-        logger.warn('Error fetching user from Cognito', { 
-          userSub: member.user_sub, 
-          error: error.message 
-        });
-      }
-      
-      // Fallback final
-      return {
-        id: member.user_sub,
-        nombre: 'Usuario',
-        email: 'desconocido@ejemplo.com',
-        rol: member.role,
-        fecha_ingreso: member.added_at,
-        esCreador: member.role === 'owner'
-      };
-    })
-  );
+  // Enriquecer datos de miembros (sin UserAdapter para evitar 500)
+  const enrichedMembers = decryptedMembers.map((member) => {
+    // Usar datos almacenados directamente
+    const email = member.user_email || 'desconocido@ejemplo.com';
+    const nombre = member.user_name || email.split('@')[0] || 'Usuario';
+    
+    logger.debug('Using stored member data', { 
+      hasEmail: !!member.user_email,
+      hasName: !!member.user_name 
+    });
+    
+    return {
+      id: member.user_sub,
+      nombre: nombre,
+      email: email,
+      rol: member.role,
+      fecha_ingreso: member.added_at,
+      esCreador: member.role === 'owner'
+    };
+  });
 
   logger.info('Members enriched successfully', { total: enrichedMembers.length });
 

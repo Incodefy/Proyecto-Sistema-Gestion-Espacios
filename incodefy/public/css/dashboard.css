@@ -445,10 +445,10 @@ body {
 .dashboard-chart-container-card {
     background: var(--card-background);
     border-radius: 16px;
-    padding: 25px !important;
+    padding: 20px 25px 25px 25px !important;
     box-shadow: 0 4px 20px rgba(20, 44, 89, 0.08);
-    min-height: 500px; /* Altura consistente y más grande */
-    height: 500px; /* Forzar altura consistente */
+    min-height: 500px;
+    height: 500px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
@@ -482,9 +482,9 @@ body {
     font-size: 1.15rem;
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 0px!important;
+    margin-bottom: 15px !important;
     text-align: center;
-    flex-shrink: 0; /* No reducir el tamaño del título */
+    flex-shrink: 0;
     line-height: 1.4;
     display: flex;
     align-items: center;
@@ -500,12 +500,12 @@ body {
 .dashboard-chart-container {
     position: relative;
     width: 100%;
-    flex: 1; /* Usar todo el espacio disponible restante */
+    flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 350px;
-    padding: 10px 0;
+    min-height: 400px;
+    padding: 5px 0 0 0;
 }
 
 .dashboard-chart-container canvas {
@@ -517,7 +517,6 @@ body {
 }
 
 .dashboard-chart-container-placeholder {
-    margin-top: -170px!important;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -528,10 +527,15 @@ body {
     width: 100%;
     text-align: center;
     color: var(--secondary-text-color);
-    padding: 20px;
+    padding: 40px 20px;
     border: 2px dashed var(--border-color);
-    flex: 1;
-    min-height: 350px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0 !important;
+    transition: opacity 0.3s ease;
 }
 
 .dashboard-chart-container-placeholder i {
@@ -544,6 +548,20 @@ body {
 .dashboard-chart-container-placeholder p {
     margin: 5px 0;
     font-weight: 500;
+}
+
+.dashboard-chart-container canvas {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.dashboard-chart-container canvas.visible {
+    opacity: 1;
+}
+
+.dashboard-chart-container-placeholder.hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* --- ANIMACIONES MEJORADAS --- */
@@ -613,37 +631,17 @@ h1, h2, h3, h4, h5, h6 {
 /* --- RESPONSIVE DESIGN OPTIMIZADO --- */
 
 /* Responsive para el panel de información */
-@media (max-width: 768px) {
-    .dashboard-info-panel {
-        padding: 16px;
-        margin-bottom: 24px;
-    }
-    
-    .dashboard-info-value {
-        font-size: 1.25rem;
-    }
-    
-    .dashboard-info-label {
-        font-size: 0.8rem;
-    }
-}
-
 @media (min-width: 1400px) {
     .dashboard-chart-container-card {
-        height: 450px; /* Más alto en pantallas grandes */
+        height: 500px; /* Más alto en pantallas grandes */
     }
     
     .dashboard-chart-container {
-        min-height: 350px;
+        min-height: 400px;
     }
     
     .dashboard-chart-container-placeholder {
-        min-height: 350px;
-    }
-    
-    .col-xl-4:last-child .dashboard-chart-container-card {
-        /* El gráfico de médicos puede ser un poco más alto */
-        height: 420px;
+        min-height: 500px;
     }
 }
 
@@ -654,11 +652,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .dashboard-chart-container {
-        min-height: 340px;
-    }
-    
-    .dashboard-chart-container-placeholder {
-        min-height: 340px;
+        min-height: 380px;
     }
 }
 
@@ -675,11 +669,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .dashboard-chart-container {
-        min-height: 330px;
-    }
-    
-    .dashboard-chart-container-placeholder {
-        min-height: 330px;
+        min-height: 360px;
     }
 }
 
@@ -702,11 +692,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .dashboard-chart-container {
-        min-height: 310px;
-    }
-    
-    .dashboard-chart-container-placeholder {
-        min-height: 310px;
+        min-height: 340px;
     }
 }
 
@@ -724,11 +710,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .dashboard-chart-container {
-        min-height: 290px;
-    }
-    
-    .dashboard-chart-container-placeholder {
-        min-height: 290px;
+        min-height: 320px;
     }
     
     .compact-chart-row {
@@ -757,11 +739,15 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .dashboard-chart-container {
-        min-height: 270px;
+        min-height: 290px;
     }
     
     .dashboard-chart-container-placeholder {
-        min-height: 270px;
+        padding: 30px 15px;
+    }
+    
+    .dashboard-chart-container-placeholder i {
+        font-size: 2.5rem;
     }
 }
 

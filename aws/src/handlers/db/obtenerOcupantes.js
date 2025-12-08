@@ -1,10 +1,10 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+﻿const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
-const { successResponse } = require("../../utils/response");
-const Logger = require("../../utils/logger");
+const { successResponse } = require("../../utils/errorHandler");
+const { Logger } = require("../../utils/logger");
 const { retryDB } = require("../../utils/retry");
 const { validate, schemas } = require("../../utils/validator");
-const { ValidationError } = require("../../utils/errors");
+const { ValidationError } = require("../../utils/errorHandler");
 const { createAPIHandler } = require("../../middleware/interceptors");
 const { Cache } = require("../../utils/cache");
 

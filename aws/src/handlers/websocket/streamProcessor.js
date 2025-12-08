@@ -1,9 +1,9 @@
-// handlers/websocket/streamProcessor.js
+﻿// handlers/websocket/streamProcessor.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require('@aws-sdk/client-apigatewaymanagementapi');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-const Logger = require('../../utils/logger');
+const { Logger } = require('../../utils/logger');
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);

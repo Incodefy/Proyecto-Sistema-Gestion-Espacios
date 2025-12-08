@@ -6,11 +6,13 @@ const router = express.Router();
 const {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
-  GetUserCommand
+  GetUserCommand,
+  AdminGetUserCommand,
+  AdminSetUserPasswordCommand
 } = require('@aws-sdk/client-cognito-identity-provider');
 const fetch = require('node-fetch');
-const db = require('../db'); // Asegúrate de importar tu conexión a la base de datos
-const requireAuth = require('../middleware/requireAuth');
+const { sendPasswordResetEmail, sendPasswordChangedConfirmation } = require('../utils/emailService');
+const { createVerificationCode, verifyCode, consumeCode } = require('../utils/verificationCodes');
 const cognitoClient = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION
 });
@@ -73,6 +75,8 @@ router.get('/login', (req, res) => {
 
   res.render('login', {
     error_msg: req.flash('error') || [],
+    success_msg: req.flash('success') || [],
+    verification_email_sent: req.flash('verification_email_sent') || [],
     form_errors: {},
     form_data: {},
     redirect: req.query.redirect || null
@@ -240,8 +244,8 @@ router.post('/login', async (req, res) => {
 
     // Obtener grupo activo
     try {
-      const ApiClient = require('../apiClient');
-      const apiClient = new ApiClient(tokens.IdToken);
+      const ApiClientV2 = require('../apiClientV2');
+      const apiClient = new ApiClientV2(tokens.IdToken);
       const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
       
       if (grupoActivoResponse?.ok && grupoActivoResponse.grupo_activo) {
@@ -365,6 +369,228 @@ router.get('/logout', (req, res) => {
     // Redirigir al login con mensaje
     res.redirect('/login?logout=true');
   });
+});
+
+// ============ RECUPERACIÓN DE CONTRASEÑA ============
+
+// Página de recuperación de contraseña
+router.get('/forgot-password', (req, res) => {
+  // Si ya está logueado, redirigir al dashboard
+  if (req.session.user && req.session.user.idToken) {
+    return res.redirect('/dashboard');
+  }
+
+  res.render('forgot-password', {
+    error_msg: req.flash('error') || [],
+    success_msg: req.flash('success') || []
+  });
+});
+
+// Enviar código de verificación
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { correo } = req.body;
+
+    if (!correo) {
+      return res.status(400).json({
+        success: false,
+        error: 'El correo electrónico es requerido'
+      });
+    }
+
+    console.log('📧 Solicitud de recuperación de contraseña para:', correo);
+
+    // Verificar que el usuario existe en Cognito
+    try {
+      const getUserCommand = new AdminGetUserCommand({
+        UserPoolId: process.env.USER_POOL_ID,
+        Username: correo
+      });
+      
+      await cognitoClient.send(getUserCommand);
+      console.log('✅ Usuario encontrado en Cognito:', correo);
+    } catch (error) {
+      console.error('❌ Usuario no encontrado:', error.name);
+      if (error.name === 'UserNotFoundException') {
+        return res.status(404).json({
+          success: false,
+          error: 'No existe una cuenta con ese correo electrónico'
+        });
+      }
+      throw error; // Re-throw si es otro tipo de error
+    }
+
+    // Generar código de verificación personalizado (6 dígitos, 15 minutos de expiración)
+    const code = createVerificationCode(correo);
+    console.log('🔐 Código de verificación generado para:', correo);
+
+    // Enviar email con el código usando AWS SES
+    await sendPasswordResetEmail(correo, code);
+    console.log('✅ Email de recuperación enviado a:', correo);
+
+    // Retornar éxito al cliente
+    return res.json({
+      success: true,
+      message: 'Código de verificación enviado a tu correo electrónico'
+    });
+
+  } catch (error) {
+    console.error('❌ Error al procesar recuperación de contraseña:', error);
+    
+    let errorMessage = 'Error al enviar el código de verificación';
+    
+    // Manejar errores específicos
+    if (error.name === 'LimitExceededException') {
+      errorMessage = 'Has excedido el límite de intentos. Por favor, intenta más tarde';
+    } else if (error.name === 'InvalidParameterException') {
+      errorMessage = 'El correo electrónico no es válido';
+    } else if (error.code === 'MessageRejected') {
+      errorMessage = 'No se pudo enviar el correo. Verifica que tu email sea válido';
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
+// Nueva ruta: Verificar código sin cambiar contraseña
+router.post('/verify-code', async (req, res) => {
+  try {
+    const { correo, codigo } = req.body;
+
+    if (!correo || !codigo) {
+      return res.status(400).json({
+        success: false,
+        error: 'El correo y el código son requeridos'
+      });
+    }
+
+    console.log('🔍 Verificando código para:', correo);
+
+    // Verificar el código personalizado (sin consumir)
+    const codeValidation = verifyCode(correo, codigo, false);
+    
+    if (!codeValidation.valid) {
+      console.error('❌ Código inválido:', codeValidation.error);
+      
+      let errorMessage = 'El código de verificación es incorrecto';
+      
+      if (codeValidation.error === 'Code not found') {
+        errorMessage = 'No existe un código de verificación para este correo. Solicita uno nuevo';
+      } else if (codeValidation.error === 'Code expired') {
+        errorMessage = 'El código de verificación ha expirado. Solicita uno nuevo';
+      } else if (codeValidation.error === 'Too many attempts') {
+        errorMessage = 'Has excedido el límite de intentos. Solicita un nuevo código';
+      }
+      
+      return res.status(400).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+
+    console.log('✅ Código verificado correctamente');
+
+    return res.json({
+      success: true,
+      message: 'Código verificado correctamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error al verificar código:', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Error al verificar el código'
+    });
+  }
+});
+
+// Restablecer contraseña con código de verificación
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { correo, codigo, password } = req.body;
+
+    // Validaciones
+    if (!correo || !codigo || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Todos los campos son requeridos'
+      });
+    }
+
+    console.log('🔐 Intentando restablecer contraseña para:', correo);
+
+    // Verificar el código de verificación personalizado (consume = true)
+    const codeValidation = verifyCode(correo, codigo, true);
+    
+    if (!codeValidation.valid) {
+      console.error('❌ Código inválido:', codeValidation.error);
+      
+      let errorMessage = 'El código de verificación es incorrecto';
+      
+      if (codeValidation.error === 'Code not found') {
+        errorMessage = 'No existe un código de verificación para este correo. Solicita uno nuevo';
+      } else if (codeValidation.error === 'Code expired') {
+        errorMessage = 'El código de verificación ha expirado. Solicita uno nuevo';
+      } else if (codeValidation.error === 'Too many attempts') {
+        errorMessage = 'Has excedido el límite de intentos. Solicita un nuevo código';
+      }
+      
+      return res.status(400).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+
+    console.log('✅ Código verificado correctamente');
+
+    // Cambiar la contraseña en Cognito usando AdminSetUserPassword
+    // Esto permite establecer una contraseña sin necesitar el código de Cognito
+    const setPasswordCommand = new AdminSetUserPasswordCommand({
+      UserPoolId: process.env.USER_POOL_ID,
+      Username: correo,
+      Password: password,
+      Permanent: true // Contraseña permanente, no temporal
+    });
+
+    await cognitoClient.send(setPasswordCommand);
+    console.log('✅ Contraseña actualizada en Cognito para:', correo);
+
+    // Enviar email de confirmación de cambio de contraseña
+    sendPasswordChangedConfirmation(correo).catch(err => {
+      console.error('⚠️ No se pudo enviar email de confirmación:', err.message);
+      // No detenemos el flujo si falla el email de confirmación
+    });
+
+    return res.json({
+      success: true,
+      message: 'Contraseña restablecida correctamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error al restablecer contraseña:', error);
+    
+    let errorMessage = 'Error al restablecer la contraseña';
+    
+    // Manejar errores específicos de Cognito
+    if (error.name === 'UserNotFoundException') {
+      errorMessage = 'No existe una cuenta con ese correo electrónico';
+    } else if (error.name === 'InvalidPasswordException') {
+      errorMessage = 'La contraseña no cumple con los requisitos de seguridad';
+    } else if (error.name === 'LimitExceededException') {
+      errorMessage = 'Has excedido el límite de intentos. Por favor, intenta más tarde';
+    } else if (error.name === 'InvalidParameterException') {
+      errorMessage = 'La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas, números y caracteres especiales';
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: errorMessage
+    });
+  }
 });
 
 // ============ RENOVACIÓN DE TOKEN ============

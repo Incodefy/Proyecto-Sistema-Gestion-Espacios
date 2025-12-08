@@ -76,11 +76,11 @@
                       <div class="preview-box" 
                            id="previewBox" 
                            role="img"
-                           aria-label="Vista previa del color actual"
+                           :aria-label="<%= t('profile.color_picker.preview_aria') %>"
                            data-preview-color="<%= personalization['theme.primary_color'] || '#1a3c7c' %>"></div>
                       <div class="preview-info">
-                        <span class="preview-label">Color actual:</span>
-                        <span class="preview-name" id="previewName">Azul</span>
+                        <span class="preview-label"><%= t('profile.color_picker.current_color') %></span>
+                        <span class="preview-name" id="previewName"><%= t('colors.blue') %></span>
                         <span class="preview-hex" id="previewHex"><%= personalization['theme.primary_color'] || '#1a3c7c' %></span>
                       </div>
                     </div>
@@ -92,10 +92,10 @@
                     <button type="button" 
                             class="btn-open-color-picker" 
                             id="openColorPicker"
-                            aria-label="Abrir selector de colores"
+                            :aria-label="<%= t('profile.color_picker.open_picker_aria') %>"
                             aria-haspopup="dialog">
                       <i class="fas fa-palette" aria-hidden="true"></i>
-                      <span>Explorar más colores</span>
+                      <span><%= t('profile.color_picker.explore_colors') %></span>
                       <i class="fas fa-chevron-right" aria-hidden="true"></i>
                     </button>
                   </div>
@@ -107,6 +107,7 @@
                   <div class="form-group">
                     <label id="font-scale-label"><%= t('profile.font.scale') %></label>
                     <div class="radio-group" role="radiogroup" aria-labelledby="font-scale-label">
+                      <%
                         const fontScales = [
                           { value: 'pequeno', label: 'small' },
                           { value: 'mediano', label: 'medium' },
@@ -127,14 +128,14 @@
                       <% }); %>
                     </div>
                   </div>
-                </div>
+                </fieldset>
 
                 <!-- Idioma -->
-                <div class="form-section">
-                  <h4><i class="fas fa-globe"></i> <%= t('profile.language.title') %></h4>
+                <fieldset class="form-section">
+                  <legend><h3><i class="fas fa-globe" aria-hidden="true"></i> <%= t('profile.language.title') %></h3></legend>
                   <div class="form-group">
-                    <label><%= t('profile.language.interface_language') %></label>
-                    <select name="locale.language" class="form-select">
+                    <label for="locale-language"><%= t('profile.language.interface_language') %></label>
+                    <select name="locale.language" id="locale-language" class="form-select" aria-label="Seleccionar idioma">
                       <option value="es" <%= (!personalization['locale.language'] || personalization['locale.language'] === 'es') ? 'selected' : '' %>>
                         🇪🇸 <%= t('languages.es') %>
                       </option>
@@ -142,119 +143,105 @@
                         🇺🇸 <%= t('languages.en') %>
                       </option>
                       <option value="ar" <%= personalization['locale.language'] === 'ar' ? 'selected' : '' %>>
-                        ar <%= t('languages.ar') %>
+                        <%= t('languages.ar') %>
                       </option>
                       <option value="bn" <%= personalization['locale.language'] === 'bn' ? 'selected' : '' %>>
-                        bn <%= t('languages.bn') %>
+                        <%= t('languages.bn') %>
                       </option>
                       <option value="de" <%= personalization['locale.language'] === 'de' ? 'selected' : '' %>>
-                        de <%= t('languages.de') %>
+                        🇩🇪 <%= t('languages.de') %>
                       </option>
                       <option value="fa" <%= personalization['locale.language'] === 'fa' ? 'selected' : '' %>>
-                        fa <%= t('languages.fa') %>
+                        <%= t('languages.fa') %>
                       </option>
                       <option value="fr" <%= personalization['locale.language'] === 'fr' ? 'selected' : '' %>>
-                        fr <%= t('languages.fr') %>
+                        🇫🇷 <%= t('languages.fr') %>
                       </option>
                       <option value="hi" <%= personalization['locale.language'] === 'hi' ? 'selected' : '' %>>
-                        hi <%= t('languages.hi') %>
+                        <%= t('languages.hi') %>
                       </option>
                       <option value="it" <%= personalization['locale.language'] === 'it' ? 'selected' : '' %>>
-                        it <%= t('languages.it') %>
+                        🇮🇹 <%= t('languages.it') %>
                       </option>
                       <option value="ja" <%= personalization['locale.language'] === 'ja' ? 'selected' : '' %>>
-                        ja <%= t('languages.ja') %>
+                        🇯🇵 <%= t('languages.ja') %>
                       </option>
                       <option value="jv" <%= personalization['locale.language'] === 'jv' ? 'selected' : '' %>>
-                        jv <%= t('languages.jv') %>
+                        <%= t('languages.jv') %>
                       </option>
                       <option value="ko" <%= personalization['locale.language'] === 'ko' ? 'selected' : '' %>>
-                        ko <%= t('languages.ko') %>
+                        🇰🇷 <%= t('languages.ko') %>
                       </option>
                       <option value="mr" <%= personalization['locale.language'] === 'mr' ? 'selected' : '' %>>
-                        mr <%= t('languages.mr') %>
+                        <%= t('languages.mr') %>
                       </option>
                       <option value="nl" <%= personalization['locale.language'] === 'nl' ? 'selected' : '' %>>
-                        nl <%= t('languages.nl') %>
+                        🇳🇱 <%= t('languages.nl') %>
                       </option>
                       <option value="pa" <%= personalization['locale.language'] === 'pa' ? 'selected' : '' %>>
-                        pa <%= t('languages.pa') %>
+                        <%= t('languages.pa') %>
                       </option>
                       <option value="pl" <%= personalization['locale.language'] === 'pl' ? 'selected' : '' %>>
-                        pl <%= t('languages.pl') %>
+                        🇵🇱 <%= t('languages.pl') %>
                       </option>
                       <option value="pt" <%= personalization['locale.language'] === 'pt' ? 'selected' : '' %>>
-                        pt <%= t('languages.pt') %>
+                        🇵🇹 <%= t('languages.pt') %>
                       </option>
                       <option value="ru" <%= personalization['locale.language'] === 'ru' ? 'selected' : '' %>>
-                        ru <%= t('languages.ru') %>
+                        🇷🇺 <%= t('languages.ru') %>
                       </option>
                       <option value="ta" <%= personalization['locale.language'] === 'ta' ? 'selected' : '' %>>
-                        ta <%= t('languages.ta') %>
+                        <%= t('languages.ta') %>
                       </option>
                       <option value="te" <%= personalization['locale.language'] === 'te' ? 'selected' : '' %>>
-                        te <%= t('languages.te') %>
+                        <%= t('languages.te') %>
                       </option>
                       <option value="th" <%= personalization['locale.language'] === 'th' ? 'selected' : '' %>>
                         🇹🇭 <%= t('languages.th') %>
                       </option>
                       <option value="tr" <%= personalization['locale.language'] === 'tr' ? 'selected' : '' %>>
-                        tr <%= t('languages.tr') %>
+                        🇹🇷 <%= t('languages.tr') %>
                       </option>
                       <option value="ur" <%= personalization['locale.language'] === 'ur' ? 'selected' : '' %>>
-                        ur <%= t('languages.ur') %>
+                        <%= t('languages.ur') %>
                       </option>
                       <option value="vi" <%= personalization['locale.language'] === 'vi' ? 'selected' : '' %>>
-                        vi <%= t('languages.vi') %>
+                        🇻🇳 <%= t('languages.vi') %>
                       </option>
                       <option value="zh" <%= personalization['locale.language'] === 'zh' ? 'selected' : '' %>>
-                        zh <%= t('languages.zh') %>
+                        🇨🇳 <%= t('languages.zh') %>
                       </option>
                     </select>
                   </div>
-                </div>
+                </fieldset>
 
                 <!-- Espacio de Trabajo -->
-                <div class="fc">
-                  <h4><i class="fas fa-layer-group"></i> <%= t('profile.workspace.title') %></h4>
-                  <div class="fg form-group">
-                    <label class="tl"><%= t('profile.workspace.active_group') %></label>
-                    <div class="current-group-info" id="currentGroupInfo">
+                <fieldset class="form-section">
+                  <legend><h3><i class="fas fa-layer-group" aria-hidden="true"></i> <%= t('profile.workspace.title') %></h3></legend>
+                  <div class="form-group">
+                    <label for="currentGroupInfo"><%= t('profile.workspace.active_group') %></label>
+                    <div class="current-group-info" id="currentGroupInfo" role="status" aria-live="polite">
                       <div class="spinner-border spinner-border-sm" role="status">
                         <span class="visually-hidden">Cargando...</span>
                       </div>
                       <span class="ms-2"><%= t('profile.workspace.loading') %></span>
                     </div>
-                    <button type="button" class="ch btn btn-outline-primary mt-2" id="changeGroupBtn">
-                      <i class="fas fa-exchange-alt"></i> <%= t('profile.workspace.change_group') %>
+                    <button type="button" class="btn btn-outline-primary mt-2" id="changeGroupBtn">
+                      <i class="fas fa-exchange-alt" aria-hidden="true"></i> <%= t('profile.workspace.change_group') %>
                     </button>
-                    <a href="/onboarding-espacios" class="ch btn btn-outline-success mt-2">
-                      <i class="fas fa-th-large"></i> <%= t('profile.workspace.manage_spaces') %>
+                    <a href="/onboarding-espacios" class="btn btn-outline-success mt-2">
+                      <i class="fas fa-th-large" aria-hidden="true"></i> <%= t('profile.workspace.manage_spaces') %>
                     </a>
                   </div>
-                </div>
-
-                <!-- Botones de acción -->
-                <div class="form-actions">
-                  <button type="submit" id="saveBtn" class="btn btn-primary">
-                    <i class="fas fa-save"></i> <%= t('profile.buttons.save') %>
-                  </button>
-                </div>
-
-                <!-- Loader y mensajes -->
-                <div id="loader" class="loader d-none">
-                  <i class="fas fa-spinner fa-spin"></i> <%= t('profile.messages.saving') %>
-                </div>
-                <div id="message" class="message"></div>
+                </fieldset>
               </form>
             </div>
           </div>
         </div>
       </div>
-
-      <%- include('footer') %>
     </div>
   </div>
+  <%- include('footer') %>
 
   <!-- Modal para cambiar de grupo -->
   <div class="modal fade" id="changeGroupModal" tabindex="-1" aria-labelledby="changeGroupModalLabel">
@@ -271,7 +258,7 @@
             <div class="loading d-none">
               <div class="text-center py-4">
                 <div class="spinner-border" role="status">
-                  <span class="visually-hidden">Cargando grupos...</span>
+                  <span class="visually-hidden"><%= t('profile.workspace.loading_groups') %></span>
                 </div>
               </div>
             </div>
@@ -290,7 +277,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="colorPickerModalLabel">
-            <i class="fas fa-palette"></i> Seleccionar Color
+            <i class="fas fa-palette"></i> <%= t('profile.color_picker.select_color') %>
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -299,7 +286,7 @@
           <div class="color-preview-large" id="colorPreviewLarge">
             <div class="preview-large-box" id="previewLargeBox" data-preview-color="<%= personalization['theme.primary_color'] || '#1a3c7c' %>"></div>
             <div class="preview-large-info">
-              <span class="preview-large-name" id="previewLargeName">Selecciona un color</span>
+              <span class="preview-large-name" id="previewLargeName"><%= t('profile.color_picker.select_a_color') %></span>
               <span class="preview-large-hex" id="previewLargeHex"><%= personalization['theme.primary_color'] || '#1a3c7c' %></span>
             </div>
           </div>          
@@ -308,14 +295,14 @@
             <input type="text" 
                    id="colorSearch" 
                    class="color-search-input" 
-                   placeholder="Buscar color por nombre...">
+                   :placeholder="<%= t('profile.color_picker.search_placeholder') %>">
             <i class="fas fa-search color-search-icon"></i>
           </div>
 
           <!-- Colores Populares -->
           <div class="color-category">
             <h6 class="category-title">
-              <i class="fas fa-star"></i> Colores Populares
+              <i class="fas fa-star"></i> <%= t('profile.color_picker.categories.popular') %>
             </h6>
             <div class="color-grid" id="popularColors"></div>
           </div>
@@ -323,7 +310,7 @@
           <!-- Colores Vibrantes -->
           <div class="color-category">
             <h6 class="category-title">
-              <i class="fas fa-bolt"></i> Vibrantes
+              <i class="fas fa-bolt"></i> <%= t('profile.color_picker.categories.vibrant') %>
             </h6>
             <div class="color-grid" id="vibrantColors"></div>
           </div>
@@ -331,7 +318,7 @@
           <!-- Colores Pasteles -->
           <div class="color-category">
             <h6 class="category-title">
-              <i class="fas fa-cloud"></i> Pasteles
+              <i class="fas fa-cloud"></i> <%= t('profile.color_picker.categories.pastel') %>
             </h6>
             <div class="color-grid" id="pastelColors"></div>
           </div>
@@ -339,17 +326,17 @@
           <!-- Colores Oscuros -->
           <div class="color-category">
             <h6 class="category-title">
-              <i class="fas fa-moon"></i> Oscuros
+              <i class="fas fa-moon"></i> <%= t('profile.color_picker.categories.dark') %>
             </h6>
             <div class="color-grid" id="darkColors"></div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Cancelar
+            <%= t('profile.buttons.cancel') %>
           </button>
           <button type="button" class="btn btn-secondary" id="confirmColorBtn">
-            Aplicar Color
+            <%= t('profile.color_picker.apply_color') %>
           </button>
         </div>
       </div>
@@ -357,6 +344,52 @@
   </div>
 
   <!-- Script externo para perfil -->
+  <script nonce="<%= cspNonce %>">
+    // Traducciones de workspace para uso en JavaScript
+    window.WORKSPACE_TRANSLATIONS = {
+      active_badge: "<%= t('profile.workspace.active_badge') %>",
+      select_badge: "<%= t('profile.workspace.select_badge') %>"
+    };
+    
+    // Pasar traducciones de nombres de colores al cliente
+    window.COLOR_TRANSLATIONS = {
+      "Azul": "<%= t('profile.color_picker.color_names.Azul') %>",
+      "Rojo": "<%= t('profile.color_picker.color_names.Rojo') %>",
+      "Verde": "<%= t('profile.color_picker.color_names.Verde') %>",
+      "Púrpura": "<%= t('profile.color_picker.color_names.Púrpura') %>",
+      "Naranja": "<%= t('profile.color_picker.color_names.Naranja') %>",
+      "Rojo Vibrante": "<%= t('profile.color_picker.color_names.Rojo Vibrante') %>",
+      "Naranja Intenso": "<%= t('profile.color_picker.color_names.Naranja Intenso') %>",
+      "Ámbar": "<%= t('profile.color_picker.color_names.Ámbar') %>",
+      "Lima": "<%= t('profile.color_picker.color_names.Lima') %>",
+      "Esmeralda": "<%= t('profile.color_picker.color_names.Esmeralda') %>",
+      "Cian": "<%= t('profile.color_picker.color_names.Cian') %>",
+      "Azul Rey": "<%= t('profile.color_picker.color_names.Azul Rey') %>",
+      "Violeta": "<%= t('profile.color_picker.color_names.Violeta') %>",
+      "Rosa Fucsia": "<%= t('profile.color_picker.color_names.Rosa Fucsia') %>",
+      "Rosa Intenso": "<%= t('profile.color_picker.color_names.Rosa Intenso') %>",
+      "Rosa Pastel": "<%= t('profile.color_picker.color_names.Rosa Pastel') %>",
+      "Melocotón": "<%= t('profile.color_picker.color_names.Melocotón') %>",
+      "Amarillo Suave": "<%= t('profile.color_picker.color_names.Amarillo Suave') %>",
+      "Lima Pastel": "<%= t('profile.color_picker.color_names.Lima Pastel') %>",
+      "Verde Menta": "<%= t('profile.color_picker.color_names.Verde Menta') %>",
+      "Celeste": "<%= t('profile.color_picker.color_names.Celeste') %>",
+      "Azul Cielo": "<%= t('profile.color_picker.color_names.Azul Cielo') %>",
+      "Lavanda": "<%= t('profile.color_picker.color_names.Lavanda') %>",
+      "Rosa Claro": "<%= t('profile.color_picker.color_names.Rosa Claro') %>",
+      "Coral Suave": "<%= t('profile.color_picker.color_names.Coral Suave') %>",
+      "Pizarra": "<%= t('profile.color_picker.color_names.Pizarra') %>",
+      "Azul Marino": "<%= t('profile.color_picker.color_names.Azul Marino') %>",
+      "Rosa Oscuro": "<%= t('profile.color_picker.color_names.Rosa Oscuro') %>",
+      "Púrpura Oscuro": "<%= t('profile.color_picker.color_names.Púrpura Oscuro') %>",
+      "Marrón": "<%= t('profile.color_picker.color_names.Marrón') %>",
+      "Verde Oscuro": "<%= t('profile.color_picker.color_names.Verde Oscuro') %>",
+      "Verde Azulado": "<%= t('profile.color_picker.color_names.Verde Azulado') %>",
+      "Azul Profundo": "<%= t('profile.color_picker.color_names.Azul Profundo') %>",
+      "Índigo Oscuro": "<%= t('profile.color_picker.color_names.Índigo Oscuro') %>",
+      "Carmesí": "<%= t('profile.color_picker.color_names.Carmesí') %>"
+    };
+  </script>
   <script src="/js/color-picker.js?v=<%= Date.now() %>"></script>
   <script src="/js/perfil.js?v=<%= Date.now() %>"></script>
   <script src="/js/notifications.js?v=<%= Date.now() %>"></script>

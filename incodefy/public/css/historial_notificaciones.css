@@ -47,7 +47,7 @@ body {
 /* ========== HEADER CON TABS INTEGRADOS ========== */
 
 .page-header {
-    margin-bottom: 3.5rem;
+    margin-bottom: 2rem;
 }
 
 .header-content {
@@ -126,6 +126,8 @@ body {
 
 .tabs-container {
     position: relative;
+    margin: 0!important;
+    padding: 0!important;
 }
 
 .tab-panel {
@@ -134,7 +136,11 @@ body {
 }
 
 .tab-panel.active {
-    display: block;
+    display: block !important;
+}
+
+.tab-panel[hidden] {
+    display: none !important;
 }
 
 @keyframes fadeIn {
@@ -161,7 +167,6 @@ body {
     flex-direction: column;
     gap: 1rem;
     animation: slideInUp 0.5s ease-out;
-    margin-top: -1.4rem!important;
 }
 
 @keyframes slideInUp {
@@ -535,7 +540,7 @@ body {
     border-bottom: 1px solid var(--border-color);
     padding: 1.25rem;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
 }
 
@@ -543,6 +548,7 @@ body {
     width: 52px;
     height: 52px;
     min-width: 52px;
+    flex-shrink: 0;
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -551,6 +557,10 @@ body {
     color: white;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
+}
+
+.preference-icon i {
+    color: white !important;
 }
 
 .preference-card:hover .preference-icon {
@@ -576,6 +586,7 @@ body {
 
 .preference-header-text {
     flex: 1;
+    min-width: 0;
 }
 
 .preference-header-text h5 {
@@ -583,11 +594,16 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-color)!important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .preference-header-text small {
     color: var(--secondary-text-color);
     font-size: 0.85rem;
+    display: block;
+    line-height: 1.3;
 }
 
 .preference-card-body {

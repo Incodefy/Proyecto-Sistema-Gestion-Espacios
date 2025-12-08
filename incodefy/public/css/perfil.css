@@ -22,16 +22,37 @@
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   background: var(--background-color)!important;
   color: var(--text-color);
   transition: background-color 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.container-fluid {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  max-width: 100%;
 }
 
 .main {
   margin-left: 0;
   padding: 5rem 0 2rem 0 !important;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .top-header {
@@ -55,7 +76,7 @@ body {
 .profile-card {
   background: var(--card-background);
   border-radius: 16px;
-  padding: 2rem 2rem 1.4rem 2rem;
+  padding: 2rem 2rem 0rem 2rem;
   box-shadow: 0 4px 20px rgba(44, 90, 160, 0.08);
   border: 1px solid var(--border-color);
 }
@@ -640,8 +661,8 @@ body[data-theme="dark"] .radio-option {
   top: 0;
   left: 0;
   z-index: 1040;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background-color: #000;
 }
 
@@ -878,6 +899,12 @@ body[data-theme="dark"] .message.error {
 }
 
 /* Responsive */
+@media (max-width: 991px) {
+  .main {
+    padding: 7rem 1rem 2rem 1rem !important;
+  }
+}
+
 @media (max-width: 768px) {
   .radio-group {
     flex-direction: column;
@@ -893,10 +920,6 @@ body[data-theme="dark"] .message.error {
   
   .profile-card {
     padding: 1.5rem;
-  }
-  
-  .main {
-    padding: 3rem 1rem 2rem 1rem !important;
   }
 
   .color-grid {

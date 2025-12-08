@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "취소"
     },
     "messages": {
       "saving": "저장 중...",
@@ -68,6 +69,70 @@
       "save_success": "변경 사항이 저장되었습니다. 페이지가 다시 로드됩니다...",
       "preview_disabled": "미리 보기가 비활성화되었습니다. 변경 사항을 저장하여 적용하세요.",
       "unsaved": "저장되지 않은 변경 사항"
+    },
+    "workspace": {
+      "title": "작업 공간",
+      "active_group": "활성 그룹",
+      "loading": "그룹 정보 로드 중...",
+      "change_group": "그룹 변경",
+      "select_group": "그룹 선택",
+      "manage_spaces": "공간 관리",
+      "loading_groups": "그룹 로드 중...",
+      "active_badge": "활성",
+      "select_badge": "선택"
+    },
+    "color_picker": {
+      "current_color": "현재 색상:",
+      "preview_aria": "현재 색상 미리보기",
+      "open_picker_aria": "색상 선택기 열기",
+      "explore_colors": "더 많은 색상 탐색",
+      "select_color": "색상 선택",
+      "select_a_color": "색상을 선택하세요",
+      "search_placeholder": "이름으로 색상 검색...",
+      "apply_color": "색상 적용",
+      "categories": {
+        "popular": "인기 색상",
+        "vibrant": "선명한",
+        "pastel": "파스텔",
+        "dark": "어두운"
+      },
+      "color_names": {
+        "Azul": "파란색",
+        "Rojo": "빨간색",
+        "Verde": "녹색",
+        "Púrpura": "보라색",
+        "Naranja": "주황색",
+        "Rojo Vibrante": "선명한 빨간색",
+        "Naranja Intenso": "진한 주황색",
+        "Ámbar": "호박색",
+        "Lima": "라임",
+        "Esmeralda": "에메랄드",
+        "Cian": "청록색",
+        "Azul Rey": "로얄 블루",
+        "Violeta": "보라",
+        "Rosa Fucsia": "푸크시아 핀크",
+        "Rosa Intenso": "진한 분홀색",
+        "Rosa Pastel": "파스텔 핀크",
+        "Melocotón": "복숭아색",
+        "Amarillo Suave": "부드러운 노란색",
+        "Lima Pastel": "파스텔 라임",
+        "Verde Menta": "민트 그린",
+        "Celeste": "하늘색",
+        "Azul Cielo": "하늘 파랑",
+        "Lavanda": "라벤더",
+        "Rosa Claro": "연한 분홀색",
+        "Coral Suave": "부드러운 산호색",
+        "Pizarra": "슬레이트",
+        "Azul Marino": "남색",
+        "Rosa Oscuro": "진한 분홀색",
+        "Púrpura Oscuro": "진한 보라색",
+        "Marrón": "갈색",
+        "Verde Oscuro": "진한 녹색",
+        "Verde Azulado": "청록색",
+        "Azul Profundo": "깊은 파란색",
+        "Índigo Oscuro": "진한 남색",
+        "Carmesí": "진홍색"
+      }
     }
   },
   "navbar": {

@@ -57,6 +57,59 @@
       "title": "Idioma",
       "interface_language": "Idioma de la interfaz:"
     },
+    "color_picker": {
+      "current_color": "Color actual:",
+      "preview_aria": "Vista previa del color actual",
+      "open_picker_aria": "Abrir selector de colores",
+      "explore_colors": "Explorar más colores",
+      "select_color": "Seleccionar Color",
+      "select_a_color": "Selecciona un color",
+      "search_placeholder": "Buscar color por nombre...",
+      "apply_color": "Aplicar Color",
+      "categories": {
+        "popular": "Colores Populares",
+        "vibrant": "Vibrantes",
+        "pastel": "Pasteles",
+        "dark": "Oscuros"
+      },
+      "color_names": {
+        "Azul": "Azul",
+        "Rojo": "Rojo",
+        "Verde": "Verde",
+        "Púrpura": "Púrpura",
+        "Naranja": "Naranja",
+        "Rojo Vibrante": "Rojo Vibrante",
+        "Naranja Intenso": "Naranja Intenso",
+        "Ámbar": "Ámbar",
+        "Lima": "Lima",
+        "Esmeralda": "Esmeralda",
+        "Cian": "Cian",
+        "Azul Rey": "Azul Rey",
+        "Violeta": "Violeta",
+        "Rosa Fucsia": "Rosa Fucsia",
+        "Rosa Intenso": "Rosa Intenso",
+        "Rosa Pastel": "Rosa Pastel",
+        "Melocotón": "Melocotón",
+        "Amarillo Suave": "Amarillo Suave",
+        "Lima Pastel": "Lima Pastel",
+        "Verde Menta": "Verde Menta",
+        "Celeste": "Celeste",
+        "Azul Cielo": "Azul Cielo",
+        "Lavanda": "Lavanda",
+        "Rosa Claro": "Rosa Claro",
+        "Coral Suave": "Coral Suave",
+        "Pizarra": "Pizarra",
+        "Azul Marino": "Azul Marino",
+        "Rosa Oscuro": "Rosa Oscuro",
+        "Púrpura Oscuro": "Púrpura Oscuro",
+        "Marrón": "Marrón",
+        "Verde Oscuro": "Verde Oscuro",
+        "Verde Azulado": "Verde Azulado",
+        "Azul Profundo": "Azul Profundo",
+        "Índigo Oscuro": "Índigo Oscuro",
+        "Carmesí": "Carmesí"
+      }
+    },
     "buttons": {
       "preview": "Vista previa",
       "save": "Guardar cambios",
@@ -74,9 +127,12 @@
       "title": "Espacio de Trabajo",
       "active_group": "Grupo Activo",
       "loading": "Cargando información del grupo...",
+      "loading_groups": "Cargando grupos...",
       "change_group": "Cambiar Grupo",
       "select_group": "Seleccionar Grupo",
-      "manage_spaces": "Gestionar Espacios"
+      "manage_spaces": "Gestionar Espacios",
+      "active_badge": "Activo",
+      "select_badge": "Seleccionar"
     }
   },
   "navbar": {

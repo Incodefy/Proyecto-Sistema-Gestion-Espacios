@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Event Store - Sistema de almacenamiento de eventos para CQRS/Event Sourcing
  * Almacena todos los eventos del sistema para audit trail y proyecciones
  * 
@@ -9,16 +9,15 @@
 
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { retryDB } = require("./retry");
-const Logger = require("./logger");
-const { getSnapshotStore } = require("./snapshotStore");
+const { Logger } = require("./logger");
 const { getOutboxStore } = require("./outboxStore");
-const { getAmbassador } = require("./awsAmbassador");
 const crypto = require("crypto");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const ambassador = getAmbassador();
+const snsClient = new SNSClient({});
 
 const EVENTS_TABLE = process.env.EVENTS_TABLE || `${process.env.SERVICE_NAME}-${process.env.STAGE}-events`;
 const EVENT_BUS_TOPIC_ARN = process.env.EVENT_BUS_TOPIC_ARN;
@@ -30,7 +29,6 @@ const USE_OUTBOX = process.env.USE_OUTBOX !== 'false'; // Default true
 class EventStore {
   constructor(logger) {
     this.logger = logger || Logger.create({ handler: 'EventStore' });
-    this.snapshotStore = getSnapshotStore();
     this.outboxStore = USE_OUTBOX ? getOutboxStore(logger) : null;
   }
 
@@ -137,20 +135,8 @@ class EventStore {
       this.logger.info('Event appended successfully (legacy)', { eventId });
     }
 
-    // 3. Check if snapshot should be created (every 100 events)
-    const currentVersion = await this.getAggregateVersion(aggregateType, aggregateId);
-    if (this.snapshotStore.shouldCreateSnapshot(currentVersion)) {
-      this.logger.info('Snapshot threshold reached', {
-        aggregateType,
-        aggregateId,
-        version: currentVersion
-      });
-      // Create snapshot asynchronously (don't block)
-      this.createSnapshotAsync(aggregateType, aggregateId, currentVersion, metadata.userId)
-        .catch(err => this.logger.error('Snapshot creation failed', { error: err.message }));
-    }
-
-    return {
+    return eventRecord;
+  }    return {
       eventId,
       timestamp,
       aggregateId
@@ -159,7 +145,6 @@ class EventStore {
 
   /**
    * Publish event to SNS for asynchronous projections
-   * UPDATED: Uses Ambassador for circuit breaker, rate limiting, telemetry
    */
   async publishEventToBus(event) {
     if (!EVENT_BUS_TOPIC_ARN) {
@@ -168,18 +153,20 @@ class EventStore {
     }
 
     try {
-      await ambassador.publishToSNS({
-        topicArn: EVENT_BUS_TOPIC_ARN,
-        message: event,
-        subject: `Event: ${event.eventType}`,
-        attributes: {
-          eventType: event.eventType,
-          aggregateType: event.aggregateType,
-          aggregateId: event.aggregateId
+      const command = new PublishCommand({
+        TopicArn: EVENT_BUS_TOPIC_ARN,
+        Message: JSON.stringify(event),
+        Subject: `Event: ${event.eventType}`,
+        MessageAttributes: {
+          eventType: { DataType: 'String', StringValue: event.eventType },
+          aggregateType: { DataType: 'String', StringValue: event.aggregateType },
+          aggregateId: { DataType: 'String', StringValue: event.aggregateId }
         }
       });
 
-      this.logger.debug('Event published to bus via Ambassador', { eventId: event.eventId });
+      await snsClient.send(command);
+
+      this.logger.debug('Event published to bus', { eventId: event.eventId });
     } catch (error) {
       this.logger.error('Failed to publish event to bus', error, {
         eventId: event.eventId
@@ -242,7 +229,6 @@ class EventStore {
 
   /**
    * Rebuild aggregate state from events (Event Sourcing)
-   * Optimized with snapshots - starts from latest snapshot instead of beginning
    * @param {string} aggregateType - Tipo de agregado
    * @param {string} aggregateId - ID del agregado
    * @param {Function} applyEvent - Función para aplicar eventos al estado
@@ -250,24 +236,9 @@ class EventStore {
   async rebuildAggregateState(aggregateType, aggregateId, applyEvent) {
     let state = {};
     let eventsProcessed = 0;
-    let snapshotVersion = 0;
 
-    // Try to load latest snapshot first
-    const snapshot = await this.snapshotStore.getLatestSnapshot(aggregateType, aggregateId);
-    
-    if (snapshot) {
-      state = snapshot.state;
-      snapshotVersion = snapshot.version;
-      this.logger.debug('Starting from snapshot', {
-        aggregateType,
-        aggregateId,
-        snapshotVersion,
-        snapshotId: snapshot.snapshotId
-      });
-    }
-
-    // Get events after snapshot version
-    const events = await this.getAggregateEvents(aggregateType, aggregateId, snapshotVersion);
+    // Get all events from the beginning
+    const events = await this.getAggregateEvents(aggregateType, aggregateId, 0);
     
     for (const event of events) {
       state = applyEvent(state, event);
@@ -277,10 +248,8 @@ class EventStore {
     this.logger.debug('Aggregate state rebuilt', {
       aggregateType,
       aggregateId,
-      snapshotVersion,
       eventsProcessed,
-      totalVersion: snapshotVersion + eventsProcessed,
-      optimizationSavings: snapshotVersion > 0 ? `${snapshotVersion} events skipped` : 'no snapshot'
+      totalVersion: eventsProcessed
     });
 
     return state;
@@ -310,7 +279,6 @@ class EventStore {
 
   /**
    * Get aggregate version (count of events)
-   * Used to determine when to create snapshots
    */
   async getAggregateVersion(aggregateType, aggregateId) {
     const result = await retryDB(
@@ -326,44 +294,6 @@ class EventStore {
     );
 
     return result.Count || 0;
-  }
-
-  /**
-   * Create snapshot asynchronously
-   * Called when aggregate reaches snapshot threshold (every 100 events)
-   */
-  async createSnapshotAsync(aggregateType, aggregateId, version, userId = 'system') {
-    try {
-      // Rebuild current state
-      const state = await this.rebuildAggregateState(
-        aggregateType,
-        aggregateId,
-        this.getApplyEventFunction(aggregateType)
-      );
-
-      // Save snapshot
-      await this.snapshotStore.saveSnapshot(
-        aggregateType,
-        aggregateId,
-        state,
-        version,
-        userId
-      );
-
-      this.logger.info('Snapshot created successfully', {
-        aggregateType,
-        aggregateId,
-        version
-      });
-    } catch (error) {
-      this.logger.error('Failed to create snapshot', {
-        aggregateType,
-        aggregateId,
-        version,
-        error: error.message
-      });
-      // Don't throw - snapshot creation is best-effort
-    }
   }
 
   /**

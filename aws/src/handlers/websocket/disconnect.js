@@ -1,7 +1,7 @@
-// handlers/websocket/disconnect.js
+﻿// handlers/websocket/disconnect.js
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
-const Logger = require('../../utils/logger');
+const { Logger } = require('../../utils/logger');
 const { retryDB } = require('../../utils/retry');
 const { getSecurityHeaders } = require('../../middleware/securityHeaders');
 

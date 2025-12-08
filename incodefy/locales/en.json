@@ -60,7 +60,8 @@
     "buttons": {
       "preview": "Preview",
       "save": "Save Changes",
-      "reset": "Reset changes"
+      "reset": "Reset changes",
+      "cancel": "Cancel"
     },
     "messages": {
       "saving": "Saving...",
@@ -75,7 +76,63 @@
       "loading": "Loading group information...",
       "change_group": "Change Group",
       "select_group": "Select Group",
-      "manage_spaces": "Manage Spaces"
+      "manage_spaces": "Manage Spaces",
+      "loading_groups": "Loading groups...",
+      "active_badge": "Active",
+      "select_badge": "Select"
+    },
+    "color_picker": {
+      "current_color": "Current color:",
+      "preview_aria": "Preview of current color",
+      "open_picker_aria": "Open color picker",
+      "explore_colors": "Explore more colors",
+      "select_color": "Select Color",
+      "select_a_color": "Select a color",
+      "search_placeholder": "Search color by name...",
+      "apply_color": "Apply Color",
+      "categories": {
+        "popular": "Popular Colors",
+        "vibrant": "Vibrant",
+        "pastel": "Pastel",
+        "dark": "Dark"
+      },
+      "color_names": {
+        "Azul": "Blue",
+        "Rojo": "Red",
+        "Verde": "Green",
+        "Púrpura": "Purple",
+        "Naranja": "Orange",
+        "Rojo Vibrante": "Vibrant Red",
+        "Naranja Intenso": "Intense Orange",
+        "Ámbar": "Amber",
+        "Lima": "Lime",
+        "Esmeralda": "Emerald",
+        "Cian": "Cyan",
+        "Azul Rey": "Royal Blue",
+        "Violeta": "Violet",
+        "Rosa Fucsia": "Fuchsia Pink",
+        "Rosa Intenso": "Intense Pink",
+        "Rosa Pastel": "Pastel Pink",
+        "Melocotón": "Peach",
+        "Amarillo Suave": "Soft Yellow",
+        "Lima Pastel": "Pastel Lime",
+        "Verde Menta": "Mint Green",
+        "Celeste": "Sky Blue",
+        "Azul Cielo": "Light Blue",
+        "Lavanda": "Lavender",
+        "Rosa Claro": "Light Pink",
+        "Coral Suave": "Soft Coral",
+        "Pizarra": "Slate",
+        "Azul Marino": "Navy Blue",
+        "Rosa Oscuro": "Dark Pink",
+        "Púrpura Oscuro": "Dark Purple",
+        "Marrón": "Brown",
+        "Verde Oscuro": "Dark Green",
+        "Verde Azulado": "Teal",
+        "Azul Profundo": "Deep Blue",
+        "Índigo Oscuro": "Dark Indigo",
+        "Carmesí": "Crimson"
+      }
     }
   },
   "navbar": {

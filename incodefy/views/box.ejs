@@ -21,25 +21,12 @@
 
 </head>
 <!-- Se añade el atributo data-theme al body -->
-<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
+<body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>" data-ws-endpoint="<%= wsEndpoint %>">
     <div class="container-fluid">
         <div class="row">
             <%- include('navbar') %>
 
             <main class="main" role="main" aria-label="Contenido principal">
-                <!--  
-                <% if (hasAnyPermission('box.write', 'admin.users')) { %>
-                    <a href="/en-curso"
-                        class="fab-consultas"
-                        aria-label="<%= t('box.in_progress_aria') %>"
-                        data-bs-toggle="tooltip"
-                        data-bs-placement="left"
-                        title="<%= t('box.in_progress_title') %>">
-                        <i class="fas fa-stethoscope" aria-hidden="true"></i>
-                    </a>
-                <% } %>
-                -->
-
                 <!-- Botón flotante: Volver arriba -->
                 <button id="backToTop"
                         class="back-to-top"
@@ -49,78 +36,128 @@
                     <i class="fas fa-arrow-up" aria-hidden="true"></i>
                 </button>
 
+                <!-- Header mejorado con gradiente sutil -->
                 <header class="top-header">
-                    <div class="header-row">
-                    <h1><%= t('box.header') %></h1>
+                    <div class="header-content">
+                        <h1><%= t('box.header') %></h1>
+                        <p class="header-subtitle">Gestión y visualización en tiempo real</p>
                     </div>
                 </header>
 
-                <!-- Filtros -->
-                <section class="filtros" aria-label="Filtros de búsqueda">
-                    <div class="filtros-inputs">
-                    <label for="filtroPasillo" class="visually-hidden"><%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %></label>
-                    <input type="text" 
-                           id="filtroPasillo" 
-                           name="filtroPasillo"
-                           placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>" 
-                           aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>">
-                    <label for="filtroBox" class="visually-hidden"><%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %></label>
-                    <input type="text" 
-                           id="filtroBox" 
-                           name="filtroBox"
-                           placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>" 
-                           aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>">
-                    <label for="filtroEstado" class="visually-hidden"><%= t('box.filters.filter_state') %></label>
-                    <select id="filtroEstado" 
-                            name="filtroEstado"
-                            aria-label="<%= t('box.filters.filter_state') %>">
-                        <option value=""><%= t('box.filters.show_all') %></option>
-                        <option value="en-uso"><%= t('common.state_in_use') %></option>
-                        <option value="en-espera"><%= t('common.state_waiting') %></option>
-                        <option value="libre"><%= t('common.state_free') %></option>
-                        <option value="inhabilitado"><%= t('common.state_disabled') %></option>
-                    </select>
-                    </div>
-                    <div class="filtros-botones">
-                    <button type="button" data-action="reset-filters"><%= t('common.reset_filters') %></button>
-                    <button type="button" id="toggle-detalles" class="btn-toggle-detalles"><%= t('common.show_details') %></button>
-                    </div>
-                </section>
-
-                <!-- Resumen de estados -->
-                <section class="resumen-estados row align-items-stretch" 
+                <!-- Resumen de estados - Rediseñado -->
+                <section class="stats-overview" 
                          id="resumenEstados" 
                          aria-label="Resumen de estados de espacios"
                          role="region">
-                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
-                    <div class="estado-card libre">
-                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h2>
-                        <p id="count-libre" aria-label="Cantidad de espacios libres"><%= contadoresEstados.libre %></p>
+                    <div class="stats-grid">
+                        <article class="stat-card stat-libre">
+                            <div class="stat-icon">
+                                <i class="fas fa-door-open"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h2 class="stat-label"><%= nomenclatura.especifico %>s <%= t('common.state_free_plural') %></h2>
+                                <p class="stat-value" id="count-libre" aria-label="Cantidad de espacios libres"><%= contadoresEstados.libre %></p>
+                            </div>
+                        </article>
+                        
+                        <article class="stat-card stat-espera">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h2 class="stat-label"><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h2>
+                                <p class="stat-value" id="count-en-espera" aria-label="Cantidad de espacios en espera"><%= contadoresEstados['en-espera'] %></p>
+                            </div>
+                        </article>
+                        
+                        <article class="stat-card stat-uso">
+                            <div class="stat-icon">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h2 class="stat-label"><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h2>
+                                <p class="stat-value" id="count-en-uso" aria-label="Cantidad de espacios en uso"><%= contadoresEstados['en-uso'] %></p>
+                            </div>
+                        </article>
+                        
+                        <article class="stat-card stat-inhabilitado">
+                            <div class="stat-icon">
+                                <i class="fas fa-ban"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h2 class="stat-label"><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h2>
+                                <p class="stat-value" id="count-inhabilitado" aria-label="Cantidad de espacios inhabilitados"><%= contadoresEstados.inhabilitado %></p>
+                            </div>
+                        </article>
                     </div>
-                    </article>
-                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
-                    <div class="estado-card en-espera">
-                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_waiting_plural') %></h2>
-                        <p id="count-en-espera" aria-label="Cantidad de espacios en espera"><%= contadoresEstados['en-espera'] %></p>
+                </section>
+
+                <!-- Filtros rediseñados -->
+                <section class="filters-section" aria-label="Filtros de búsqueda">
+                    <div class="filters-container">
+                        <div class="filters-grid">
+                            <div class="filter-group">
+                                <label for="filtroPasillo" class="filter-label">
+                                    <i class="fas fa-building"></i>
+                                    <%= nomenclatura.general %>
+                                </label>
+                                <input type="text" 
+                                       id="filtroPasillo" 
+                                       name="filtroPasillo"
+                                       class="filter-input"
+                                       placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>" 
+                                       aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.general }) %>">
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filtroBox" class="filter-label">
+                                    <i class="fas fa-door-closed"></i>
+                                    <%= nomenclatura.especifico %>
+                                </label>
+                                <input type="text" 
+                                       id="filtroBox" 
+                                       name="filtroBox"
+                                       class="filter-input"
+                                       placeholder="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>" 
+                                       aria-label="<%= t('box.filters.filter_by', { tipo: nomenclatura.especifico }) %>">
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="filtroEstado" class="filter-label">
+                                    <i class="fas fa-filter"></i>
+                                    Estado
+                                </label>
+                                <select id="filtroEstado" 
+                                        name="filtroEstado"
+                                        class="filter-select"
+                                        aria-label="<%= t('box.filters.filter_state') %>">
+                                    <option value=""><%= t('box.filters.show_all') %></option>
+                                    <option value="en-uso"><%= t('common.state_in_use') %></option>
+                                    <option value="en-espera"><%= t('common.state_waiting') %></option>
+                                    <option value="libre"><%= t('common.state_free') %></option>
+                                    <option value="inhabilitado"><%= t('common.state_disabled') %></option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="filters-actions">
+                            <button type="button" class="btn-action btn-secondary" data-action="reset-filters">
+                                <i class="fas fa-redo"></i>
+                                <%= t('common.reset_filters') %>
+                            </button>
+                            <button type="button" id="toggle-detalles" class="btn-action btn-primary">
+                                <i class="fas fa-eye"></i>
+                                <span class="btn-text"><%= t('common.show_details') %></span>
+                            </button>
+                        </div>
                     </div>
-                    </article>
-                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
-                    <div class="estado-card en-uso">
-                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_in_use_plural') %></h2>
-                        <p id="count-en-uso" aria-label="Cantidad de espacios en uso"><%= contadoresEstados['en-uso'] %></p>
-                    </div>
-                    </article>
-                    <article class="col-5 col-sm-5 col-md-3 col-lg-2 mb-4">
-                    <div class="estado-card inhabilitado">
-                        <h2><%= nomenclatura.especifico %>s <%= t('common.state_disabled_plural') %></h2>
-                        <p id="count-inhabilitado" aria-label="Cantidad de espacios inhabilitados"><%= contadoresEstados.inhabilitado %></p>
-                    </div>
-                    </article>
-                </div>
+                </section>
 
                 <!-- Mensaje sin resultados -->
-                <div id="mensaje-no-resultados" class="no-resultados hidden">
-                    <i class="fas fa-search"></i>
+                <div id="mensaje-no-resultados" class="no-results hidden">
+                    <div class="no-results-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
                     <h3><%= t('common.no_results') %></h3>
                     <p><%= t('common.no_results_desc') %></p>
                 </div>
@@ -130,60 +167,103 @@
                     const match = generalNombre.match(/\d+/);
                     const count = match ? parseInt(match[0], 10) : 0;
                 %>
-                    <div class="general-bloque" data-general-nombre="<%= generalNombre %>">
-                        <div class="general-nombre"><%= generalNombre %></div>
-                        <div class="general-content row">
-                        <% generales_especificos_map[generalNombre].forEach(especifico => { %>
-                            <div class="col-12 col-sm-6 col-md-4 col-lg-4 col-xl-3 col-xxl-2 mb-3">
-                            <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
-                                <!-- Si tiene permiso, hacer clickeable -->
-                                <a href="/especifico/<%= encodeURIComponent(especifico.id) %>" 
-                                class="especifico-card" 
-                                data-especifico-nombre="<%= especifico.nombre %>" 
-                                data-general="<%= generalNombre %>">
-                            <% } else { %>
-                                <!-- Si no tiene permiso, mostrar como div sin enlace -->
-                                <div class="especifico-card disabled" 
-                                data-especifico-nombre="<%= especifico.nombre %>" 
-                                data-general="<%= generalNombre %>"
-                                title="<%= t('box.no_permission_title') %>">
-                            <% } %>
-                                <h3><%= especifico.nombre %></h3>
-                                <div id="info-especifico-<%= especifico.id %>" class="info-especifico">
-                                    <div class="contenido-especifico <%= detallesVisibles ? '' : 'oculto' %>">
-                                        <% if (especifico.estado === "Libre" && (!especifico.proxima_consulta || especifico.proxima_consulta.trim() === '')) { %>
-                                            <p><%= t('box.no_next_consultations') %></p>
-                                        <% } else if (especifico.proxima_consulta) { %>
-                                            <p><%= t('box.next_appointment') %>: <%= especifico.proxima_consulta %></p>
-                                        <% } %>
-                                        
-                                        <% if (especifico.medico) { %>
-                                            <p><strong><%= nomenclatura.ocupante %>:</strong> <%= especifico.medico %></p>
-                                        <% } %>
-                                        
-                                        <% if (especifico.especialidad) { %>
-                                            <p><strong><%= nomenclatura.especialidad %>:</strong> <%= especifico.especialidad %></p>
-                                        <% } %>
-                                        
-                                        <% if (especifico.consulta_actual) { %>
-                                            <p><strong><%= t('common.hour') || t('common.start_time') %>:</strong> <%= especifico.consulta_actual %></p>
-                                        <% } %>
-                                    </div>
-                                    <div class="estado-bar <%= especifico.estado.replace(/\s+/g, '-').toLowerCase() %>">
-                                        <%= especifico.estado %>
-                                    </div>
+                    <div class="space-section" data-general-nombre="<%= generalNombre %>">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <div class="section-icon">
+                                    <i class="fas fa-layer-group"></i>
                                 </div>
-                            <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
-                                </a>
-                            <% } else { %>
-                                </div>
-                            <% } %>
+                                <h2><%= generalNombre %></h2>
                             </div>
-                        <% }) %>
+                            <div class="section-badge">
+                                <%= generales_especificos_map[generalNombre].length %> espacios
+                            </div>
+                        </div>
+                        
+                        <div class="spaces-grid">
+                            <% generales_especificos_map[generalNombre].forEach(especifico => { %>
+                                <div class="space-card-wrapper">
+                                    <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
+                                        <a href="/especifico/<%= encodeURIComponent(especifico.id) %>" 
+                                           class="space-card" 
+                                           data-especifico-nombre="<%= especifico.nombre %>" 
+                                           data-general="<%= generalNombre %>">
+                                    <% } else { %>
+                                        <div class="space-card space-card-disabled" 
+                                             data-especifico-nombre="<%= especifico.nombre %>" 
+                                             data-general="<%= generalNombre %>"
+                                             title="<%= t('box.no_permission_title') %>">
+                                    <% } %>
+                                        <div class="space-card-header">
+                                            <h3 class="space-name"><%= especifico.nombre %></h3>
+                                            <div class="space-status-indicator <%= especifico.estado.replace(/\s+/g, '-').toLowerCase() %>">
+                                                <span class="status-dot"></span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="info-especifico-<%= especifico.id %>" class="space-info">
+                                            <div class="space-details <%= detallesVisibles ? '' : 'oculto' %>">
+                                                <% if (especifico.estado === "Libre" && (!especifico.proxima_consulta || especifico.proxima_consulta.trim() === '')) { %>
+                                                    <div class="info-item info-empty">
+                                                        <i class="fas fa-calendar-check"></i>
+                                                        <span><%= t('box.no_next_consultations') %></span>
+                                                    </div>
+                                                <% } else if (especifico.proxima_consulta) { %>
+                                                    <div class="info-item">
+                                                        <i class="fas fa-calendar-alt"></i>
+                                                        <div class="info-content">
+                                                            <span class="info-label"><%= t('box.next_appointment') %></span>
+                                                            <span class="info-value"><%= especifico.proxima_consulta %></span>
+                                                        </div>
+                                                    </div>
+                                                <% } %>
+                                                
+                                                <% if (especifico.medico) { %>
+                                                    <div class="info-item">
+                                                        <i class="fas fa-user-md"></i>
+                                                        <div class="info-content">
+                                                            <span class="info-label"><%= nomenclatura.ocupante %></span>
+                                                            <span class="info-value"><%= especifico.medico %></span>
+                                                        </div>
+                                                    </div>
+                                                <% } %>
+                                                
+                                                <% if (especifico.especialidad) { %>
+                                                    <div class="info-item">
+                                                        <i class="fas fa-stethoscope"></i>
+                                                        <div class="info-content">
+                                                            <span class="info-label"><%= nomenclatura.especialidad %></span>
+                                                            <span class="info-value"><%= especifico.especialidad %></span>
+                                                        </div>
+                                                    </div>
+                                                <% } %>
+                                                
+                                                <% if (especifico.consulta_actual) { %>
+                                                    <div class="info-item">
+                                                        <i class="fas fa-clock"></i>
+                                                        <div class="info-content">
+                                                            <span class="info-label"><%= t('common.hour') || t('common.start_time') %></span>
+                                                            <span class="info-value"><%= especifico.consulta_actual %></span>
+                                                        </div>
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                            
+                                            <div class="space-status-bar <%= especifico.estado.replace(/\s+/g, '-').toLowerCase() %>">
+                                                <span class="status-text"><%= especifico.estado %></span>
+                                            </div>
+                                        </div>
+                                    <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
+                                        </a>
+                                    <% } else { %>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            <% }) %>
                         </div>
                     </div>
                 <% }) %>
-            </div>
+            </main>
 
             <%- include('footer') %>
         </div>

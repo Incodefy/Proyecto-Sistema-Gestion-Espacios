@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CQRS CreateAppointment Handler - Usando Command Bus
  * Este handler usa el command bus para ejecutar comandos y generar eventos
  * 
@@ -11,7 +11,7 @@
 const { getCommandBus, Commands } = require("../../utils/commandBus");
 const { handleCreateAppointment } = require("../../utils/commandHandlers");
 const { createAPIHandler } = require("../../middleware/interceptors");
-const Logger = require("../../utils/logger");
+const { Logger } = require("../../utils/logger");
 
 /**
  * Crear appointment usando CQRS

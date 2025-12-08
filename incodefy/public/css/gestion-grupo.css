@@ -335,7 +335,7 @@ body[data-theme="dark"] .icon-btn.danger:hover {
 
 .space-specific-box {
   position: relative;
-  padding: 0.5rem 3rem 0.5rem 0.75rem;
+  padding: 0.5rem 4rem 0.5rem 0.75rem;
   background-color: #e2e8f0;
   color: #1e293b;
   border-radius: 0.5rem;
@@ -640,15 +640,7 @@ body[data-theme="dark"] .btn-secondary:hover {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .management-container {
-    padding: 1rem;
-  }
-
-  .page-title {
-    font-size: 2rem;
-  }
-
+@media (max-width: 991px) {
   .tabs-navigation {
     overflow-x: auto;
     scrollbar-width: thin;
@@ -656,6 +648,16 @@ body[data-theme="dark"] .btn-secondary:hover {
 
   .tab-button {
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .management-container {
+    padding: 1rem;
+  }
+
+  .page-title {
+    font-size: 2rem;
   }
 
   .nomenclatura-grid {
@@ -1169,6 +1171,7 @@ body[data-theme="dark"] .item-meta {
 
 .add-item-section {
   padding: 2rem 1rem 1rem 1rem!important;
+  margin-top: 1.5rem!important;
   border-top: 1px solid var(--border-color);
   display: flex;
   gap: 0.75rem;
@@ -1237,7 +1240,7 @@ body[data-theme="dark"] .empty-state {
 }
 
 /* Responsive */
-@media (max-width: 992px) {
+@media (max-width: 991px) {
   .instrumentos-layout {
     grid-template-columns: 1fr!important;
     height: auto;
@@ -1247,6 +1250,12 @@ body[data-theme="dark"] .empty-state {
   .instrumentos-column .section-card {
     max-height: 500px;
   }
+
+  .main {
+    margin-left: 0;
+    padding: 6rem 0 2.4rem 0!important;
+    min-height: 100vh;
+}
 }
 
 @media (max-width: 768px) {
@@ -1292,7 +1301,7 @@ body[data-theme="dark"] .empty-state {
 /* Botón de agregar espacio general con ancho completo */
 .btn-add-general.btn-full-width {
   width: 100% !important;
-  margin-top: 1rem !important;
+  margin: 0 0 1rem 0 !important;
   justify-content: center !important;
 }
 
