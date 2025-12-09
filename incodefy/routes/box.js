@@ -9,7 +9,7 @@ const CacheManager = require('../utils/cacheManager');
 router.use(requireAuth);
 router.use(attachApiClient);
 
-router.get('/especifico', checkPermission('box.read'), async (req, res) => {
+router.get('/especifico', checkPermission('espacio.read'), async (req, res) => {
   try {
     const filtroGeneral = expandirRangos(req.query.general);
     const filtroEspecifico = expandirRangos(req.query.especifico);

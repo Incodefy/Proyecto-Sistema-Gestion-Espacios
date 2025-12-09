@@ -40,4 +40,4 @@ AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1  # Performance optimization
 
 # === EXTERNAL (from .env or defaults) ===
 SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
-APP_URL: ${env:APP_URL, 'http://localhost:3000'}
+APP_URL: ${env:APP_URL, 'http://incodefy-alb-dev-700255647.us-east-1.elb.amazonaws.com'}

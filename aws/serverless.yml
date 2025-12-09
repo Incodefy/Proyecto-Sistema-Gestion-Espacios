@@ -43,7 +43,7 @@ provider:
     EVENT_BUS_TOPIC_ARN: { Ref: EventBusTopic }
     # SES Configuration
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'incodefy2025@gmail.com'}
-    APP_URL: ${env:APP_URL, 'http://localhost:3000'}
+    APP_URL: ${env:APP_URL, 'http://incodefy-alb-dev-700255647.us-east-1.elb.amazonaws.com'}
     
   logs:
     httpApi: true
@@ -54,6 +54,7 @@ provider:
         # IMPORTANTE: Reemplazar con los dominios reales en producción
         - 'http://localhost:3000'
         - 'https://tu-dominio-produccion.com'
+        - 'http://incodefy-alb-dev-700255647.us-east-1.elb.amazonaws.com'
       allowedHeaders:
         - Content-Type
         - Authorization

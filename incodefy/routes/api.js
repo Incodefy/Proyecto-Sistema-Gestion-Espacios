@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
 const { refreshUserPersonalization } = require('./auth');
+const checkPermission = require('../middleware/checkPermission');
 
 // Middleware para verificar autenticación en API
 const requireAuthAPI = (req, res, next) => {
@@ -13,7 +14,7 @@ const requireAuthAPI = (req, res, next) => {
 };
 
 // POST /api/personalization - Actualizar personalización del usuario
-router.post('/personalization', requireAuthAPI, async (req, res) => {
+router.post('/personalization', requireAuthAPI, checkPermission('perfil.write'), async (req, res) => {
   try {
     console.log('📝 Actualizando personalización:', req.body);
 

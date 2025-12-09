@@ -16,7 +16,7 @@ function formatFechaLarga(fechaStr) {
   return `${parseInt(d, 10)} de ${meses[parseInt(m, 10) - 1]} de ${y}`;
 }
 
-router.get('/especifico/:id', checkPermission('box.detalle.read'), async (req, res) => {
+router.get('/especifico/:id', checkPermission('espacio.read'), async (req, res) => {
   try {
     // Decodificar el ID del espacio (puede venir como SUBSPACE%231 desde la URL)
     const espacioId = decodeURIComponent(req.params.id); // ej: SUBSPACE#1

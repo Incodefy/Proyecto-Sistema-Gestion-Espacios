@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const checkPermission = require('../middleware/checkPermission');
 // Importa tu configuración de DynamoDB aquí
 // const dynamoDB = require('../config/dynamodb');
 
@@ -7,7 +8,7 @@ const router = express.Router();
  * GET /agenda/gestion
  * Renderiza la vista de gestión de agenda (calendario)
  */
-router.get('/agenda/gestion', async (req, res) => {
+router.get('/agenda/gestion', checkPermission('agenda.read'), async (req, res) => {
     const VERBOSE_SSR = process.env.VERBOSE_SSR === 'true';
     
     try {
@@ -333,7 +334,7 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
  * POST /api/groups/:groupId/bookings
  * Crea una nueva agendación
  */
-router.post('/api/groups/:groupId/bookings', async (req, res) => {
+router.post('/api/groups/:groupId/bookings', checkPermission('agenda.write'), async (req, res) => {
     try {
         let groupId = req.params.groupId;
         if (!groupId || groupId === 'null') {
@@ -408,7 +409,7 @@ router.post('/api/groups/:groupId/bookings', async (req, res) => {
  * PUT /api/groups/:groupId/bookings/:bookingId
  * Actualiza una agendación existente
  */
-router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
+router.put('/api/groups/:groupId/bookings/:bookingId', checkPermission('agenda.write'), async (req, res) => {
     let bookingId = req.params.bookingId; // Declarar fuera del try para que sea accesible en catch
     let updateData = {}; // Declarar fuera del try para logging en catch
     
@@ -535,7 +536,7 @@ router.put('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
  * DELETE /api/groups/:groupId/bookings/:bookingId
  * Elimina una agendación
  */
-router.delete('/api/groups/:groupId/bookings/:bookingId', async (req, res) => {
+router.delete('/api/groups/:groupId/bookings/:bookingId', checkPermission('agenda.write'), async (req, res) => {
     try {
         let groupId = req.params.groupId;
         if (!groupId || groupId === 'null') {

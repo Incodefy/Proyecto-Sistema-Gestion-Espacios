@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
 const attachApiClient = require('../middleware/apiClient');
+const checkPermission = require('../middleware/checkPermission');
 
 router.use(requireAuth);
 router.use(attachApiClient);
@@ -47,7 +48,7 @@ router.get('/grupos/:group_id', async (req, res) => {
  * GET /gestion-grupo
  * Renderiza la página de gestión de grupo
  */
-router.get('/gestion-grupo', async (req, res) => {
+router.get('/gestion-grupo', checkPermission('gestion.read'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   console.log(`\n=== [Express] GET /gestion-grupo | ${TRACE_ID} ===`);
 
@@ -97,7 +98,7 @@ router.get('/gestion-grupo', async (req, res) => {
  * PUT /api/espacios/nomenclatura
  * Actualiza la nomenclatura de un grupo
  */
-router.put('/api/espacios/nomenclatura', async (req, res) => {
+router.put('/api/espacios/nomenclatura', checkPermission('espacio.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   console.log(`\n=== [Express] PUT /api/espacios/nomenclatura | ${TRACE_ID} ===`);
 
@@ -167,7 +168,7 @@ router.put('/api/espacios/nomenclatura', async (req, res) => {
  * POST /api/espacios/espacio
  * Crea un nuevo espacio (general o específico)
  */
-router.post('/api/espacios/espacio', async (req, res) => {
+router.post('/api/espacios/espacio', checkPermission('espacio.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   console.log(`\n=== [Express] POST /api/espacios/espacio | ${TRACE_ID} ===`);
 
@@ -210,7 +211,7 @@ router.post('/api/espacios/espacio', async (req, res) => {
  * PUT /api/espacios/espacio/:id
  * Actualiza un espacio existente
  */
-router.put('/api/espacios/espacio/:id', async (req, res) => {
+router.put('/api/espacios/espacio/:id', checkPermission('espacio.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const espacioId = req.params.id;
   console.log(`\n=== [Express] PUT /api/espacios/espacio/${espacioId} | ${TRACE_ID} ===`);
@@ -254,7 +255,7 @@ router.put('/api/espacios/espacio/:id', async (req, res) => {
  * DELETE /api/espacios/espacio/:id
  * Elimina un espacio
  */
-router.delete('/api/espacios/espacio/:id', async (req, res) => {
+router.delete('/api/espacios/espacio/:id', checkPermission('espacio.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const espacioId = req.params.id;
   console.log(`\n=== [Express] DELETE /api/espacios/espacio/${espacioId} | ${TRACE_ID} ===`);
@@ -288,7 +289,7 @@ router.delete('/api/espacios/espacio/:id', async (req, res) => {
  * POST /api/grupos/invitar
  * Envía una invitación a un nuevo miembro
  */
-router.post('/api/grupos/invitar', async (req, res) => {
+router.post('/api/grupos/invitar', checkPermission('gestion.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   console.log(`\n=== [Express] POST /api/grupos/invitar | ${TRACE_ID} ===`);
 
@@ -392,7 +393,7 @@ router.get('/api/grupos/:id/miembros', async (req, res) => {
  * PUT /api/grupos/miembro/:id/rol
  * Cambia el rol de un miembro
  */
-router.put('/api/grupos/miembro/:id/rol', async (req, res) => {
+router.put('/api/grupos/miembro/:id/rol', checkPermission('gestion.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const miembroId = req.params.id;
   console.log(`\n=== [Express] PUT /api/grupos/miembro/${miembroId}/rol | ${TRACE_ID} ===`);
@@ -459,7 +460,7 @@ router.put('/api/grupos/miembro/:id/rol', async (req, res) => {
  * DELETE /api/grupos/miembro/:id
  * Remueve un miembro del grupo
  */
-router.delete('/api/grupos/miembro/:id', async (req, res) => {
+router.delete('/api/grupos/miembro/:id', checkPermission('gestion.write'), async (req, res) => {
   const TRACE_ID = `express-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const miembroId = req.params.id;
   console.log(`\n=== [Express] DELETE /api/grupos/miembro/${miembroId} | ${TRACE_ID} ===`);

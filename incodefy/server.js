@@ -388,21 +388,10 @@ app.get('/agenda', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclatur
     currentPath: req.path,
     canViewAgenda: userHasPermission(req, 'agenda.read'),
     canWriteAgenda: userHasPermission(req, 'agenda.write'),
-    canImport: userHasPermission(req, 'data.import'),
-    canExport: userHasPermission(req, 'data.export'),
     personalization: res.locals.personalization || {},
     idToken: req.session.user?.idToken || ''
     // nomenclatura ya está en res.locals gracias al middleware
   });
-});
-
-// Rutas de importar y exportar
-app.get('/importar', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.import'), (req, res) => {
-  res.render('importar', { currentPath: req.path });
-});
-
-app.get('/exportar', requireAuth, attachApiClientV2, checkGrupoActivo, nomenclaturaMiddleware, checkPermission('data.export'), (req, res) => {
-  res.render('exportar', { currentPath: req.path });
 });
 
 // Box routes
@@ -450,7 +439,7 @@ app.use('/', instrumentosProxyRoutes);
 // Configuración espacios (NO requiere grupo activo - es el onboarding)
 
 // Perfil (NO requiere grupo activo)
-app.get('/perfil', requireAuth, attachApiClientV2, (req, res) => {
+app.get('/perfil', requireAuth, attachApiClientV2, checkPermission('perfil.read'), (req, res) => {
   console.log('📄 GET /perfil - Usuario:', req.session.user?.email);
   console.log('📄 req.session.user.personalization:', req.session.user?.personalization);
   console.log('📄 res.locals.personalization:', res.locals.personalization);

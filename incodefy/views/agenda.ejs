@@ -60,44 +60,8 @@
             </article>
           <% } %>
 
-          <!-- Opción: Importar - Requiere data.import -->
-          <% if (canImport) { %>
-            <article class="option-item">
-              <a href="#" class="option-card-new" data-action="show-dev-toast" aria-label="Importar - Importa datos desde archivos externos">
-                <div class="option-icon import-icon" aria-hidden="true">
-                  <i class="fas fa-file-import"></i>
-                </div>
-                <div class="option-content">
-                  <h2 class="option-title"><%= t('agenda.data.import') %></h2>
-                  <p class="option-description">Importa datos desde archivos externos</p>
-                </div>
-                <div class="option-arrow" aria-hidden="true">
-                  <i class="fas fa-chevron-right"></i>
-                </div>
-              </a>
-            </article>
-          <% } %>
-          
-          <!-- Opción: Exportar - Requiere data.export -->
-          <% if (canExport) { %>
-            <article class="option-item">
-              <a href="#" class="option-card-new" data-action="show-dev-toast" aria-label="Exportar - Exporta información de consultas y citas">
-                <div class="option-icon export-icon" aria-hidden="true">
-                  <i class="fas fa-file-export"></i>
-                </div>
-                <div class="option-content">
-                  <h2 class="option-title"><%= t('agenda.data.export') %></h2>
-                  <p class="option-description">Exporta información de consultas y citas</p>
-                </div>
-                <div class="option-arrow" aria-hidden="true">
-                  <i class="fas fa-chevron-right"></i>
-                </div>
-              </a>
-            </article>
-          <% } %>
-
           <!-- Mensaje si no tiene permisos para ninguna opción -->
-          <% if (!canViewAgenda && !canImport && !canExport) { %>
+          <% if (!canViewAgenda) { %>
             <div class="col-12 text-center no-permissions-container">
               <div class="alert alert-warning" role="alert">
                 <i class="fas fa-exclamation-triangle mb-3"></i>

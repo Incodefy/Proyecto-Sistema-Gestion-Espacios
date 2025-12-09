@@ -194,7 +194,7 @@
                         <div class="spaces-grid">
                             <% generales_especificos_map[generalNombre].forEach(especifico => { %>
                                 <div class="space-card-wrapper">
-                                    <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
+                                    <% if (hasPermission('espacio.read')) { %>
                                         <a href="/especifico/<%= encodeURIComponent(especifico.id) %>" 
                                            class="space-card" 
                                            data-especifico-nombre="<%= especifico.nombre %>" 
@@ -264,7 +264,7 @@
                                                 <span class="status-text"><%= especifico.estado %></span>
                                             </div>
                                         </div>
-                                    <% if (hasAnyPermission('box.detalle.read', 'admin.users')) { %>
+                                    <% if (hasPermission('espacio.read')) { %>
                                         </a>
                                     <% } else { %>
                                         </div>

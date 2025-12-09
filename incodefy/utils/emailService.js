@@ -8,7 +8,7 @@ const ses = new AWS.SES({
 });
 
 const FROM_EMAIL = process.env.SES_FROM_EMAIL || 'incodefy2025@gmail.com';
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const APP_URL = process.env.APP_URL || 'http://incodefy-alb-dev-700255647.us-east-1.elb.amazonaws.com';
 
 /**
  * Enviar email de código de recuperación de contraseña
@@ -74,17 +74,10 @@ function getPasswordResetTemplate(email, code) {
         <!-- Contenedor principal -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); overflow: hidden; max-width: 600px;">
           
-          <!-- Header con gradiente -->
+          <!-- Header con gradiente azul corporativo -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 48px 40px; text-align: center;">
+            <td style="background: linear-gradient(135deg, #1e40af 0%, #0c4a6e 100%); padding: 48px 40px; text-align: center;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td align="center">
-                    <div style="width: 64px; height: 64px; background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; display: inline-block; line-height: 64px; margin-bottom: 16px;">
-                      <span style="font-size: 32px;">🔐</span>
-                    </div>
-                  </td>
-                </tr>
                 <tr>
                   <td align="center">
                     <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
@@ -119,7 +112,7 @@ function getPasswordResetTemplate(email, code) {
                   <td align="center" style="padding: 24px 0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px 40px;">
+                        <td style="background: linear-gradient(135deg, #1e40af 0%, #0c4a6e 100%); border-radius: 12px; padding: 20px 40px;">
                           <p style="margin: 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: 4px; font-family: 'Courier New', monospace;">
                             ${code}
                           </p>
@@ -134,7 +127,7 @@ function getPasswordResetTemplate(email, code) {
                     <!-- Información importante -->
                     <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 8px;">
                       <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #92400e;">
-                        <strong>⚠️ Importante:</strong> Este código expira en <strong>1 hora</strong>.
+                        <strong>Importante:</strong> Este código expira en <strong>15 minutos</strong>.
                       </p>
                     </div>
                     

@@ -19,7 +19,7 @@ function nowLocal() {
   };
 }
 
-router.get('/en-curso', checkPermission('box.write'), (req, res) => {
+router.get('/en-curso', checkPermission('espacio.write'), (req, res) => {
   res.render('consultas_en_curso', { 
     currentPath: req.path,
     personalization: res.locals.personalization || {},

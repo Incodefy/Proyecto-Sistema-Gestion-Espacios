@@ -8,7 +8,7 @@ const checkPermission = require("../middleware/checkPermission");
 router.use(requireAuth);
 router.use(attachApiClient);
 
-router.get('/historial-notificaciones', checkPermission('notificaciones.historial'), async (req, res) => {
+router.get('/historial-notificaciones', checkPermission('notificacion.read'), async (req, res) => {
   try {
     // Obtener preferencias de notificaciones del usuario
     const preferencias = await obtenerPreferenciasNotificaciones(req.session.user.sub);
