@@ -39,6 +39,65 @@ body[data-theme="dark"] {
   color: #f1f5f9;
 }
 
+/* ==================== BOTÓN CERRAR SESIÓN ==================== */
+.logout-button {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  color: var(--text-dark);
+  border: 1px solid var(--gray-300);
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: var(--transition);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+}
+
+.logout-button:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.logout-button i {
+  font-size: 1rem;
+}
+
+body[data-theme="dark"] .logout-button {
+  background: #334155;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+
+body[data-theme="dark"] .logout-button:hover {
+  background: #475569;
+  border-color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .logout-button span {
+    display: none;
+  }
+  
+  .logout-button {
+    top: 1rem;
+    right: 1rem;
+    padding: 0.625rem;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    justify-content: center;
+  }
+}
+
 /* ==================== CONTENEDOR PRINCIPAL ==================== */
 .onboarding-container {
   min-height: 100vh;

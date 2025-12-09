@@ -21,6 +21,10 @@
           <span class="user-session-icon">✓</span>
           <div class="user-session-text">
             <strong>Sesión activa:</strong> <%= user.email %>
+            <a href="/logout?redirect=<%= encodeURIComponent('/aceptar-invitacion?token=' + token) %>" 
+               style="margin-left: 12px; color: #737373; font-size: 13px; text-decoration: underline;">
+              Cerrar sesión
+            </a>
           </div>
         </div>
       <% } %>
@@ -50,7 +54,12 @@
 
       <% if (user) { %>
         <!-- Usuario logueado - puede aceptar directamente -->
-        <% if (user.email.toLowerCase() === invitation.email.toLowerCase()) { %>
+        <% 
+          const userEmailNormalized = user.email ? user.email.toLowerCase().trim() : '';
+          const invitationEmailNormalized = invitation.email ? invitation.email.toLowerCase().trim() : '';
+          const emailsMatch = userEmailNormalized === invitationEmailNormalized;
+        %>
+        <% if (emailsMatch) { %>
           <button id="btnAccept" class="btn btn-primary">
             <span class="icon">✓</span> Aceptar invitación
           </button>
@@ -94,7 +103,13 @@
   </main>
 
   <script nonce="<%= nonce %>">
-    <% if (user && user.email.toLowerCase() === invitation.email.toLowerCase()) { %>
+    <% if (user) { %>
+      <% 
+        const userEmailNormalized = user.email ? user.email.toLowerCase().trim() : '';
+        const invitationEmailNormalized = invitation.email ? invitation.email.toLowerCase().trim() : '';
+        const emailsMatch = userEmailNormalized === invitationEmailNormalized;
+      %>
+      <% if (emailsMatch) { %>
     document.getElementById('btnAccept').addEventListener('click', async () => {
       const btn = document.getElementById('btnAccept');
       const messageContainer = document.getElementById('messageContainer');
@@ -154,6 +169,7 @@
         btn.innerHTML = '<span class="icon">✓</span> Aceptar invitación';
       }
     });
+      <% } %>
     <% } %>
   </script>
 </body>
