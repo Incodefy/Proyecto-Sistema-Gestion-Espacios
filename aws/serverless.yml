@@ -26,7 +26,6 @@ provider:
     GROUPS_TABLE: ${self:service}-${sls:stage}-groups
     GROUP_MEMBERS_TABLE: ${self:service}-${sls:stage}-group-members
     GROUP_INVITATIONS_TABLE: ${self:service}-${sls:stage}-group-invitations
-    ROLE_MAPPINGS_TABLE: ${self:service}-${sls:stage}-role-mappings
     SPACES_TABLE: ${self:service}-${sls:stage}-spaces
     OCCUPANTS_TABLE: ${self:service}-${sls:stage}-occupants
     ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades
@@ -159,7 +158,6 @@ provider:
         - Fn::GetAtt: [GroupsTable, Arn]
         - Fn::GetAtt: [GroupMembersTable, Arn]
         - Fn::GetAtt: [GroupInvitationsTable, Arn]
-        - Fn::GetAtt: [RoleMappingsTable, Arn]
     
     - Effect: Allow
       Action:
@@ -1221,18 +1219,6 @@ resources:
         TimeToLiveSpecification:
           AttributeName: expires_at
           Enabled: true
-
-    RoleMappingsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-${sls:stage}-role-mappings
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: role
-            AttributeType: S
-        KeySchema:
-          - AttributeName: role
-            KeyType: HASH
 
     SpacesTable:
       Type: AWS::DynamoDB::Table

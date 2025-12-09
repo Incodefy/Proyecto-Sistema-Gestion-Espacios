@@ -18,7 +18,6 @@
     - Fn::GetAtt: [GroupsTable, Arn]
     - Fn::GetAtt: [GroupMembersTable, Arn]
     - Fn::GetAtt: [GroupInvitationsTable, Arn]
-    - Fn::GetAtt: [RoleMappingsTable, Arn]
     - Fn::GetAtt: [ParametersTable, Arn]
     - Fn::GetAtt: [ActivityLogsTable, Arn]
     - Fn::GetAtt: [ProcessedMessagesTable, Arn]

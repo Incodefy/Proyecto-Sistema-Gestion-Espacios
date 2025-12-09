@@ -146,7 +146,7 @@ resource "aws_cloudwatch_event_rule" "weekly_chaos_experiment" {
   count               = var.gremlin_enabled && var.gremlin_scheduled_experiments ? 1 : 0
   name                = "${var.service_name}-${var.stage}-weekly-chaos"
   description         = "Ejecuta experimentos de caos semanalmente"
-  schedule_expression = "cron(0 14 ? * TUE *)"  # Martes 2 PM UTC
+  schedule_expression = "cron(0 14 ? * TUE *)" # Martes 2 PM UTC
 
   tags = {
     Environment = var.stage
@@ -162,7 +162,7 @@ resource "aws_lambda_function" "chaos_executor" {
   role          = aws_iam_role.gremlin_execution_role.arn
   handler       = "index.handler"
   runtime       = "nodejs20.x"
-  timeout       = 900  # 15 minutos
+  timeout       = 900 # 15 minutos
 
   environment {
     variables = {

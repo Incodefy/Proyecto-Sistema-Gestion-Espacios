@@ -25,7 +25,7 @@ body {
 
 .main-container {
     margin-left: 0;
-    padding: 6rem 2rem 5rem 2rem!important;
+    padding: 2.2rem 2rem 5rem 2rem!important;
     min-height: 100vh;
 }
 
@@ -514,7 +514,7 @@ body {
 /* Responsivo */
 @media (max-width: 991px) {
     .main-container {
-        padding: 7.8rem 2rem 5rem 2rem!important;
+        padding: 3.8rem 2rem 5rem 2rem!important;
     }
 
     .page-header {

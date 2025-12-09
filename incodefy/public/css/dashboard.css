@@ -65,7 +65,7 @@ body {
 
 .main {
     margin-left: 0;
-    padding: 6rem 2rem 2rem 2rem!important;
+    padding: 2rem 2rem 2rem 2rem!important; /* Reducido padding-top, body ya tiene 64px */
     min-height: 100vh;
 }
 
@@ -675,7 +675,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 991px) {
     .main {
-        padding: 7.5rem 2rem 2rem 2rem!important;
+        padding: 3.5rem 2rem 2rem 2rem!important;
     }
 
     .dashboard-chart-container-card {

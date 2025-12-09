@@ -5,40 +5,40 @@
 
 # Variables para métricas
 locals {
-  dashboard_name = "${var.service_name}-${var.stage}-system-health"
+  dashboard_name       = "${var.service_name}-${var.stage}-system-health"
   chaos_dashboard_name = "${var.service_name}-${var.stage}-chaos-experiments"
-  
+
   # Namespaces de métricas
   api_gateway_namespace = "AWS/ApiGateway"
-  lambda_namespace = "AWS/Lambda"
-  dynamodb_namespace = "AWS/DynamoDB"
-  custom_namespace = "incodefy"
-  
+  lambda_namespace      = "AWS/Lambda"
+  dynamodb_namespace    = "AWS/DynamoDB"
+  custom_namespace      = "incodefy"
+
   # SLO targets por servicio
   slo_targets = {
     login = {
       availability = 99.9
-      latency_p95 = 500
-      latency_p99 = 1000
-      error_rate = 0.5
+      latency_p95  = 500
+      latency_p99  = 1000
+      error_rate   = 0.5
     }
     agenda = {
       availability = 99.5
-      latency_p95 = 800
-      latency_p99 = 1500
-      error_rate = 1.0
+      latency_p95  = 800
+      latency_p99  = 1500
+      error_rate   = 1.0
     }
     personalization = {
       availability = 99.0
-      latency_p95 = 1000
-      latency_p99 = 2000
-      error_rate = 2.0
+      latency_p95  = 1000
+      latency_p99  = 2000
+      error_rate   = 2.0
     }
     catalog = {
       availability = 99.5
-      latency_p95 = 600
-      latency_p99 = 1200
-      error_rate = 1.0
+      latency_p95  = 600
+      latency_p99  = 1200
+      error_rate   = 1.0
     }
   }
 }
@@ -54,11 +54,11 @@ resource "aws_cloudwatch_dashboard" "system_health" {
     widgets = [
       # ===== ROW 1: AVAILABILITY GAUGES =====
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Login Availability (SLO: 99.9%)"
+          title  = "Login Availability (SLO: 99.9%)"
           region = var.region
           metrics = [
             [
@@ -75,13 +75,13 @@ resource "aws_cloudwatch_dashboard" "system_health" {
               {
                 value = local.slo_targets.login.availability
                 label = "SLO Target"
-                fill = "above"
+                fill  = "above"
                 color = "#2ca02c"
               },
               {
                 value = 99.5
                 label = "Warning"
-                fill = "between"
+                fill  = "between"
                 color = "#ff7f0e"
               }
             ]
@@ -90,11 +90,11 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Agenda Availability (SLO: 99.5%)"
+          title  = "Agenda Availability (SLO: 99.5%)"
           region = var.region
           metrics = [
             [
@@ -112,7 +112,7 @@ resource "aws_cloudwatch_dashboard" "system_health" {
               {
                 value = local.slo_targets.agenda.availability
                 label = "SLO Target"
-                fill = "above"
+                fill  = "above"
                 color = "#2ca02c"
               }
             ]
@@ -121,11 +121,11 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Catalog Availability (SLO: 99.5%)"
+          title  = "Catalog Availability (SLO: 99.5%)"
           region = var.region
           metrics = [
             [
@@ -143,7 +143,7 @@ resource "aws_cloudwatch_dashboard" "system_health" {
               {
                 value = local.slo_targets.catalog.availability
                 label = "SLO Target"
-                fill = "above"
+                fill  = "above"
                 color = "#2ca02c"
               }
             ]
@@ -152,11 +152,11 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Error Budget Burn Rate"
+          title  = "Error Budget Burn Rate"
           region = var.region
           metrics = [
             [
@@ -188,20 +188,20 @@ resource "aws_cloudwatch_dashboard" "system_health" {
 
       # ===== ROW 2: REQUEST RATE & ERROR RATE =====
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "Request Rate (requests/min)"
+          title  = "Request Rate (requests/min)"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "RequestCount", { stat = "Sum", period = 60, label = "Total" } ],
-            [ "...", "Service", "Login", { stat = "Sum", period = 60, label = "Login" } ],
-            [ "...", "Service", "Agenda", { stat = "Sum", period = 60, label = "Agenda" } ],
-            [ "...", "Service", "Catalog", { stat = "Sum", period = 60, label = "Catalog" } ],
-            [ "...", "Service", "Personalization", { stat = "Sum", period = 60, label = "Personalization" } ]
+            [local.custom_namespace, "RequestCount", { stat = "Sum", period = 60, label = "Total" }],
+            ["...", "Service", "Login", { stat = "Sum", period = 60, label = "Login" }],
+            ["...", "Service", "Agenda", { stat = "Sum", period = 60, label = "Agenda" }],
+            ["...", "Service", "Catalog", { stat = "Sum", period = 60, label = "Catalog" }],
+            ["...", "Service", "Personalization", { stat = "Sum", period = 60, label = "Personalization" }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -209,17 +209,17 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "Error Rate by Type (%)"
+          title  = "Error Rate by Type (%)"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "4XXError", { stat = "Average", period = 300, label = "4xx Errors", color = "#ff7f0e" } ],
-            [ ".", "5XXError", { stat = "Average", period = 300, label = "5xx Errors", color = "#d62728" } ]
+            [local.custom_namespace, "4XXError", { stat = "Average", period = 300, label = "4xx Errors", color = "#ff7f0e" }],
+            [".", "5XXError", { stat = "Average", period = 300, label = "5xx Errors", color = "#d62728" }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = true
           yAxis = {
             left = { min = 0, max = 10 }
@@ -243,18 +243,18 @@ resource "aws_cloudwatch_dashboard" "system_health" {
 
       # ===== ROW 3: LATENCY PERCENTILES =====
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "Login Latency (ms)"
+          title  = "Login Latency (ms)"
           region = var.region
           metrics = [
-            [ local.lambda_namespace, "Duration", "FunctionName", "${var.service_name}-${var.stage}-login", { stat = "p50", period = 300, label = "P50" } ],
-            [ "...", { stat = "p95", period = 300, label = "P95" } ],
-            [ "...", { stat = "p99", period = 300, label = "P99" } ]
+            [local.lambda_namespace, "Duration", "FunctionName", "${var.service_name}-${var.stage}-login", { stat = "p50", period = 300, label = "P50" }],
+            ["...", { stat = "p95", period = 300, label = "P95" }],
+            ["...", { stat = "p99", period = 300, label = "P99" }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -276,18 +276,18 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "Agenda Latency (ms)"
+          title  = "Agenda Latency (ms)"
           region = var.region
           metrics = [
-            [ local.lambda_namespace, "Duration", "FunctionName", "${var.service_name}-${var.stage}-getAgenda", { stat = "p50", period = 300, label = "P50" } ],
-            [ "...", { stat = "p95", period = 300, label = "P95" } ],
-            [ "...", { stat = "p99", period = 300, label = "P99" } ]
+            [local.lambda_namespace, "Duration", "FunctionName", "${var.service_name}-${var.stage}-getAgenda", { stat = "p50", period = 300, label = "P50" }],
+            ["...", { stat = "p95", period = 300, label = "P95" }],
+            ["...", { stat = "p99", period = 300, label = "P99" }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -311,16 +311,16 @@ resource "aws_cloudwatch_dashboard" "system_health" {
 
       # ===== ROW 4: LAMBDA METRICS =====
       {
-        type = "metric"
-        width = 8
+        type   = "metric"
+        width  = 8
         height = 6
         properties = {
-          title = "Lambda Concurrent Executions"
+          title  = "Lambda Concurrent Executions"
           region = var.region
           metrics = [
-            [ local.lambda_namespace, "ConcurrentExecutions", { stat = "Maximum", period = 60 } ]
+            [local.lambda_namespace, "ConcurrentExecutions", { stat = "Maximum", period = 60 }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -337,47 +337,47 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 8
+        type   = "metric"
+        width  = 8
         height = 6
         properties = {
-          title = "Lambda Throttles"
+          title  = "Lambda Throttles"
           region = var.region
           metrics = [
-            [ local.lambda_namespace, "Throttles", { stat = "Sum", period = 60 } ]
+            [local.lambda_namespace, "Throttles", { stat = "Sum", period = 60 }]
           ]
-          view = "singleValue"
+          view                 = "singleValue"
           setPeriodToTimeRange = false
         }
       },
       {
-        type = "metric"
-        width = 8
+        type   = "metric"
+        width  = 8
         height = 6
         properties = {
-          title = "Lambda Errors"
+          title  = "Lambda Errors"
           region = var.region
           metrics = [
-            [ local.lambda_namespace, "Errors", { stat = "Sum", period = 60 } ]
+            [local.lambda_namespace, "Errors", { stat = "Sum", period = 60 }]
           ]
-          view = "singleValue"
+          view                 = "singleValue"
           setPeriodToTimeRange = false
         }
       },
 
       # ===== ROW 5: DYNAMODB METRICS =====
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "DynamoDB Read/Write Capacity (Units/sec)"
+          title  = "DynamoDB Read/Write Capacity (Units/sec)"
           region = var.region
           metrics = [
-            [ local.dynamodb_namespace, "ConsumedReadCapacityUnits", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60, label = "Read" } ],
-            [ ".", "ConsumedWriteCapacityUnits", ".", ".", { stat = "Sum", period = 60, label = "Write" } ]
+            [local.dynamodb_namespace, "ConsumedReadCapacityUnits", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60, label = "Read" }],
+            [".", "ConsumedWriteCapacityUnits", ".", ".", { stat = "Sum", period = 60, label = "Write" }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -385,16 +385,16 @@ resource "aws_cloudwatch_dashboard" "system_health" {
         }
       },
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "DynamoDB Throttles"
+          title  = "DynamoDB Throttles"
           region = var.region
           metrics = [
-            [ local.dynamodb_namespace, "UserErrors", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60 } ]
+            [local.dynamodb_namespace, "UserErrors", "TableName", "feli-dev-agenda", { stat = "Sum", period = 60 }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = false
           yAxis = {
             left = { min = 0 }
@@ -404,18 +404,18 @@ resource "aws_cloudwatch_dashboard" "system_health" {
 
       # ===== ROW 6: COST METRICS =====
       {
-        type = "metric"
-        width = 24
+        type   = "metric"
+        width  = 24
         height = 6
         properties = {
-          title = "Estimated Daily Cost (USD)"
+          title  = "Estimated Daily Cost (USD)"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "EstimatedCost", "Service", "Lambda", { stat = "Sum", period = 86400 } ],
-            [ "...", "Service", "DynamoDB", { stat = "Sum", period = 86400 } ],
-            [ "...", "Service", "APIGateway", { stat = "Sum", period = 86400 } ]
+            [local.custom_namespace, "EstimatedCost", "Service", "Lambda", { stat = "Sum", period = 86400 }],
+            ["...", "Service", "DynamoDB", { stat = "Sum", period = 86400 }],
+            ["...", "Service", "APIGateway", { stat = "Sum", period = 86400 }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = true
           yAxis = {
             left = { min = 0 }
@@ -437,29 +437,29 @@ resource "aws_cloudwatch_dashboard" "chaos_experiments" {
     widgets = [
       # Active Experiments
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Active Chaos Experiments"
+          title  = "Active Chaos Experiments"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "ActiveExperiments", { stat = "Sum", period = 60 } ]
+            [local.custom_namespace, "ActiveExperiments", { stat = "Sum", period = 60 }]
           ]
           view = "singleValue"
         }
       },
-      
+
       # Experiment Results
       {
-        type = "metric"
-        width = 6
+        type   = "metric"
+        width  = 6
         height = 6
         properties = {
-          title = "Experiment Success Rate"
+          title  = "Experiment Success Rate"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "ExperimentSuccess", { stat = "Average", period = 300 } ]
+            [local.custom_namespace, "ExperimentSuccess", { stat = "Average", period = 300 }]
           ]
           view = "gauge"
           yAxis = {
@@ -470,14 +470,14 @@ resource "aws_cloudwatch_dashboard" "chaos_experiments" {
 
       # Recovery Time
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "System Recovery Time (seconds)"
+          title  = "System Recovery Time (seconds)"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "RecoveryTime", { stat = "Average", period = 300 } ]
+            [local.custom_namespace, "RecoveryTime", { stat = "Average", period = 300 }]
           ]
           view = "timeSeries"
           yAxis = {
@@ -502,31 +502,31 @@ resource "aws_cloudwatch_dashboard" "chaos_experiments" {
 
       # Blast Radius
       {
-        type = "metric"
-        width = 12
+        type   = "metric"
+        width  = 12
         height = 6
         properties = {
-          title = "Affected Services"
+          title  = "Affected Services"
           region = var.region
           metrics = [
-            [ local.custom_namespace, "AffectedServices", "Service", "Login", { stat = "Sum", period = 60 } ],
-            [ "...", "Service", "Agenda", { stat = "Sum", period = 60 } ],
-            [ "...", "Service", "Catalog", { stat = "Sum", period = 60 } ]
+            [local.custom_namespace, "AffectedServices", "Service", "Login", { stat = "Sum", period = 60 }],
+            ["...", "Service", "Agenda", { stat = "Sum", period = 60 }],
+            ["...", "Service", "Catalog", { stat = "Sum", period = 60 }]
           ]
-          view = "timeSeries"
+          view    = "timeSeries"
           stacked = true
         }
       },
 
       # Experiment History
       {
-        type = "log"
-        width = 24
+        type   = "log"
+        width  = 24
         height = 6
         properties = {
-          title = "Chaos Experiment Logs"
+          title  = "Chaos Experiment Logs"
           region = var.region
-          query = <<-EOT
+          query  = <<-EOT
             SOURCE '/aws/lambda/${var.service_name}-${var.stage}-chaos-experiment'
             | fields @timestamp, @message
             | filter @message like /CHAOS_EXPERIMENT/
@@ -553,7 +553,7 @@ resource "aws_cloudwatch_metric_alarm" "availability_warning" {
   namespace           = local.custom_namespace
   period              = 300
   statistic           = "Average"
-  threshold           = each.value.availability - 0.05  # 0.05% debajo del SLO
+  threshold           = each.value.availability - 0.05 # 0.05% debajo del SLO
   alarm_description   = "Availability for ${each.key} is below ${each.value.availability - 0.05}%"
   treat_missing_data  = "notBreaching"
 
@@ -581,7 +581,7 @@ resource "aws_cloudwatch_metric_alarm" "latency_p95_warning" {
   namespace           = local.lambda_namespace
   period              = 300
   extended_statistic  = "p95"
-  threshold           = each.value.latency_p95 * 0.8  # 80% del SLO
+  threshold           = each.value.latency_p95 * 0.8 # 80% del SLO
   alarm_description   = "P95 latency for ${each.key} is above ${each.value.latency_p95 * 0.8}ms"
   treat_missing_data  = "notBreaching"
 
@@ -608,7 +608,7 @@ resource "aws_cloudwatch_metric_alarm" "error_rate_warning" {
   namespace           = local.lambda_namespace
   period              = 300
   statistic           = "Sum"
-  threshold           = 10  # 10 errores en 5 minutos
+  threshold           = 10 # 10 errores en 5 minutos
   alarm_description   = "Error rate for ${each.key} is high"
   treat_missing_data  = "notBreaching"
 
@@ -639,7 +639,7 @@ resource "aws_cloudwatch_metric_alarm" "availability_critical" {
   namespace           = local.custom_namespace
   period              = 300
   statistic           = "Average"
-  threshold           = 99.0  # Hard threshold
+  threshold           = 99.0 # Hard threshold
   alarm_description   = "CRITICAL: Availability for ${each.key} is below 99%"
   treat_missing_data  = "breaching"
 
@@ -667,7 +667,7 @@ resource "aws_cloudwatch_metric_alarm" "latency_p99_critical" {
   namespace           = local.lambda_namespace
   period              = 300
   extended_statistic  = "p99"
-  threshold           = each.value.latency_p99 * 1.2  # 120% del SLO
+  threshold           = each.value.latency_p99 * 1.2 # 120% del SLO
   alarm_description   = "CRITICAL: P99 latency for ${each.key} is above ${each.value.latency_p99 * 1.2}ms"
   treat_missing_data  = "notBreaching"
 

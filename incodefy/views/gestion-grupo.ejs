@@ -372,18 +372,19 @@
 
                   <div class="invite-form">
                     <div class="form-group">
-                        <label class="form-label">Correo electrónico</label>
+                        <label class="form-label" for="inviteEmail">Correo electrónico</label>
                         <input 
                         type="email" 
                         class="form-input" 
                         id="inviteEmail"
                         placeholder="usuario@ejemplo.com"
+                        aria-label="Correo electrónico del nuevo miembro"
                         >
                     </div>
 
                     <div class="form-group form-group-min-width">
-                        <label class="form-label">Rol</label>
-                        <select class="form-select" id="inviteRole">
+                        <label class="form-label" for="inviteRole">Rol</label>
+                        <select class="form-select" id="inviteRole" aria-label="Seleccionar rol del miembro">
                         <option value="reader" selected>Lector</option>
                         <option value="writer">Escritor</option>
                         <option value="admin">Administrador</option>

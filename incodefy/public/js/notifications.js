@@ -23,17 +23,31 @@ class NotificationManager {
 
   /**
    * Carga las preferencias de notificaciones del usuario
+   * OPTIMIZADO: No bloquea la inicialización, se carga en background
    */
   async loadPreferences() {
     try {
+      // Cache en sessionStorage para evitar múltiples llamadas
+      const cached = sessionStorage.getItem('notification-preferences');
+      if (cached) {
+        try {
+          this.preferences = JSON.parse(cached);
+          console.log('✅ Preferencias desde sessionStorage');
+          return;
+        } catch (e) {
+          sessionStorage.removeItem('notification-preferences');
+        }
+      }
+
       const response = await fetch('/preferencias-notificaciones');
       const data = await response.json();
       if (data.ok && data.preferencias) {
         this.preferences = data.preferencias;
-        console.log('✅ Preferencias de notificaciones cargadas:', this.preferences);
+        sessionStorage.setItem('notification-preferences', JSON.stringify(data.preferencias));
+        console.log('✅ Preferencias cargadas y cacheadas');
       }
     } catch (error) {
-      console.warn('⚠️ No se pudieron cargar preferencias, mostrando todas las notificaciones');
+      console.warn('⚠️ No se pudieron cargar preferencias, mostrando todas');
       this.preferences = null;
     }
   }

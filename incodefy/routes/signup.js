@@ -1,10 +1,29 @@
 // routes/signup.js - Manejo del registro de usuarios
 const express = require('express');
 const router = express.Router();
-const AWS = require('aws-sdk');
 
-const cognito = new AWS.CognitoIdentityServiceProvider({ region: process.env.AWS_REGION || 'us-east-2' });
-const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-2' });
+// AWS SDK v3
+const {
+  CognitoIdentityProviderClient,
+  AdminGetUserCommand,
+  AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  AdminDeleteUserCommand
+} = require('@aws-sdk/client-cognito-identity-provider');
+
+const {
+  SESClient,
+  VerifyEmailIdentityCommand,
+  GetIdentityVerificationAttributesCommand
+} = require('@aws-sdk/client-ses');
+
+const cognitoClient = new CognitoIdentityProviderClient({ 
+  region: process.env.AWS_REGION || 'us-east-1' 
+});
+
+const sesClient = new SESClient({ 
+  region: process.env.AWS_REGION || 'us-east-1' 
+});
 
 // GET /auth/signup - Mostrar formulario de registro
 router.get('/signup', (req, res) => {
@@ -54,23 +73,24 @@ router.post('/signup', async (req, res) => {
 
     // Verificar si el usuario ya existe
     try {
-      await cognito.adminGetUser({
+      const command = new AdminGetUserCommand({
         UserPoolId: process.env.USER_POOL_ID,
         Username: email
-      }).promise();
+      });
+      await cognitoClient.send(command);
 
       req.flash('error', 'Ya existe una cuenta con este correo electrónico');
       req.flash('form_data', { nombre, email });
       return res.redirect('/auth/signup');
     } catch (err) {
       // Usuario no existe, continuar con el registro
-      if (err.code !== 'UserNotFoundException') {
+      if (err.name !== 'UserNotFoundException') {
         throw err;
       }
     }
 
     // Crear usuario en Cognito
-    const createUserParams = {
+    const createUserCommand = new AdminCreateUserCommand({
       UserPoolId: process.env.USER_POOL_ID,
       Username: email,
       UserAttributes: [
@@ -80,25 +100,27 @@ router.post('/signup', async (req, res) => {
       ],
       TemporaryPassword: password,
       MessageAction: 'SUPPRESS' // No enviar email automático de Cognito
-    };
+    });
 
-    const createUserResult = await cognito.adminCreateUser(createUserParams).promise();
+    const createUserResult = await cognitoClient.send(createUserCommand);
     console.log('✅ Usuario creado en Cognito:', email);
 
     // Establecer la contraseña permanente
-    await cognito.adminSetUserPassword({
+    const setPasswordCommand = new AdminSetUserPasswordCommand({
       UserPoolId: process.env.USER_POOL_ID,
       Username: email,
       Password: password,
       Permanent: true
-    }).promise();
+    });
+    await cognitoClient.send(setPasswordCommand);
 
     // Verificar si el email ya está verificado en SES
     let emailYaVerificado = false;
     try {
-      const identityVerification = await ses.getIdentityVerificationAttributes({
+      const getIdentityCommand = new GetIdentityVerificationAttributesCommand({
         Identities: [email]
-      }).promise();
+      });
+      const identityVerification = await sesClient.send(getIdentityCommand);
 
       const verificationStatus = identityVerification.VerificationAttributes?.[email]?.VerificationStatus;
       emailYaVerificado = verificationStatus === 'Success';
@@ -115,9 +137,10 @@ router.post('/signup', async (req, res) => {
     // Solo solicitar verificación si no está verificado
     if (!emailYaVerificado) {
       try {
-        await ses.verifyEmailIdentity({
+        const verifyEmailCommand = new VerifyEmailIdentityCommand({
           EmailAddress: email
-        }).promise();
+        });
+        await sesClient.send(verifyEmailCommand);
         console.log('📧 Email de verificación de SES enviado a:', email);
         
         // Guardar el email en la sesión para mostrarlo en el modal
@@ -143,12 +166,13 @@ router.post('/signup', async (req, res) => {
     console.error('❌ Error message:', error.message);
     
     // Si el usuario ya fue creado pero falló el envío del email, eliminar el usuario
-    if (email && error.code !== 'UsernameExistsException') {
+    if (email && error.name !== 'UsernameExistsException') {
       try {
-        await cognito.adminDeleteUser({
+        const deleteUserCommand = new AdminDeleteUserCommand({
           UserPoolId: process.env.USER_POOL_ID,
           Username: email
-        }).promise();
+        });
+        await cognitoClient.send(deleteUserCommand);
         console.log('🗑️ Usuario eliminado debido a error en el proceso');
       } catch (deleteError) {
         console.error('⚠️ No se pudo eliminar el usuario:', deleteError.message);
@@ -157,11 +181,11 @@ router.post('/signup', async (req, res) => {
     
     let errorMessage = 'Ocurrió un error al crear la cuenta. Por favor, intenta nuevamente.';
     
-    if (error.code === 'UsernameExistsException') {
+    if (error.name === 'UsernameExistsException') {
       errorMessage = 'Ya existe una cuenta con este correo electrónico';
-    } else if (error.code === 'InvalidPasswordException') {
+    } else if (error.name === 'InvalidPasswordException') {
       errorMessage = 'La contraseña no cumple con los requisitos de seguridad';
-    } else if (error.code === 'InvalidParameterException') {
+    } else if (error.name === 'InvalidParameterException') {
       errorMessage = 'Uno o más parámetros son inválidos';
     }
 

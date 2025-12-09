@@ -17,8 +17,10 @@
         <a href="/dashboard" 
            class="menu-link <%= currentPath === '/dashboard' ? 'active' : '' %>" 
            role="menuitem"
-           aria-current="<%= currentPath === '/dashboard' ? 'page' : 'false' %>">
-          <img src="/icons/dashboard.webp" alt="" aria-hidden="true">
+           aria-current="<%= currentPath === '/dashboard' ? 'page' : 'false' %>"
+           aria-label="<%= t('navbar.dashboard') %>"
+           data-tooltip="<%= t('navbar.dashboard') %>">
+          <img src="/icons/dashboard.webp" alt="" aria-hidden="true" width="25" height="25" loading="lazy">
           <span><%= t('navbar.dashboard') %></span>
         </a>
       </li>
@@ -28,49 +30,77 @@
         <a href="/agenda" 
            class="menu-link <%= currentPath.startsWith('/agenda') ? 'active' : '' %>" 
            role="menuitem"
-           aria-current="<%= currentPath.startsWith('/agenda') ? 'page' : 'false' %>">
-          <img src="/icons/calendario.webp" alt="" aria-hidden="true">
+           aria-current="<%= currentPath.startsWith('/agenda') ? 'page' : 'false' %>"
+           aria-label="<%= t('navbar.agenda') %>"
+           data-tooltip="<%= t('navbar.agenda') %>">
+          <img src="/icons/calendario.webp" alt="" aria-hidden="true" width="25" height="25" loading="lazy">
           <span><%= t('navbar.agenda') %></span>
         </a>
       </li>
       
-      <!-- Box/Espacio Específico -->
-      <li>
-        <a href="/especifico" class="menu-link <%= (currentPath.startsWith('/especifico') || currentPath === '/en-curso') ? 'active' : '' %>" data-tooltip="<%= nomenclatura ? nomenclatura.especifico : 'Especifico' %>">
-          <i class="fas fa-door-open"></i>
+      <!-- Espacio Específico -->
+      <li role="none">
+        <a href="/especifico" 
+           class="menu-link <%= (currentPath.startsWith('/especifico') || currentPath === '/en-curso') ? 'active' : '' %>" 
+           role="menuitem"
+           aria-current="<%= (currentPath.startsWith('/especifico') || currentPath === '/en-curso') ? 'page' : 'false' %>"
+           aria-label="<%= nomenclatura ? nomenclatura.especifico : 'Especifico' %>"
+           data-tooltip="<%= nomenclatura ? nomenclatura.especifico : 'Especifico' %>">
+          <img src="/icons/espacio.webp" alt="" aria-hidden="true" width="25" height="25" loading="lazy">
           <span><%= nomenclatura ? nomenclatura.especifico : 'Especifico' %></span>
         </a>
       </li>
       
       <!-- Notificaciones -->
-      <li>
-        <a href="/historial-notificaciones" class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" data-tooltip="<%= t('navbar.notifications') %>">
-          <img src="/icons/notificaciones.webp" alt="" class="noti">
+      <li role="none">
+        <a href="/historial-notificaciones" 
+           class="menu-link <%= currentPath.startsWith('/historial-notificaciones') ? 'active' : '' %>" 
+           role="menuitem"
+           aria-current="<%= currentPath.startsWith('/historial-notificaciones') ? 'page' : 'false' %>"
+           aria-label="<%= t('navbar.notifications') %>"
+           data-tooltip="<%= t('navbar.notifications') %>">
+          <img src="/icons/notificaciones.webp" 
+               alt="" 
+               aria-hidden="true" 
+               class="noti" 
+               width="24" 
+               height="24"
+               loading="lazy">
           <span><%= t('navbar.notifications') %></span>
         </a>
       </li>
       
       <!-- Gestión de Grupo (solo owner y admin) -->
       <% if (locals.userRole === 'owner' || locals.userRole === 'admin') { %>
-      <li>
-        <a href="/gestion-grupo" class="menu-link <%= currentPath.startsWith('/gestion-grupo') ? 'active' : '' %>" data-tooltip="<%= t('navbar.manageGroup') %>">
-          <img src="/icons/grupo.png" alt="" class="gestion">
+      <li role="none">
+        <a href="/gestion-grupo" 
+           class="menu-link <%= currentPath.startsWith('/gestion-grupo') ? 'active' : '' %>" 
+           role="menuitem"
+           aria-current="<%= currentPath.startsWith('/gestion-grupo') ? 'page' : 'false' %>"
+           aria-label="<%= t('navbar.manageGroup') %>"
+           data-tooltip="<%= t('navbar.manageGroup') %>">
+          <img src="/icons/grupo.webp" alt="" aria-hidden="true" class="gestion" width="25" height="25" loading="lazy">
           <span><%= t('navbar.manageGroup') %></span>
         </a>
       </li>
       <% } %>
     <% } %>
 
-    <li>
-      <a href="/perfil" class="menu-link <%= currentPath.startsWith('/perfil') ? 'active' : '' %>" data-tooltip="<%= t('navbar.profile') %>">
-        <img src="/icons/perfil.png" alt="" class="perfil">
+    <li role="none">
+      <a href="/perfil" 
+         class="menu-link <%= currentPath.startsWith('/perfil') ? 'active' : '' %>" 
+         role="menuitem"
+         aria-current="<%= currentPath.startsWith('/perfil') ? 'page' : 'false' %>"
+         aria-label="<%= t('navbar.profile') %>"
+         data-tooltip="<%= t('navbar.profile') %>">
+        <img src="/icons/perfil.webp" alt="" aria-hidden="true" class="perfil" width="24" height="25" loading="lazy">
         <span><%= t('navbar.profile') %></span>
       </a>
     </li>
     
     <!-- Logout siempre visible -->
-    <li>
-      <a href="/logout" class="logout-button">
+    <li role="none">
+      <a href="/logout" class="logout-button" role="menuitem">
         <span><%= t('navbar.logout') %></span>
       </a>
     </li>

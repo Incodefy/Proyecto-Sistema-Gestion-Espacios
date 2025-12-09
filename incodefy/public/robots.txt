@@ -1,0 +1,10 @@
+# robots.txt para Sistema de Gestión Hospitalaria
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /logout
+
+# Sitemap (descomentar cuando esté disponible)
+# Sitemap: https://tu-dominio.com/sitemap.xml

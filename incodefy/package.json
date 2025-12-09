@@ -25,6 +25,7 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.890.0",
     "@aws-sdk/client-dynamodb": "^3.917.0",
+    "@aws-sdk/client-ses": "^3.947.0",
     "@aws-sdk/lib-dynamodb": "^3.917.0",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "aws-sdk": "^2.1692.0",

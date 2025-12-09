@@ -166,6 +166,7 @@ function mostrarNotificaciones(notificaciones) {
 
       html += `
         <div class="notificacion-item" 
+             role="article"
              data-id="${n.id}"
              data-leida="${n.leida}"
              data-categoria="${n.categoria}"
@@ -208,7 +209,7 @@ function renderDetalles(notificacion) {
 
   // Nomenclatura actualizada
   if (notificacion.tipo === 'NOMENCLATURA_ACTUALIZADA' && detalles.cambios) {
-    html += '<ul class="mb-0 ps-3">';
+    html += '<ul class="mb-0 ps-3" role="list">';
     detalles.cambios.forEach(cambio => {
       const camposTexto = {
         general: 'Espacio General',
@@ -225,7 +226,7 @@ function renderDetalles(notificacion) {
 
   // Espacio modificado
   if (notificacion.tipo === 'ESPACIO_MODIFICADO' && detalles.cambios) {
-    html += '<ul class="mb-0 ps-3">';
+    html += '<ul class="mb-0 ps-3" role="list">';
     const camposTexto = {
       nombre: 'Nombre',
       capacidad: 'Capacidad',

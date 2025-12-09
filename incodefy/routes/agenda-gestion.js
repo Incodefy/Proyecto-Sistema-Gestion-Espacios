@@ -8,6 +8,8 @@ const router = express.Router();
  * Renderiza la vista de gestión de agenda (calendario)
  */
 router.get('/agenda/gestion', async (req, res) => {
+    const VERBOSE_SSR = process.env.VERBOSE_SSR === 'true';
+    
     try {
         // Obtener el groupId de la sesión o query params
         const groupId = req.query.groupId || req.session?.grupoActivo?.grupo_id;
@@ -21,8 +23,13 @@ router.get('/agenda/gestion', async (req, res) => {
             const apiClient = new ApiClientV2(req.session.user?.idToken || '');
             
             try {
-                // Cargar espacios generales
-                const spacesResponse = await apiClient.listarEspacios(groupId);
+                // Cargar en paralelo para reducir latencia
+                const [spacesResponse, occupantsResponse] = await Promise.all([
+                    apiClient.listarEspacios(groupId),
+                    apiClient.client.get(`/groups/${groupId}/ocupantes`)
+                ]);
+                
+                // Procesar espacios generales
                 if (spacesResponse && spacesResponse.espacios) {
                     generalSpaces = spacesResponse.espacios
                         .filter(e => e.tipo === 'general')
@@ -33,27 +40,22 @@ router.get('/agenda/gestion', async (req, res) => {
                         }));
                 }
                 
-                // Cargar ocupantes
-                const occupantsResponse = await apiClient.client.get(`/groups/${groupId}/ocupantes`);
+                // Procesar ocupantes
                 if (occupantsResponse.data && occupantsResponse.data.ocupantes) {
-                    console.log('[SSR] Ocupantes del Lambda:', JSON.stringify(occupantsResponse.data.ocupantes, null, 2));
+                    if (VERBOSE_SSR) console.log('[SSR] Ocupantes cargados:', occupantsResponse.data.ocupantes.length);
                     
                     occupants = occupantsResponse.data.ocupantes.map(occ => {
-                        // El Lambda devuelve 'id' sin prefijo, construir occupant_id correcto
                         const occupantId = occ.ocupante_id || occ.SK || (occ.id ? `OCCUPANT#${occ.id}` : undefined);
-                        
-                        const mapped = {
+                        return {
                             occupant_id: occupantId,
                             nombre: occ.nombre,
-                            especialidad: occ.especialidad, // Si el Lambda no lo envía, será undefined
+                            especialidad: occ.especialidad,
                             especialidad_id: occ.especialidad_id
                         };
-                        console.log('[SSR] Ocupante mapeado:', mapped);
-                        return mapped;
                     });
                 }
             } catch (error) {
-                console.error('Error pre-cargando datos:', error);
+                console.error('[SSR ERROR] Error pre-cargando datos:', error.message);
                 // Continuar sin datos pre-cargados
             }
         }
@@ -251,10 +253,11 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
         // Hacer peticiones en lotes para evitar saturar el Lambda
         const BATCH_SIZE = 5; // Máximo 5 peticiones simultáneas
         const appointments = [];
+        const VERBOSE_BOOKINGS = process.env.VERBOSE_BOOKINGS === 'true';
         
         for (let i = 0; i < dates.length; i += BATCH_SIZE) {
             const batch = dates.slice(i, i + BATCH_SIZE);
-            console.log(`[BOOKINGS API] Procesando lote ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(dates.length / BATCH_SIZE)}`);
+            if (VERBOSE_BOOKINGS) console.log(`[BOOKINGS API] Procesando lote ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(dates.length / BATCH_SIZE)}`);
             
             const batchPromises = batch.map(fecha => 
                 apiClient.client.get(`/groups/${groupId}/appointments`, {
@@ -262,16 +265,11 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
                 })
                 .then(response => {
                     const apts = response.data?.appointments || [];
-                    console.log(`[BOOKINGS API] ${fecha}: ${apts.length} appointments encontrados`);
+                    if (VERBOSE_BOOKINGS && apts.length > 0) console.log(`[BOOKINGS API] ${fecha}: ${apts.length} appointments`);
                     return apts;
                 })
                 .catch(err => {
-                    console.error(`[BOOKINGS API ERROR] Fecha ${fecha} falló:`, {
-                        message: err.message,
-                        status: err.response?.status,
-                        data: err.response?.data,
-                        stack: err.stack
-                    });
+                    console.error(`[BOOKINGS API ERROR] ${fecha}:`, err.message);
                     return [];
                 })
             );
@@ -280,7 +278,7 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
             appointments.push(...batchResults.flat());
         }
         
-        console.log('[BOOKINGS API] Total appointments encontrados:', appointments.length);
+        if (VERBOSE_BOOKINGS) console.log('[BOOKINGS API] Total appointments:', appointments.length);
         
         // Validar que appointments sea un array
         if (!Array.isArray(appointments)) {
@@ -293,19 +291,13 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
             .filter(apt => {
                 // Validar que cada appointment tenga los campos necesarios
                 if (!apt || !apt.fecha || !apt.hora_inicio || !apt.hora_fin) {
-                    console.warn('[BOOKINGS API] Appointment inválido descartado:', apt);
+                    if (VERBOSE_BOOKINGS) console.warn('[BOOKINGS API] Appointment inválido descartado');
                     return false;
                 }
                 return true;
             })
             .map(apt => {
                 const id = apt.appointment_id || apt.SK;
-                console.log('[BOOKINGS API] Mapeando appointment:', { 
-                    fecha: apt.fecha,
-                    appointment_id: apt.appointment_id, 
-                    SK: apt.SK,
-                    id_final: id 
-                });
                 return {
                     id: id,
                     space_id: apt.espacio_id,
@@ -321,8 +313,7 @@ router.get('/api/groups/:groupId/bookings', async (req, res) => {
                 };
             });
         
-        console.log('[BOOKINGS API] Bookings válidos después de mapeo:', bookings.length);
-        console.log('[BOOKINGS API] TODOS los bookings:', bookings.map(b => ({ id: b.id, date: b.date, start: b.startTime })));
+        if (VERBOSE_BOOKINGS) console.log('[BOOKINGS API] Bookings procesados:', bookings.length);
         
         // SIEMPRE devolver un array, incluso si está vacío
         res.json(Array.isArray(bookings) ? bookings : []);

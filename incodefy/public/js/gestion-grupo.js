@@ -1170,10 +1170,17 @@ class GestionGrupo {
           value="${space.name}"
           autofocus
         >
-        <button class="icon-btn success" data-action="confirm-general" data-space-id="${space.id}" ${!space.name.trim() ? 'disabled' : ''}>
+        <button class="icon-btn success" 
+                data-action="confirm-general" 
+                data-space-id="${space.id}" 
+                ${!space.name.trim() ? 'disabled' : ''}
+                aria-label="Confirmar creación de ${this.nomenclatura?.general || 'espacio general'}">
           <i class="fas fa-check"></i>
         </button>
-        <button class="icon-btn danger" data-action="delete-general" data-space-id="${space.id}">
+        <button class="icon-btn danger" 
+                data-action="delete-general" 
+                data-space-id="${space.id}"
+                aria-label="Cancelar creación de ${this.nomenclatura?.general || 'espacio general'}">
           <i class="fas fa-times"></i>
         </button>
       `;
@@ -1187,20 +1194,33 @@ class GestionGrupo {
           value="${this.editingValue}"
           autofocus
         >
-        <button class="icon-btn success" data-action="save-edit-general" data-space-id="${space.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
+        <button class="icon-btn success" 
+                data-action="save-edit-general" 
+                data-space-id="${space.id}" 
+                ${!this.editingValue.trim() ? 'disabled' : ''}
+                aria-label="Guardar cambios de ${this.nomenclatura?.general || 'espacio general'}">
           <i class="fas fa-check"></i>
         </button>
-        <button class="icon-btn danger" data-action="cancel-edit">
+        <button class="icon-btn danger" 
+                data-action="cancel-edit"
+                aria-label="Cancelar edición">
           <i class="fas fa-times"></i>
         </button>
       `;
     } else {
       return `
         <div class="space-general-box">${space.name}</div>
-        <button class="icon-btn" data-action="edit-general" data-space-id="${space.id}" data-name="${space.name}">
+        <button class="icon-btn" 
+                data-action="edit-general" 
+                data-space-id="${space.id}" 
+                data-name="${space.name}"
+                aria-label="Editar ${this.nomenclatura?.general || 'espacio general'} ${space.name}">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="icon-btn danger" data-action="delete-general" data-space-id="${space.id}">
+        <button class="icon-btn danger" 
+                data-action="delete-general" 
+                data-space-id="${space.id}"
+                aria-label="Eliminar ${this.nomenclatura?.general || 'espacio general'} ${space.name}">
           <i class="fas fa-trash"></i>
         </button>
       `;
@@ -1228,10 +1248,19 @@ class GestionGrupo {
             value="${spec.name}"
             autofocus
           >
-          <button class="icon-btn success" data-action="confirm-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!spec.name.trim() ? 'disabled' : ''}>
+          <button class="icon-btn success" 
+                  data-action="confirm-specific" 
+                  data-space-id="${spaceId}" 
+                  data-spec-id="${spec.id}" 
+                  ${!spec.name.trim() ? 'disabled' : ''}
+                  aria-label="Confirmar creación de ${this.nomenclatura?.especifico || 'espacio específico'}">
             <i class="fas fa-check"></i>
           </button>
-          <button class="icon-btn danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
+          <button class="icon-btn danger" 
+                  data-action="delete-specific" 
+                  data-space-id="${spaceId}" 
+                  data-spec-id="${spec.id}"
+                  aria-label="Cancelar creación de ${this.nomenclatura?.especifico || 'espacio específico'}">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -1247,10 +1276,17 @@ class GestionGrupo {
             value="${this.editingValue}"
             autofocus
           >
-          <button class="icon-btn success" data-action="save-edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" ${!this.editingValue.trim() ? 'disabled' : ''}>
+          <button class="icon-btn success" 
+                  data-action="save-edit-specific" 
+                  data-space-id="${spaceId}" 
+                  data-spec-id="${spec.id}" 
+                  ${!this.editingValue.trim() ? 'disabled' : ''}
+                  aria-label="Guardar cambios de ${this.nomenclatura?.especifico || 'espacio específico'}">
             <i class="fas fa-check"></i>
           </button>
-          <button class="icon-btn danger" data-action="cancel-edit">
+          <button class="icon-btn danger" 
+                  data-action="cancel-edit"
+                  aria-label="Cancelar edición">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -1260,10 +1296,19 @@ class GestionGrupo {
         <div class="space-specific-box">
           ${spec.name}
           <div class="space-specific-actions">
-            <button class="icon-btn" data-action="edit-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}" data-name="${spec.name}">
+            <button class="icon-btn" 
+                    data-action="edit-specific" 
+                    data-space-id="${spaceId}" 
+                    data-spec-id="${spec.id}" 
+                    data-name="${spec.name}"
+                    aria-label="Editar ${this.nomenclatura?.especifico || 'espacio específico'} ${spec.name}">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="icon-btn danger" data-action="delete-specific" data-space-id="${spaceId}" data-spec-id="${spec.id}">
+            <button class="icon-btn danger" 
+                    data-action="delete-specific" 
+                    data-space-id="${spaceId}" 
+                    data-spec-id="${spec.id}"
+                    aria-label="Eliminar ${this.nomenclatura?.especifico || 'espacio específico'} ${spec.name}">
               <i class="fas fa-trash"></i>
             </button>
           </div>

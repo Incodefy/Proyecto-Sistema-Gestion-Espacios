@@ -4,23 +4,13 @@ const db = DynamoDBDocumentClient.from(new (require("@aws-sdk/client-dynamodb").
 const { Logger } = require("../../utils/logger");
 const { validate } = require("../../utils/validator");
 const { retryDB } = require("../../utils/retry");
-const { Cache } = require("../../utils/cache");
 const { createAPIHandler } = require("../../middleware/interceptors");
-
-const tiposCache = new Cache({ ttl: 300, maxSize: 200 });
 
 const listTiposInstrumentos = async (event) => {
   const logger = Logger.fromEvent(event).child({ handler: 'listTiposInstrumentos' });
   const grupo_id = event.pathParameters?.grupo_id;
   
   validate('listTiposInstrumentos', { grupo_id });
-  
-  const cacheKey = `tipos:${grupo_id}`;
-  const cached = tiposCache.get(cacheKey);
-  if (cached) {
-    logger.info('Tipos desde cache', { count: cached.length });
-    return { statusCode: 200, body: JSON.stringify({ ok: true, tipos: cached, count: cached.length, cached: true }) };
-  }
   
   const result = await retryDB(
     () => db.send(new QueryCommand({
@@ -39,8 +29,7 @@ const listTiposInstrumentos = async (event) => {
     updated_at: item.updated_at
   }));
   
-  tiposCache.set(cacheKey, tipos);
-  logger.info('Tipos obtenidos y cacheados', { count: tipos.length });
+  logger.info('Tipos obtenidos', { count: tipos.length });
   
   return { statusCode: 200, body: JSON.stringify({ ok: true, tipos, count: tipos.length }) };
 };

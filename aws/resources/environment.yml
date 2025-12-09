@@ -13,7 +13,6 @@ PROCESSED_MESSAGES_TABLE: ${self:service}-${sls:stage}-processed-messages
 GROUPS_TABLE: ${self:service}-${sls:stage}-groups
 GROUP_MEMBERS_TABLE: ${self:service}-${sls:stage}-group-members
 GROUP_INVITATIONS_TABLE: ${self:service}-${sls:stage}-group-invitations
-ROLE_MAPPINGS_TABLE: ${self:service}-${sls:stage}-role-mappings
 SPACES_TABLE: ${self:service}-${sls:stage}-spaces
 OCCUPANTS_TABLE: ${self:service}-${sls:stage}-occupants
 ESPECIALIDADES_TABLE: ${self:service}-${sls:stage}-especialidades

@@ -77,7 +77,7 @@ router.get('/notificaciones-usuario', async (req, res) => {
     const data = notificaciones.map(n => ({
       id: n.id,
       fecha: n.created_at ? new Date(n.created_at).toISOString().slice(0, 19).replace('T', ' ') : '',
-      mensaje: n.titulo,
+      mensaje: n.mensaje,
       descripcion: n.mensaje,
       detalle: n.detalles || {},
       tipo: n.tipo,
@@ -174,9 +174,16 @@ router.put('/notificaciones/marcar-todas-leidas', async (req, res) => {
 /**
  * GET /preferencias-notificaciones
  * Obtiene las preferencias de notificaciones del usuario
+ * OPTIMIZADO: Con cache HTTP para reducir llamadas
  */
 router.get('/preferencias-notificaciones', async (req, res) => {
   try {
+    // Cache HTTP de 5 minutos (preferencias no cambian frecuentemente)
+    res.set({
+      'Cache-Control': 'private, max-age=300', // 5 minutos
+      'ETag': `"prefs-${req.session.user.sub}"` // ETag basado en userSub
+    });
+
     const userSub = req.session.user.sub;
     const preferencias = await obtenerPreferenciasNotificaciones(userSub);
     res.json({ ok: true, preferencias });

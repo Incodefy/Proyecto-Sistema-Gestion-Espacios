@@ -372,10 +372,11 @@ const schemas = {
   // === INSTRUMENTOS ===
   createInstrumento: {
     type: 'object',
-    required: ['nombre', 'tipo_id'],
+    required: ['nombre', 'grupo_id', 'tipo_instrumento_id'],
     properties: {
       nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
-      tipo_id: commonSchemas.uuid,
+      grupo_id: { type: 'string', minLength: 1 },
+      tipo_instrumento_id: { type: 'string', minLength: 1 },
       codigo: { type: 'string', maxLength: 50 },
       descripcion: { type: 'string', maxLength: 500 },
       cantidad: { type: 'integer', minimum: 0 },
@@ -385,6 +386,77 @@ const schemas = {
         enum: ['disponible', 'en_uso', 'mantenimiento', 'dañado'],
         default: 'disponible'
       }
+    },
+    additionalProperties: false
+  },
+
+  updateInstrumento: {
+    type: 'object',
+    required: ['nombre', 'grupo_id', 'id', 'tipo_instrumento_id'],
+    properties: {
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 },
+      tipo_instrumento_id: { type: 'string', minLength: 1 },
+      codigo: { type: 'string', maxLength: 50 },
+      descripcion: { type: 'string', maxLength: 500 },
+      cantidad: { type: 'integer', minimum: 0 },
+      ubicacion: { type: 'string', maxLength: 100 },
+      estado: {
+        type: 'string',
+        enum: ['disponible', 'en_uso', 'mantenimiento', 'dañado']
+      }
+    },
+    additionalProperties: false
+  },
+
+  deleteInstrumento: {
+    type: 'object',
+    required: ['grupo_id', 'id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  // === TIPOS DE INSTRUMENTOS ===
+  createTipoInstrumento: {
+    type: 'object',
+    required: ['nombre', 'grupo_id'],
+    properties: {
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+      grupo_id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  updateTipoInstrumento: {
+    type: 'object',
+    required: ['nombre', 'grupo_id', 'id'],
+    properties: {
+      nombre: { type: 'string', minLength: 1, maxLength: 200, isNotEmpty: true },
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  deleteTipoInstrumento: {
+    type: 'object',
+    required: ['grupo_id', 'id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 },
+      id: { type: 'string', minLength: 1 }
+    },
+    additionalProperties: false
+  },
+
+  listTiposInstrumentos: {
+    type: 'object',
+    required: ['grupo_id'],
+    properties: {
+      grupo_id: { type: 'string', minLength: 1 }
     },
     additionalProperties: false
   },

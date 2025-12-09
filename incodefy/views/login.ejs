@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-<div class="wrapper">
+<main class="wrapper" role="main" aria-label="Formulario de inicio de sesión">
   <div class="login-box">
     <form method="POST" action="/login" id="loginForm">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -120,7 +120,7 @@
       </div>
 
       <div class="remember-forgot">
-        <a href="javascript:void(0);" data-action="show-forgot-password"><%= t('login.forgot_password') %></a>
+        <a href="#" data-action="show-forgot-password"><%= t('login.forgot_password') %></a>
       </div>
 
       <button type="submit" id="loginButton">
@@ -135,7 +135,7 @@
       </div>
     </form>
   </div>
-</div>
+</main>
 
 <script src="/js/csrf-helper.js?v=<%= Date.now() %>"></script>
 

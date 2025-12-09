@@ -56,7 +56,8 @@ async function cargarFiltrosIniciales() {
                             <input class="form-check-input especialidad-check"
                                 type="checkbox"
                                 value="${especialidad.id}"
-                                id="filtro-especialidad-${especialidad.id}-${index + 1}">
+                                id="filtro-especialidad-${especialidad.id}-${index + 1}"
+                                aria-label="Filtrar por ${especialidad.nombre}">
                             <span class="form-check-label" style="cursor:default; user-select: none;">${especialidad.nombre}</span>
                         </div>
                     </li>
@@ -71,19 +72,19 @@ async function cargarFiltrosIniciales() {
             const boxes = data.boxes || [];
             boxes.forEach((box, index) => {
                 const listItem = document.createElement('div');
+                listItem.className = 'form-check';
                 listItem.innerHTML = `
-                    <div class="form-check">
-                        <input class="form-check-input box-check"
-                            type="checkbox"
-                            value="${box.id}"
-                            id="filtro-box-${box.id}-${index + 1}">
-                        <label class="form-check-label" 
-                            for="filtro-box-${box.id}-${index + 1}"
-                            style="cursor:pointer; user-select: none;"
-                            title="${box.nombre}">
-                            ${box.nombre}
-                        </label>
-                    </div>
+                    <input class="form-check-input box-check"
+                        type="checkbox"
+                        value="${box.id}"
+                        id="filtro-box-${box.id}-${index + 1}"
+                        aria-label="Filtrar por ${box.nombre}">
+                    <label class="form-check-label" 
+                        for="filtro-box-${box.id}-${index + 1}"
+                        style="cursor:pointer; user-select: none;"
+                        title="${box.nombre}">
+                        ${box.nombre}
+                    </label>
                 `;
                 boxesList.appendChild(listItem);
             });
@@ -1150,7 +1151,18 @@ function disconnectWebSocket() {
     }
 }
 
-// Desconectar cuando el usuario cierre la página
-window.addEventListener('beforeunload', () => {
+// Desconectar cuando el usuario cierre o salga de la página
+// Usamos pagehide en lugar de beforeunload para permitir bfcache
+window.addEventListener('pagehide', () => {
     disconnectWebSocket();
+});
+
+// Reconectar cuando vuelva desde bfcache
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        // La página se restauró desde bfcache, reconectar WebSocket si es necesario
+        if (ws && ws.readyState === WebSocket.CLOSED) {
+            connectWebSocket();
+        }
+    }
 });

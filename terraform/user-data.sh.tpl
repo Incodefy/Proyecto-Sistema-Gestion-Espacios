@@ -44,54 +44,56 @@ useradd -m -s /bin/bash appuser || true
 
 # Crear directorios
 echo "Creating application directories..."
-mkdir -p /home/appuser/hospital-app
-mkdir -p /var/log/hospital-app
-chown -R appuser:appuser /home/appuser/hospital-app
-chown -R appuser:appuser /var/log/hospital-app
+mkdir -p /home/appuser/incodefy-app
+mkdir -p /var/log/incodefy-app
+chown -R appuser:appuser /home/appuser/incodefy-app
+chown -R appuser:appuser /var/log/incodefy-app
 
-# Configurar variables de entorno desde AWS SSM Parameter Store
-echo "Fetching environment variables from AWS SSM..."
-cd /home/appuser/hospital-app
-chmod +x scripts/fetch-env-from-aws.sh
-AWS_REGION=${region} ENVIRONMENT=production ./scripts/fetch-env-from-aws.sh
-
-# Verificar que .env fue creado
-if [ ! -f /home/appuser/hospital-app/incodefy/.env ]; then
-  echo "ERROR: .env file was not created!"
-  exit 1
-fi
+# Crear archivo .env con variables de entorno
+echo "Creating .env file..."
+mkdir -p /home/appuser/incodefy-app/incodefy
+cat > /home/appuser/incodefy-app/incodefy/.env << 'EOFENV'
+NODE_ENV=production
+PORT=3000
+SESSION_SECRET=${session_secret}
+USER_POOL_ID=${user_pool_id}
+USER_POOL_CLIENT_ID=${user_pool_client}
+REGION=${region}
+API_BASE_URL=${api_base_url}
+STAGE=${stage}
+EOFENV
 
 echo ".env file created successfully"
-chown appuser:appuser /home/appuser/hospital-app/incodefy/.env
-chmod 600 /home/appuser/hospital-app/incodefy/.env
+chown appuser:appuser /home/appuser/incodefy-app/incodefy/.env
+chmod 600 /home/appuser/incodefy-app/incodefy/.env
 
 # Instalar Git
 echo "Installing Git..."
 apt-get install -y git
 
-# Clonar repositorio
-echo "Cloning application repository..."
-rm -rf /home/appuser/hospital-app/*
-git clone https://github.com/Incodefy/Proyecto-Sistema-Gestion-Espacios.git /home/appuser/hospital-app/repo
-mv /home/appuser/hospital-app/repo/* /home/appuser/hospital-app/
-mv /home/appuser/hospital-app/repo/.* /home/appuser/hospital-app/ 2>/dev/null || true
-rm -rf /home/appuser/hospital-app/repo
+# Clonar repositorio (branch configurable)
+echo "Cloning application repository (branch: ${git_branch})..."
+rm -rf /home/appuser/incodefy-app/*
+git clone -b ${git_branch} https://github.com/Incodefy/Proyecto-Sistema-Gestion-Espacios.git /home/appuser/incodefy-app/repo
+mv /home/appuser/incodefy-app/repo/* /home/appuser/incodefy-app/
+mv /home/appuser/incodefy-app/repo/.* /home/appuser/incodefy-app/ 2>/dev/null || true
+rm -rf /home/appuser/incodefy-app/repo
 
 # Cambiar permisos
-chown -R appuser:appuser /home/appuser/hospital-app
+chown -R appuser:appuser /home/appuser/incodefy-app
 
 # Instalar dependencias de la aplicación
 echo "Installing application dependencies..."
-cd /home/appuser/hospital-app/incodefy
-su - appuser -c "cd /home/appuser/hospital-app/incodefy && npm install --production"
+cd /home/appuser/incodefy-app/incodefy
+su - appuser -c "cd /home/appuser/incodefy-app/incodefy && npm install --production"
 
 # Configurar PM2
 echo "Configuring PM2..."
-cat > /home/appuser/hospital-app/ecosystem.config.js << 'EOFPM2'
+cat > /home/appuser/incodefy-app/ecosystem.config.js << 'EOFPM2'
 module.exports = {
   apps: [{
-    name: 'hospital-app',
-    cwd: '/home/appuser/hospital-app/incodefy',
+    name: 'incodefy-app',
+    cwd: '/home/appuser/incodefy-app/incodefy',
     script: 'server.js',
     instances: 'max',
     exec_mode: 'cluster',
@@ -101,15 +103,15 @@ module.exports = {
     env: {
       NODE_ENV: 'production'
     },
-    error_file: '/var/log/hospital-app/error.log',
-    out_file: '/var/log/hospital-app/out.log',
-    log_file: '/var/log/hospital-app/combined.log',
+    error_file: '/var/log/incodefy-app/error.log',
+    out_file: '/var/log/incodefy-app/out.log',
+    log_file: '/var/log/incodefy-app/combined.log',
     time: true
   }]
 };
 EOFPM2
 
-chown appuser:appuser /home/appuser/hospital-app/ecosystem.config.js
+chown appuser:appuser /home/appuser/incodefy-app/ecosystem.config.js
 
 # Configurar PM2 para iniciar con el sistema
 echo "Setting up PM2 startup..."
@@ -139,7 +141,7 @@ ufw --force enable
 
 # Signal al Auto Scaling que la instancia está lista
 echo "Starting application with PM2..."
-su - appuser -c "export HOME=/home/appuser && cd /home/appuser/hospital-app/incodefy && pm2 start server.js --name hospital-app"
+su - appuser -c "export HOME=/home/appuser && cd /home/appuser/incodefy-app/incodefy && pm2 start server.js --name incodefy-app"
 su - appuser -c "export HOME=/home/appuser && pm2 save"
 
 # Esperar a que el servidor inicie

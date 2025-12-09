@@ -606,6 +606,7 @@ function renderizarVistaTimeline() {
                 btn.dataset.createBooking = '';
                 btn.dataset.date = formatDate(day);
                 btn.dataset.time = time;
+                btn.setAttribute('aria-label', `Crear agendación para ${formatDateForDisplay(day)} a las ${time}`);
                 btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1089,6 +1090,18 @@ function formatDate(date) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function formatDateForDisplay(date) {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    
+    return `${dayName} ${day} de ${month}`;
 }
 
 function getBookingForSlot(date, time) {

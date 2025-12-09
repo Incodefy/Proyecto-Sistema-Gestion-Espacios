@@ -49,6 +49,8 @@ router.post('/:grupo_id/instrumentos', async (req, res) => {
     const { grupo_id } = req.params;
     const { nombre, tipo_instrumento_id } = req.body;
 
+    console.log('📝 Crear instrumento:', { grupo_id, nombre, tipo_instrumento_id });
+
     if (!nombre || !nombre.trim()) {
       return res.status(400).json({
         ok: false,
@@ -58,33 +60,49 @@ router.post('/:grupo_id/instrumentos', async (req, res) => {
 
     // Validar que el usuario tenga acceso al grupo
     if (req.session.grupoActivo?.grupo_id !== grupo_id) {
+      console.error('❌ Usuario no tiene acceso al grupo:', {
+        grupoActivo: req.session.grupoActivo?.grupo_id,
+        grupoSolicitado: grupo_id
+      });
       return res.status(403).json({
         ok: false,
         error: 'No tienes acceso a este grupo'
       });
     }
 
-    const response = await fetch(`${process.env.API_BASE_URL}/groups/${grupo_id}/instrumentos`, {
+    const url = `${process.env.API_BASE_URL}/groups/${grupo_id}/instrumentos`;
+    const payload = { 
+      nombre: nombre.trim(),
+      tipo_instrumento_id
+    };
+
+    console.log('🔗 Llamando al Lambda:', { url, payload });
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${req.session.user.idToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        nombre: nombre.trim(),
-        tipo_instrumento_id
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();
     
+    console.log('📥 Respuesta del Lambda:', {
+      status: response.status,
+      ok: response.ok,
+      data
+    });
+    
     if (!response.ok) {
+      console.error('❌ Error del Lambda:', data);
       throw new Error(data.error || 'Error creando instrumento');
     }
 
     res.json(data);
   } catch (error) {
-    console.error('Error en POST /api/grupos/:grupo_id/instrumentos:', error);
+    console.error('❌ Error en POST /api/grupos/:grupo_id/instrumentos:', error);
     res.status(500).json({
       ok: false,
       error: error.message || 'Error creando instrumento'

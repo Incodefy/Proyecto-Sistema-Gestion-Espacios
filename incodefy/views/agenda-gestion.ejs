@@ -4,16 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Sistema de agendación de citas médicas - Gestión de espacios y horarios">
+    <meta name="robots" content="index, follow">
     <meta name="csrf-token" content="<%= csrfToken %>">
-    <title>Sistema de Agendación</title>
+    <title>Sistema de Agendación - Incodefy</title>
+    
+    <!-- Preconnect to CDN for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    
+    <!-- Preload critical web fonts to reduce CLS -->
+    <link rel="preload" href="/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    
+    <!-- Critical CSS inline (mantener solo estilos críticos above-the-fold) -->
     <link rel="stylesheet" href="/css/navbar.css">
-    <link rel="stylesheet" href="/css/agenda-gestion.css">
-    <link rel="stylesheet" href="/css/footer.css">
-    <link rel="stylesheet" href="/css/notifications.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/fontawesome/css/all.min.css" rel="stylesheet">
+    
+    <!-- Async CSS loading para mejorar performance (CSP compliant) -->
+    <link id="agenda-css" rel="stylesheet" href="/css/agenda-gestion.css" media="print">
+    <link id="footer-css" rel="stylesheet" href="/css/footer.css" media="print">
+    <link id="notifications-css" rel="stylesheet" href="/css/notifications.css" media="print">
+    <link id="bootstrap-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" media="print">
+    <link id="fontawesome-css" rel="stylesheet" href="/fontawesome/css/all.min.css" media="print">
 
     <%- include('partials/personalization-styles') %>
+    
+    <!-- Script para activar CSS async (CSP compliant) -->
+    <script nonce="<%= cspNonce %>">
+    (function() {
+        const cssIds = ['agenda-css', 'footer-css', 'notifications-css', 'bootstrap-css', 'fontawesome-css'];
+        cssIds.forEach(function(id) {
+            const link = document.getElementById(id);
+            if (link) {
+                link.addEventListener('load', function() {
+                    this.media = 'all';
+                });
+            }
+        });
+    })();
+    </script>
+    
+    <!-- Fallback para navegadores sin JS -->
+    <noscript>
+        <link rel="stylesheet" href="/css/agenda-gestion.css">
+        <link rel="stylesheet" href="/css/footer.css">
+        <link rel="stylesheet" href="/css/notifications.css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/fontawesome/css/all.min.css" rel="stylesheet">
+    </noscript>
 </head>
 <body data-theme="<%= (locals.personalization && personalization['theme.mode']) || 'light' %>">
     
@@ -76,22 +111,25 @@
                                 <button id="todayBtn" class="today-btn" type="button">Hoy</button>
                             </div>
 
-                            <div class="view-toggles" role="group" aria-label="Selector de vista">
+                            <div class="view-toggles" role="tablist" aria-label="Selector de vista">
                                 <button id="dayViewBtn" 
                                         class="view-btn" 
                                         type="button"
                                         role="tab"
-                                        aria-selected="false">Día</button>
+                                        aria-selected="false"
+                                        aria-controls="calendarContainer">Día</button>
                                 <button id="weekViewBtn" 
                                         class="view-btn active" 
                                         type="button"
                                         role="tab"
-                                        aria-selected="true">Semana</button>
+                                        aria-selected="true"
+                                        aria-controls="calendarContainer">Semana</button>
                                 <button id="monthViewBtn" 
                                         class="view-btn" 
                                         type="button"
                                         role="tab"
-                                        aria-selected="false">Mes</button>
+                                        aria-selected="false"
+                                        aria-controls="calendarContainer">Mes</button>
                             </div>
                         </nav>
                     </div>
@@ -117,7 +155,7 @@
                             <!-- Timeline View (Día/Semana) -->
                             <div id="timelineView" class="calendar-card" role="region" aria-label="Vista de línea de tiempo">
                                 <div class="timeline-scroll">
-                                    <div id="timelineContent" role="table" aria-label="Horarios disponibles"></div>
+                                    <div id="timelineContent" aria-label="Horarios disponibles"></div>
                                 </div>
                             </div>
 
@@ -135,8 +173,11 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h2 id="modalTitle" class="modal-title">Nueva Agendación</h2>
-                            <button id="closeModalBtn" class="close-btn">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button id="closeModalBtn" 
+                                    class="close-btn" 
+                                    type="button"
+                                    aria-label="Cerrar modal">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
@@ -145,21 +186,21 @@
 
                         <div class="modal-body">
                             <div class="form-group">
-                                <label class="form-label">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <label for="occupantSelect" class="form-label">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                     Ocupante
                                 </label>
-                                <select id="occupantSelect" class="form-input">
+                                <select id="occupantSelect" class="form-input" aria-required="true">
                                     <option value="">Selecciona un ocupante</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <label for="dateInput" class="form-label">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                         <line x1="16" y1="2" x2="16" y2="6"></line>
                                         <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -167,32 +208,32 @@
                                     </svg>
                                     Fecha
                                 </label>
-                                <input type="date" id="dateInput" class="form-input">
+                                <input type="date" id="dateInput" class="form-input" aria-required="true">
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label class="form-label">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <label for="startTimeSelect" class="form-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                             <circle cx="12" cy="12" r="10"></circle>
                                             <polyline points="12 6 12 12 16 14"></polyline>
                                         </svg>
                                         Hora Inicio
                                     </label>
-                                    <select id="startTimeSelect" class="form-input">
+                                    <select id="startTimeSelect" class="form-input" aria-required="true">
                                         <option value="">Selecciona</option>
                                     </select>
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <label for="endTimeSelect" class="form-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                             <circle cx="12" cy="12" r="10"></circle>
                                             <polyline points="12 6 12 12 16 14"></polyline>
                                         </svg>
                                         Hora Fin
                                     </label>
-                                    <select id="endTimeSelect" class="form-input">
+                                    <select id="endTimeSelect" class="form-input" aria-required="true">
                                         <option value="">Selecciona</option>
                                     </select>
                                 </div>
@@ -201,8 +242,11 @@
 
                         <div class="modal-footer">
                             <div>
-                                <button id="deleteBookingBtn" class="btn-delete d-none">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <button id="deleteBookingBtn" 
+                                        class="btn-delete d-none" 
+                                        type="button"
+                                        aria-label="Eliminar agendación">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                     </svg>
@@ -211,8 +255,14 @@
                             </div>
                             
                             <div class="modal-actions">
-                                <button id="cancelModalBtn" class="btn-secondary">Cancelar</button>
-                                <button id="saveBookingBtn" class="btn-primary">Crear Agendación</button>
+                                <button id="cancelModalBtn" 
+                                        class="btn-secondary" 
+                                        type="button"
+                                        aria-label="Cancelar y cerrar modal">Cancelar</button>
+                                <button id="saveBookingBtn" 
+                                        class="btn-primary" 
+                                        type="button"
+                                        aria-label="Guardar agendación">Crear Agendación</button>
                             </div>
                         </div>
                     </div>
@@ -238,8 +288,14 @@
                             <div id="confirmDetails" class="confirm-details"></div>
                         </div>
                         <div class="confirm-actions">
-                            <button id="confirmCancelBtn" class="confirm-btn confirm-btn-cancel">Cancelar</button>
-                            <button id="confirmDeleteBtn" class="confirm-btn confirm-btn-delete">Eliminar</button>
+                            <button id="confirmCancelBtn" 
+                                    class="confirm-btn confirm-btn-cancel" 
+                                    type="button"
+                                    aria-label="Cancelar eliminación">Cancelar</button>
+                            <button id="confirmDeleteBtn" 
+                                    class="confirm-btn confirm-btn-delete" 
+                                    type="button"
+                                    aria-label="Confirmar eliminación">Eliminar</button>
                         </div>
                     </div>
                 </div>
@@ -248,7 +304,7 @@
     </div>
     <%- include('footer') %>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" defer></script>
     
     <!-- Inyectar datos iniciales pre-cargados del servidor -->
     <script nonce="<%= cspNonce %>">
@@ -258,23 +314,28 @@
     window.userPersonalization = <%- JSON.stringify(personalization || {}) %>;
     </script>
     
+    <!-- Cargar notifications.js SIN defer para que esté disponible inmediatamente -->
     <script src="/js/notifications.js"></script>
     <script nonce="<%= cspNonce %>">
-    window.notificationManager = new NotificationManager();
+    // Inicializar NotificationManager después de que el script cargue
+    if (typeof NotificationManager !== 'undefined') {
+        window.notificationManager = new NotificationManager();
+    } else {
+        console.error('NotificationManager no está disponible');
+    }
     </script>
     
     <!-- Protección CSRF automática -->
-    <script src="/js/csrf-helper.js"></script>
+    <script src="/js/csrf-helper.js" defer></script>
     
     <!-- Protección de sesión: Previene acceso después de logout -->
-    <script src="/js/session-guard.js"></script>
+    <script src="/js/session-guard.js" defer></script>
     
     <!-- Autenticación: Interceptor y renovación automática de tokens -->
-    <script src="/js/auth-interceptor.js"></script>
-    <script src="/js/token-manager.js"></script>
+    <script src="/js/auth-interceptor.js" defer></script>
+    <script src="/js/token-manager.js" defer></script>
     
-    <script src="/js/csrf-helper.js"></script>
-    <script src="/js/agenda-gestion.js?v=table-grid"></script>
+    <script src="/js/agenda-gestion.js?v=table-grid" defer></script>
     <script nonce="<%= cspNonce %>">
     function showDevToast(event) {
       event.preventDefault();

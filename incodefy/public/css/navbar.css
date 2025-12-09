@@ -36,6 +36,11 @@
   padding: 0 1rem !important;
 }
 
+/* Evitar CLS: reservar espacio para navbar fixed */
+body {
+  padding-top: 64px !important;
+}
+
 .navbar-title {
   padding-left: 0.5rem !important;
 }
@@ -75,25 +80,24 @@
 .menu-link img {
   max-height: 25px !important;
   max-width: 25px !important;
-  height: auto !important;
-  width: auto !important;
+  height: 25px !important;  /* Dimensión explícita para evitar CLS */
+  width: 25px !important;   /* Dimensión explícita para evitar CLS */
   object-fit: contain !important;
 }
 
 .menu-link i {
   max-height: 25px !important;
   max-width: 25px !important;
-  height: auto !important
-  ;
-  width: auto !important;
+  height: 25px !important;
+  width: 25px !important;
   object-fit: contain !important;
 }
 
 .logo img {
   max-height: 110px !important;
   max-width: 110px !important;
-  height: auto !important;
-  width: auto !important;
+  height: 110px !important; /* Dimensión explícita para evitar CLS */
+  width: 110px !important;  /* Dimensión explícita para evitar CLS */
   object-fit: contain !important;
 }
 

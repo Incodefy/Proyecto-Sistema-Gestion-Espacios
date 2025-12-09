@@ -233,10 +233,29 @@ function initializeEventListeners() {
 // Cargar datos iniciales
 async function loadInitialData() {
     try {
-        await Promise.all([
-            loadGeneralSpaces(),
-            loadOccupants()
-        ]);
+        // Cargar en paralelo solo si no están pre-cargados
+        const promises = [];
+        
+        if (!window.INITIAL_DATA?.generalSpaces?.length) {
+            promises.push(loadGeneralSpaces());
+        } else {
+            console.log('[OPTIMIZACIÓN] Usando espacios generales del SSR');
+            state.generalSpaces = window.INITIAL_DATA.generalSpaces;
+            renderGeneralSpacesSelect();
+        }
+        
+        if (!window.INITIAL_DATA?.occupants?.length) {
+            promises.push(loadOccupants());
+        } else {
+            console.log('[OPTIMIZACIÓN] Usando ocupantes del SSR');
+            state.occupants = window.INITIAL_DATA.occupants;
+            renderOccupantsSelect();
+        }
+        
+        // Solo esperar si hay promesas pendientes
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
     } catch (error) {
         console.error('Error cargando datos iniciales:', error);
         alert('Error al cargar los datos. Por favor recarga la página.');
@@ -864,8 +883,14 @@ function renderTimelineView() {
                     html += `<div class="booking-continuation" data-booking-id="${booking.id}"></div>`;
                 }
             } else {
-                html += `<button class="cell-button" data-create-booking data-date="${formatDate(day)}" data-time="${time}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                const formattedDate = formatDateForDisplay(day);
+                html += `<button class="cell-button" 
+                    data-create-booking 
+                    data-date="${formatDate(day)}" 
+                    data-time="${time}"
+                    type="button"
+                    aria-label="Crear agendación para ${formattedDate} a las ${time}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -1111,6 +1136,13 @@ function getDaysForView() {
     }
     
     return days;
+}
+
+// Formatear fecha para display legible en aria-labels
+function formatDateForDisplay(date) {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${days[date.getDay()]} ${date.getDate()} de ${months[date.getMonth()]}`;
 }
 
 function formatDate(date) {

@@ -38,7 +38,7 @@ body {
 
 .main {
     margin-left: 0;
-    padding: 6rem 2rem 2rem 2rem!important;
+    padding: 2rem 2rem 2rem 2rem!important;
     min-height: 100vh;
     max-width: 1400px;
     margin: 0 auto;
@@ -386,6 +386,11 @@ body {
     color: white!important;
 }
 
+.badge[data-categoria="RECURSOS"] {
+    background: var(--info-color)!important;
+    color: rgb(255, 255, 255)!important;
+}
+
 /* Estados vacíos */
 .empty-state {
     text-align: center;
@@ -589,7 +594,7 @@ body {
     min-width: 0;
 }
 
-.preference-header-text h5 {
+.preference-header-text h2 {
     margin: 0 0 0.25rem 0;
     font-size: 1.1rem;
     font-weight: 600;
@@ -771,6 +776,7 @@ body {
 .notificacion-item h6,
 .notificacion-item h5,
 .notificacion-item h4,
+.notificacion-item h2,
 .notificacion-item p,
 .notificacion-item span:not(.badge),
 .notificacion-item strong,
@@ -791,6 +797,7 @@ body {
 
 .preference-card h5,
 .preference-card h6,
+.preference-card h2,
 .preference-card p,
 .preference-card span:not(.badge),
 .preference-card div {
@@ -805,7 +812,7 @@ body {
 
 @media (max-width: 991px) {
     .main {
-        padding: 7rem 1.5rem 2rem 1.5rem!important;
+        padding: 4rem 1.5rem 2rem 1.5rem!important;
     }
 
     .header-content {

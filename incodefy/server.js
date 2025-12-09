@@ -70,19 +70,25 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   
   // Cache-Control para archivos estáticos (mejora rendimiento)
-  if (req.url.match(/\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+  if (req.url.match(/\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot|webp)$/)) {
     // Archivos versionados: caché largo (1 año)
     if (req.url.match(/\.(woff|woff2|ttf|eot)$/)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
-    // CSS/JS: caché mediano (1 día) para permitir actualizaciones
+    // CSS/JS: caché largo (7 días) con revalidación
     else if (req.url.match(/\.(css|js)$/)) {
-      res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+      res.setHeader('Vary', 'Accept-Encoding');
     }
-    // Imágenes: caché largo (7 días)
-    else if (req.url.match(/\.(jpg|jpeg|png|gif|ico|svg)$/)) {
-      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    // Imágenes: caché largo (30 días)
+    else if (req.url.match(/\.(jpg|jpeg|png|gif|ico|svg|webp)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+      res.setHeader('Vary', 'Accept-Encoding');
     }
+  }
+  // HTML: Sin cache o caché muy corto para evitar contenido obsoleto
+  else if (req.url.match(/\.html?$/)) {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   }
   
   next();
@@ -217,45 +223,55 @@ const nomenclaturaMiddleware = require('./middleware/nomenclatura');
 // === MIDDLEWARES GLOBALES DE PERSONALIZACIÓN ===
 // Estos se ejecutarán en todas las rutas que vengan después de ellos.
 
-// Middleware de logging para debugging
+// Middleware de logging para debugging (solo en modo verbose)
+const VERBOSE_LOGGING = process.env.VERBOSE_LOGGING === 'true';
+const SKIP_STATIC_LOGGING = true; // No loguear archivos estáticos
+
 app.use((req, res, next) => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log('\n' + '='.repeat(80));
-  console.log(`[${timestamp}] 🌐 ${req.method} ${req.path}`);
-  console.log(`📧 Usuario: ${req.session?.user?.email || 'NO AUTENTICADO'}`);
-  console.log(`🆔 Session ID: ${req.sessionID || 'NO SESSION'}`);
-  console.log(`🔐 Token presente: ${req.session?.user?.idToken ? 'SÍ' : 'NO'}`);
-  console.log(`📦 Grupo activo: ${req.session?.grupoActivo?.grupo_id || 'NINGUNO'}`);
-  console.log('='.repeat(80));
+  // Skip logging para archivos estáticos
+  if (SKIP_STATIC_LOGGING && /\.(css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|map|webp)$/i.test(req.path)) {
+    return next();
+  }
 
-  // Interceptar res.redirect para ver qué se está enviando
-  const originalRedirect = res.redirect;
-  res.redirect = function(url) {
-    console.log(`\n🔀 REDIRECT INTERCEPTADO:`);
-    console.log(`   📍 Destino: ${url}`);
-    console.log(`   🆔 Session ID: ${req.sessionID}`);
-    console.log(`   📧 Usuario en sesión: ${req.session?.user?.email || 'NINGUNO'}`);
-    console.log(`   🔢 Status Code: ${this.statusCode || 302}`);
-    return originalRedirect.call(this, url);
-  };
+  if (VERBOSE_LOGGING) {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log('\n' + '='.repeat(80));
+    console.log(`[${timestamp}] 🌐 ${req.method} ${req.path}`);
+    console.log(`📧 Usuario: ${req.session?.user?.email || 'NO AUTENTICADO'}`);
+    console.log(`🆔 Session ID: ${req.sessionID || 'NO SESSION'}`);
+    console.log(`🔐 Token presente: ${req.session?.user?.idToken ? 'SÍ' : 'NO'}`);
+    console.log(`📦 Grupo activo: ${req.session?.grupoActivo?.grupo_id || 'NINGUNO'}`);
+    console.log('='.repeat(80));
 
-  // Interceptar res.render para ver qué vistas se renderizan
-  const originalRender = res.render;
-  res.render = function(view, locals) {
-    console.log(`\n🎨 RENDER INTERCEPTADO:`);
-    console.log(`   📄 Vista: ${view}`);
-    console.log(`   🆔 Session ID: ${req.sessionID}`);
-    return originalRender.call(this, view, locals);
-  };
+    // Interceptar res.redirect para ver qué se está enviando
+    const originalRedirect = res.redirect;
+    res.redirect = function(url) {
+      console.log(`\n🔀 REDIRECT INTERCEPTADO:`);
+      console.log(`   📍 Destino: ${url}`);
+      console.log(`   🆔 Session ID: ${req.sessionID}`);
+      console.log(`   📧 Usuario en sesión: ${req.session?.user?.email || 'NINGUNO'}`);
+      console.log(`   🔢 Status Code: ${this.statusCode || 302}`);
+      return originalRedirect.call(this, url);
+    };
 
-  // Log cuando la respuesta termina
-  res.on('finish', () => {
-    console.log(`\n✅ RESPUESTA COMPLETADA:`);
-    console.log(`   🔢 Status Code: ${res.statusCode}`);
-    console.log(`   📏 Content-Length: ${res.get('Content-Length') || 'N/A'}`);
-    console.log(`   📍 Location header: ${res.get('Location') || 'N/A'}`);
-    console.log('─'.repeat(80) + '\n');
-  });
+    // Interceptar res.render para ver qué vistas se renderizan
+    const originalRender = res.render;
+    res.render = function(view, locals) {
+      console.log(`\n🎨 RENDER INTERCEPTADO:`);
+      console.log(`   📄 Vista: ${view}`);
+      console.log(`   🆔 Session ID: ${req.sessionID}`);
+      return originalRender.call(this, view, locals);
+    };
+
+    // Log cuando la respuesta termina
+    res.on('finish', () => {
+      console.log(`\n✅ RESPUESTA COMPLETADA:`);
+      console.log(`   🔢 Status Code: ${res.statusCode}`);
+      console.log(`   📏 Content-Length: ${res.get('Content-Length') || 'N/A'}`);
+      console.log(`   📍 Location header: ${res.get('Location') || 'N/A'}`);
+      console.log('─'.repeat(80) + '\n');
+    });
+  }
 
   next();
 });

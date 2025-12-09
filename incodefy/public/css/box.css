@@ -79,7 +79,7 @@ body {
 
 .main {
   flex: 1;
-  padding: 5rem 2rem 2.4rem 2rem!important;
+  padding: 1.8rem 2rem 2.4rem 2rem!important;
   margin: 0 auto;
   width: 100%;
   max-width: 1600px;
@@ -651,30 +651,30 @@ body {
 
 .space-status-bar.libre,
 .space-status-bar.free {
-  background: var(--color-libre-light);
-  color: var(--color-libre);
-  border: 1px solid var(--color-libre);
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #dc2626;
 }
 
 .space-status-bar.en-espera,
 .space-status-bar.waiting {
-  background: var(--color-espera-light);
-  color: var(--color-espera);
-  border: 1px solid var(--color-espera);
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #d97706;
 }
 
 .space-status-bar.en-uso,
 .space-status-bar.in-use {
-  background: var(--color-uso-light);
-  color: var(--color-uso);
-  border: 1px solid var(--color-uso);
+  background: #f0fdf4;
+  color: #047857;
+  border: 1px solid #059669;
 }
 
 .space-status-bar.inhabilitado,
 .space-status-bar.disabled {
-  background: var(--color-inhabilitado-light);
-  color: var(--color-inhabilitado);
-  border: 1px solid var(--color-inhabilitado);
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #64748b;
 }
 
 /* ========================================
@@ -767,7 +767,7 @@ body {
 @media (max-width: 991px) {
 
   .main {
-    padding: 6.5rem 1.5rem 2rem 1.5rem!important;
+    padding: 3.4rem 1.5rem 2rem 1.5rem!important;
   }
 
   .stats-grid {

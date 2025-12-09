@@ -17,7 +17,7 @@ variable "service_name" {
 variable "project_name" {
   description = "Project name for tagging"
   type        = string
-  default     = "HospitalPadreHurtado"
+  default     = "Incodefy"
 }
 
 variable "alarm_email" {
@@ -144,6 +144,12 @@ variable "api_base_url" {
   description = "URL base de la API Lambda"
   type        = string
   default     = ""
+}
+
+variable "git_branch" {
+  description = "Branch de GitHub a clonar en las instancias EC2"
+  type        = string
+  default     = "felipe-5"
 }
 
 # ========================================
