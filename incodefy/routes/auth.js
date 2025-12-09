@@ -103,7 +103,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    console.log('➡️ POST /login - intentando autenticar con Cognito:', correo);
+    console.log('➡️ POST /login:', correo);
 
     const authCommand = new InitiateAuthCommand({
       AuthFlow: 'USER_PASSWORD_AUTH',
@@ -115,7 +115,10 @@ router.post('/login', async (req, res) => {
     });
 
     const authResult = await cognitoClient.send(authCommand);
-    console.log('🔐 Respuesta de Cognito:', authResult);
+    
+    if (process.env.VERBOSE_LOGGING === 'true') {
+      console.log('🔐 Respuesta de Cognito:', authResult);
+    }
 
     if (authResult.ChallengeName) {
       error_msg.push('Debes cambiar tu contraseña temporal');
@@ -137,7 +140,10 @@ router.post('/login', async (req, res) => {
     });
 
     const userInfo = await cognitoClient.send(getUserCommand);
-    console.log('👤 Información del usuario:', userInfo);
+    
+    if (process.env.VERBOSE_LOGGING === 'true') {
+      console.log('👤 Información del usuario:', userInfo);
+    }
 
     const userAttributes = {};
     userInfo.UserAttributes.forEach(attr => {
@@ -155,60 +161,10 @@ router.post('/login', async (req, res) => {
       refreshToken: tokens.RefreshToken,
       nombre: userAttributes.name || userAttributes.email.split('@')[0],
       authTime: new Date().toISOString(),
-      idioma: idioma // Guardar idioma en la sesión
+      idioma: idioma, // Guardar idioma en la sesión
+      personalization: {} // Inicializar vacío, se carga bajo demanda
     };
     req.session.language = idioma;
-
-    // Obtener permisos y personalización inicial
-    try {
-      console.log('📡 Obteniendo permisos desde:', PERMISSIONS_URL);
-      
-      const permissionsResponse = await fetch(PERMISSIONS_URL, {
-        headers: { 
-          'Authorization': `Bearer ${tokens.IdToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log("permisos: ", req.session.user.permissions)
-      
-      if (permissionsResponse.ok) {
-        const permissionsData = await permissionsResponse.json();
-        // La nueva API ya no devuelve todos los permisos, solo información de membresías
-        req.session.user.groups = permissionsData.groups || [];
-        req.session.user.has_admin_permissions = permissionsData.has_admin_permissions || false;
-        // Mantener array vacío para compatibilidad, ahora se verifican permisos individualmente
-        req.session.user.permissions = [];
-        console.log('✅ Membresías obtenidas:', req.session.user.groups.length);
-        console.log('✅ Tiene permisos admin:', req.session.user.has_admin_permissions);
-      } else {
-        console.log('⚠️ Error obteniendo permisos:', permissionsResponse.status);
-      }
-    } catch (err) {
-      console.error('❌ Error obteniendo permisos:', err);
-      req.session.user.permissions = [];
-      req.session.user.ui_config = {};
-    }
-
-    try {
-      console.log('📡 Obteniendo personalización desde:', PERSONALIZATION_URL);
-      const personalizationResponse = await fetch(PERSONALIZATION_URL, {
-        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
-      });
-      
-      if (personalizationResponse.ok) {
-        const personalizationData = await personalizationResponse.json();
-        req.session.user.personalization = personalizationData.final_parameters;
-        console.log('✅ Personalización obtenida:', personalizationData.final_parameters);
-      } else {
-        console.log('⚠️ No se pudo obtener personalización:', personalizationResponse.status);
-        req.session.user.personalization = {};
-      }
-      
-    } catch (err) {
-      console.log('❌ Error obteniendo personalización:', err.message);
-      req.session.user.personalization = {};
-    }
 
     console.log('✅ Sesión creada:', {
       sub: req.session.user.sub,
@@ -217,68 +173,60 @@ router.post('/login', async (req, res) => {
       idioma: req.session.user.idioma
     });
 
-    // Obtener permisos del usuario
+    // ⚡ OPTIMIZACIÓN: Obtener permisos, personalización y grupo activo EN PARALELO
     try {
-      console.log('📡 Obteniendo permisos del usuario...');
       const MY_PERMISSIONS_URL = `${process.env.API_BASE_URL}/my-permissions`;
-      const permissionsResponse = await fetch(MY_PERMISSIONS_URL, {
-        headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
-      });
-      
-      if (permissionsResponse.ok) {
-        const permissionsData = await permissionsResponse.json();
-        const data = permissionsData.data || permissionsData;
+      const ApiClientV2 = require('../apiClientV2');
+      const apiClient = new ApiClientV2(tokens.IdToken);
+
+      const [permissionsResult, grupoActivoResult] = await Promise.allSettled([
+        // Llamada 1: Permisos
+        fetch(MY_PERMISSIONS_URL, {
+          headers: { 'Authorization': `Bearer ${tokens.IdToken}` }
+        }).then(res => res.ok ? res.json() : null),
         
+        // Llamada 2: Grupo activo
+        apiClient.obtenerGrupoActivo()
+      ]);
+
+      // Procesar permisos
+      if (permissionsResult.status === 'fulfilled' && permissionsResult.value) {
+        const data = permissionsResult.value.data || permissionsResult.value;
         req.session.user.groups = data.groups || [];
         req.session.user.has_admin_permissions = data.has_admin_permissions || false;
         req.session.user.permissions_by_group = data.permissions_by_group || {};
-        
-        console.log(`✅ Permisos: ${data.groups?.length || 0} grupos, Admin: ${data.has_admin_permissions}`);
+        console.log(`✅ Login: ${data.groups?.length || 0} grupos, Admin: ${data.has_admin_permissions}`);
+      } else {
+        req.session.user.groups = [];
+        req.session.user.has_admin_permissions = false;
+        req.session.user.permissions_by_group = {};
       }
-    } catch (err) {
-      console.log('⚠️ Error obteniendo permisos:', err.message);
-      req.session.user.groups = [];
-      req.session.user.has_admin_permissions = false;
-      req.session.user.permissions_by_group = {};
-    }
 
-    // Obtener grupo activo
-    try {
-      const ApiClientV2 = require('../apiClientV2');
-      const apiClient = new ApiClientV2(tokens.IdToken);
-      const grupoActivoResponse = await apiClient.obtenerGrupoActivo();
-      
-      if (grupoActivoResponse?.ok && grupoActivoResponse.grupo_activo) {
-        req.session.grupoActivo = grupoActivoResponse.grupo_activo;
+      // Procesar grupo activo
+      if (grupoActivoResult.status === 'fulfilled' && grupoActivoResult.value?.ok && grupoActivoResult.value.grupo_activo) {
+        req.session.grupoActivo = grupoActivoResult.value.grupo_activo;
         req.session.grupoActivoVerificado = true;
         req.session.grupoActivoVerificadoEn = Date.now();
-        console.log(`✅ Grupo activo: ${grupoActivoResponse.grupo_activo.grupo_id}`);
+        console.log(`✅ Grupo activo: ${grupoActivoResult.value.grupo_activo.grupo_id}`);
       } else {
         req.session.grupoActivo = null;
         req.session.grupoActivoVerificado = true;
         req.session.grupoActivoVerificadoEn = Date.now();
-        console.log('⚠️ Sin grupo activo');
       }
     } catch (error) {
+      console.log('❌ Error en login:', error.message);
+      req.session.user.groups = [];
+      req.session.user.has_admin_permissions = false;
+      req.session.user.permissions_by_group = {};
       req.session.grupoActivo = null;
       req.session.grupoActivoVerificado = true;
       req.session.grupoActivoVerificadoEn = Date.now();
-      console.log('⚠️ Error verificando grupo activo:', error.message);
     }
 
     // GUARDAR SESIÓN EXPLÍCITAMENTE antes de redirect
-    console.log('🔄 Iniciando guardado de sesión...');
-    console.log('📊 Estado sesión antes de guardar:', {
-      hasUser: !!req.session.user,
-      hasToken: !!req.session.user?.idToken,
-      hasGrupoActivo: !!req.session.grupoActivo,
-      grupoId: req.session.grupoActivo?.grupo_id
-    });
-
     req.session.save((err) => {
       if (err) {
-        console.error('❌ ERROR CRÍTICO guardando sesión:', err);
-        console.error('❌ Stack:', err.stack);
+        console.error('❌ Error guardando sesión:', err);
         return res.render('login', {
           error_msg: ['Error al guardar la sesión'],
           form_errors: {},
@@ -286,25 +234,18 @@ router.post('/login', async (req, res) => {
           redirect: redirect || null
         });
       }
-
-      console.log('✅ Sesión guardada exitosamente');
-      console.log('📊 Sesión ID:', req.sessionID);
       
       // Decidir a dónde redirigir
       let redirectUrl;
       if (redirect) {
         redirectUrl = redirect;
-        console.log(`🔀 Redirect específico: ${redirect}`);
       } else if (req.session.grupoActivo) {
         redirectUrl = '/dashboard';
-        console.log('🎯 Usuario con grupo activo, redirigiendo a dashboard');
       } else {
         redirectUrl = '/onboarding-espacios';
-        console.log('🎯 Usuario sin grupo activo, redirigiendo a onboarding');
       }
 
-      console.log(`🚀 ENVIANDO REDIRECT 302 a: ${redirectUrl}`);
-      console.log('=' .repeat(80));
+      console.log(`✅ Login exitoso → ${redirectUrl}`);
       return res.redirect(redirectUrl);
     });
 

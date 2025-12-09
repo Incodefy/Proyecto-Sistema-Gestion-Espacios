@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/css/aceptar-invitacion.css">
 </head>
 <body>
-  <div class="invitation-container">
+  <main class="invitation-container" role="main">
     <div class="header">
       <h1>Invitación a grupo</h1>
       <p>Has sido invitado a colaborar</p>
@@ -91,7 +91,7 @@
         </p>
       <% } %>
     </div>
-  </div>
+  </main>
 
   <script nonce="<%= nonce %>">
     <% if (user && user.email.toLowerCase() === invitation.email.toLowerCase()) { %>
